@@ -1,0 +1,140 @@
+import type { Client, DailyReport, FollowUp, TeamMember, TeamTask } from "@/types/database";
+
+export const mockTeamMembers: TeamMember[] = [
+  {
+    id: "1",
+    name: "Admin",
+    email: "admin@axpm.com",
+    role: "admin",
+    telegram_id: null,
+    is_active: true,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "2",
+    name: "Sales Agent",
+    email: "sales@axpm.com",
+    role: "agent",
+    telegram_id: "@axpm_sales",
+    is_active: true,
+    created_at: new Date().toISOString(),
+  },
+];
+
+export const mockClients: Client[] = [
+  {
+    id: "1",
+    name: "John Chen",
+    email: "john@example.com",
+    phone: "+85291234567",
+    whatsapp: "+85291234567",
+    wechat: "johnchen_wx",
+    lead_status: "qualified",
+    deposit_amount: 5000,
+    deposit_currency: "USD",
+    ib_source: "IB-001",
+    tags: ["vip", "china"],
+    assigned_to: "2",
+    notes: "Interested in PAMM account",
+    next_follow_up_at: new Date(Date.now() + 86400000).toISOString(),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: "2",
+    name: "Sarah Wong",
+    email: "sarah@example.com",
+    phone: "+85298765432",
+    whatsapp: "+85298765432",
+    wechat: null,
+    lead_status: "contacted",
+    deposit_amount: 0,
+    deposit_currency: "USD",
+    ib_source: "IB-002",
+    tags: ["new-lead"],
+    assigned_to: "2",
+    notes: null,
+    next_follow_up_at: new Date(Date.now() + 172800000).toISOString(),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: "3",
+    name: "Michael Lee",
+    email: "michael@example.com",
+    phone: null,
+    whatsapp: null,
+    wechat: "mlee_trading",
+    lead_status: "deposited",
+    deposit_amount: 25000,
+    deposit_currency: "USD",
+    ib_source: "IB-001",
+    tags: ["high-value"],
+    assigned_to: "2",
+    notes: "VIP client — weekly check-in",
+    next_follow_up_at: new Date(Date.now() + 10800000).toISOString(),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+];
+
+export const mockFollowUps: FollowUp[] = [
+  {
+    id: "1",
+    client_id: "1",
+    team_member_id: "2",
+    channel: "whatsapp",
+    summary: "Discussed account types and minimum deposit",
+    notes: "Client asked about leverage options",
+    scheduled_at: null,
+    completed_at: new Date(Date.now() - 86400000).toISOString(),
+    created_at: new Date(Date.now() - 86400000).toISOString(),
+  },
+  {
+    id: "2",
+    client_id: "3",
+    team_member_id: "2",
+    channel: "wechat",
+    summary: "Weekly portfolio review",
+    notes: "Happy with performance, may increase deposit",
+    scheduled_at: new Date(Date.now() + 10800000).toISOString(),
+    completed_at: null,
+    created_at: new Date().toISOString(),
+  },
+];
+
+export const mockTasks: TeamTask[] = [
+  {
+    id: "1",
+    title: "Send daily follow-up report to team",
+    description: "Compile all pending follow-ups",
+    assigned_to: "2",
+    status: "pending",
+    due_at: new Date(Date.now() + 3600000).toISOString(),
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "2",
+    title: "Review IB-001 performance",
+    description: "Monthly IB commission review",
+    assigned_to: "1",
+    status: "in_progress",
+    due_at: new Date(Date.now() + 86400000).toISOString(),
+    created_at: new Date().toISOString(),
+  },
+];
+
+export const mockDailyReport: DailyReport = {
+  id: "1",
+  report_date: new Date().toISOString().split("T")[0],
+  content:
+    "3 clients due for follow-up today. 1 new deposit ($5,000 from John Chen). 2 leads in negotiation stage.",
+  metrics: {
+    total_clients: 3,
+    follow_ups_due: 3,
+    new_deposits: 1,
+    deposit_value: 5000,
+    active_leads: 2,
+  },
+  created_at: new Date().toISOString(),
+};
