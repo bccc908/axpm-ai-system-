@@ -71,40 +71,29 @@ export async function maybeAutoReply(
   const manualBrief = settings.replyAgentPrompt?.trim();
   const customBrief = [trainingBrief, manualBrief].filter(Boolean).join("\n\n");
 
+  const llmProvider = getLlmProvider();
   const replyProvider = getReplyProvider();
   const preferOpenClaw =
-    replyProvider === "openclaw" ||
-    (replyProvider === "auto" && isOpenClawConfigured());
+    llmProvider !== "deepseek" &&
+    (replyProvider === "openclaw" ||
+      (replyProvider === "auto" && isOpenClawConfigured()));
 
-  const result = preferOpenClaw
-    ? await generateCustomerReply({
-        channel: input.channel,
-        clientName: input.clientName,
-        customerQuestion: input.customerQuestion,
-        conversationHistory: conversationHistory || undefined,
-        clientNotes: client?.notes ?? undefined,
-        customBrief: customBrief || undefined,
-        tone: "professional",
-      })
-    : getLlmProvider() === "deepseek"
-      ? await generateDeepSeekCustomerReply({
-          channel: input.channel,
-          clientName: input.clientName,
-          customerQuestion: input.customerQuestion,
-          conversationHistory: conversationHistory || undefined,
-          clientNotes: client?.notes ?? undefined,
-          customBrief: customBrief || undefined,
-          tone: "professional",
-        })
-      : await generateCustomerReply({
-          channel: input.channel,
-          clientName: input.clientName,
-          customerQuestion: input.customerQuestion,
-          conversationHistory: conversationHistory || undefined,
-          clientNotes: client?.notes ?? undefined,
-          customBrief: customBrief || undefined,
-          tone: "professional",
-        });
+  const replyInput = {
+    channel: input.channel,
+    clientName: input.clientName,
+    customerQuestion: input.customerQuestion,
+    conversationHistory: conversationHistory || undefined,
+    clientNotes: client?.notes ?? undefined,
+    customBrief: customBrief || undefined,
+    tone: "professional" as const,
+  };
+
+  const result =
+    llmProvider === "deepseek"
+      ? await generateDeepSeekCustomerReply(replyInput)
+      : preferOpenClaw
+        ? await generateCustomerReply(replyInput)
+        : await generateCustomerReply(replyInput);
 
   const reply = result.replies[0]?.trim();
   if (!reply) {
@@ -121,7 +110,7 @@ export async function maybeAutoReply(
       client_name: input.clientName,
       channel: "whatsapp",
       direction: "outbound",
-      sender_label: "AXPM Auto Reply",
+      sender_label: "信号旗自动回复",
       content: reply,
       source: "whatsapp",
     });
@@ -147,7 +136,7 @@ export async function maybeAutoReply(
     wechat_id: input.sendTarget,
     channel: "wechat",
     direction: "outbound",
-    sender_label: "AXPM Auto Reply",
+    sender_label: "信号旗自动回复",
     content: reply,
     source: "wechat_work",
     external_id: sendResult.msgid,

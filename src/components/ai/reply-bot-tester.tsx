@@ -237,7 +237,7 @@ export function ReplyBotTester() {
               {copied ? t("ai.copied") : t("ai.copyTestLink")}
             </button>
             <Link
-              href="/dashboard/ai-assistant"
+              href="/dashboard/conversations?tab=reply-agent"
               className="inline-flex items-center gap-1 text-xs text-muted hover:text-accent"
             >
               {t("ai.fullAgentPage")}

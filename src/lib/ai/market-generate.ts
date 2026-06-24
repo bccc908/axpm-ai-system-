@@ -1,0 +1,333 @@
+import "server-only";
+
+import fs from "fs/promises";
+import path from "path";
+import PptxGenJS from "pptxgenjs";
+import sharp from "sharp";
+import { deepSeekChat } from "@/lib/ai/deepseek-client";
+import { buildMarketAdvisorSystemPrompt } from "@/lib/ai/market-advisor";
+import {
+  marketOutputDir,
+  marketOutputFileUrl,
+  registerMarketOutput,
+  updateMarketOutputFiles,
+} from "@/lib/ai/market-outputs";
+import { isMarketForceLocal } from "@/lib/local/self-hosted-config";
+
+export type DeckSlide = {
+  title: string;
+  bullets: string[];
+  speakerNotes?: string;
+};
+
+export type DeckOutline = {
+  deckTitle: string;
+  slides: DeckSlide[];
+};
+
+const FONT = "PingFang SC, Microsoft YaHei, sans-serif";
+const ACCENTS = ["#f59e0b", "#38bdf8", "#a78bfa", "#34d399", "#fb7185"];
+
+function escapeXml(text: string) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function wrapText(text: string, maxChars: number, maxLines: number) {
+  const lines: string[] = [];
+  let current = "";
+  for (const ch of text) {
+    if ((current + ch).length > maxChars) {
+      lines.push(current);
+      current = ch;
+      if (lines.length >= maxLines) break;
+    } else {
+      current += ch;
+    }
+  }
+  if (current && lines.length < maxLines) lines.push(current);
+  return lines.slice(0, maxLines);
+}
+
+export function slideSvg(slide: DeckSlide, index: number, total: number, deckTitle: string) {
+  const w = 1920;
+  const h = 1080;
+  const accent = ACCENTS[index % ACCENTS.length];
+  const titleLines = wrapText(slide.title, 14, 2);
+  const bulletLines = slide.bullets.flatMap((b) => wrapText(b, 22, 2)).slice(0, 5);
+
+  const titleTspans = titleLines
+    .map(
+      (line, i) =>
+        `<tspan x="120" y="${200 + i * 72}" font-size="56" font-weight="800">${escapeXml(line)}</tspan>`,
+    )
+    .join("");
+  const bulletTspans = bulletLines
+    .map(
+      (line, i) =>
+        `<tspan x="160" y="${380 + i * 56}" font-size="36">${escapeXml(`• ${line}`)}</tspan>`,
+    )
+    .join("");
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#bg)"/>
+  <rect x="0" y="0" width="${w}" height="12" fill="${accent}"/>
+  <text fill="#94a3b8" font-family="${FONT}" font-size="24" x="120" y="80">${escapeXml(deckTitle)} · ${index + 1}/${total}</text>
+  <text fill="#ffffff" font-family="${FONT}">${titleTspans}</text>
+  <text fill="#e2e8f0" font-family="${FONT}">${bulletTspans}</text>
+  <text fill="#64748b" font-family="${FONT}" font-size="22" x="120" y="${h - 48}">Kayden Market AI</text>
+</svg>`;
+}
+
+export async function generateDeckOutline(topic: string, context?: string): Promise<DeckOutline> {
+  const system = await buildMarketAdvisorSystemPrompt("market");
+  const user = [
+    `Create a marketing/strategy presentation outline about: ${topic.trim()}`,
+    context?.trim() ? `\nContext from conversation:\n${context.trim().slice(0, 3000)}` : "",
+    "",
+    "Return JSON only:",
+    `{ "deckTitle": "string", "slides": [{ "title": "8-20 chars", "bullets": ["string", ...], "speakerNotes": "optional" }] }`,
+    "Requirements: 6-10 slides. Slide 1 = cover/title. Last slide = summary + next steps. Middle = strategy, data insights, channels, actions. Chinese if topic is Chinese.",
+  ].join("\n");
+
+  const result = await deepSeekChat({
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+    json: true,
+    temperature: 0.55,
+  });
+
+  if (result.ok) {
+    try {
+      const parsed = JSON.parse(result.content) as DeckOutline;
+      if (parsed.deckTitle && Array.isArray(parsed.slides) && parsed.slides.length >= 3) {
+        return {
+          deckTitle: parsed.deckTitle.trim(),
+          slides: parsed.slides.slice(0, 12).map((s) => ({
+            title: String(s.title ?? "").trim() || "要点",
+            bullets: (s.bullets ?? []).map(String).filter(Boolean).slice(0, 6),
+            speakerNotes: s.speakerNotes ? String(s.speakerNotes) : undefined,
+          })),
+        };
+      }
+    } catch {
+      /* fallback below */
+    }
+  }
+
+  const zh = /[\u4e00-\u9fff]/.test(topic);
+  return {
+    deckTitle: topic.trim() || (zh ? "市场策略方案" : "Market Strategy"),
+    slides: zh
+      ? [
+          { title: topic.slice(0, 18), bullets: ["Kayden Market AI 生成", "基于已上传资料"] },
+          { title: "市场现状", bullets: ["行业痛点", "目标用户", "竞争格局"] },
+          { title: "核心策略", bullets: ["差异化定位", "渠道优先级", "内容打法"] },
+          { title: "执行计划", bullets: ["30天动作", "关键指标", "资源分配"] },
+          { title: "总结", bullets: ["3条重点", "下一步行动"] },
+        ]
+      : [
+          { title: topic.slice(0, 24), bullets: ["Generated by Kayden Market AI"] },
+          { title: "Market landscape", bullets: ["Pain points", "Audience", "Competition"] },
+          { title: "Strategy", bullets: ["Positioning", "Channels", "Content"] },
+          { title: "Next steps", bullets: ["30-day plan", "KPIs"] },
+        ],
+  };
+}
+
+export async function buildPptxFile(outline: DeckOutline, outputPath: string) {
+  const pptx = new PptxGenJS();
+  pptx.layout = "LAYOUT_16x9";
+  pptx.author = "Kayden Market AI";
+  pptx.title = outline.deckTitle;
+
+  for (const slide of outline.slides) {
+    const s = pptx.addSlide();
+    s.background = { color: "0F172A" };
+    s.addText(slide.title, {
+      x: 0.6,
+      y: 0.5,
+      w: 12,
+      h: 1,
+      fontSize: 32,
+      bold: true,
+      color: "FFFFFF",
+      fontFace: "Arial",
+    });
+    if (slide.bullets.length) {
+      s.addText(
+        slide.bullets.map((b) => ({ text: b, options: { bullet: true } })),
+        {
+          x: 0.8,
+          y: 1.6,
+          w: 11.5,
+          h: 4.5,
+          fontSize: 20,
+          color: "E2E8F0",
+          fontFace: "Arial",
+        },
+      );
+    }
+    if (slide.speakerNotes) {
+      s.addNotes(slide.speakerNotes);
+    }
+  }
+
+  const buffer = (await pptx.write({ outputType: "nodebuffer" })) as Buffer;
+  await fs.writeFile(outputPath, buffer);
+}
+
+export async function buildSlideImages(
+  outline: DeckOutline,
+  outputDir: string,
+): Promise<string[]> {
+  await fs.mkdir(outputDir, { recursive: true });
+  const names: string[] = [];
+  const total = outline.slides.length;
+
+  for (let i = 0; i < total; i++) {
+    const filename = `slide-${String(i + 1).padStart(2, "0")}.png`;
+    const svg = slideSvg(outline.slides[i], i, total, outline.deckTitle);
+    await sharp(Buffer.from(svg)).png().toFile(path.join(outputDir, filename));
+    names.push(filename);
+  }
+
+  return names;
+}
+
+function outlineToGammaInput(outline: DeckOutline, topic: string, context?: string) {
+  const slides = outline.slides
+    .map(
+      (s, i) =>
+        `Slide ${i + 1}: ${s.title}\n${s.bullets.map((b) => `- ${b}`).join("\n")}`,
+    )
+    .join("\n\n");
+
+  return [
+    `# ${outline.deckTitle}`,
+    topic.trim() !== outline.deckTitle ? `Topic: ${topic.trim()}` : "",
+    context?.trim() ? `Background:\n${context.trim().slice(0, 2500)}` : "",
+    slides,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+async function generateMarketPptViaGamma(
+  topic: string,
+  context: string | undefined,
+  outline: DeckOutline,
+) {
+  const { downloadRemoteFile, generateGammaPresentation } = await import(
+    "@/lib/ai/gamma-client"
+  );
+
+  const gamma = await generateGammaPresentation({
+    inputText: outlineToGammaInput(outline, topic, context),
+    title: outline.deckTitle,
+    numCards: Math.min(15, Math.max(outline.slides.length, 6)),
+    exportAs: "pptx",
+  });
+
+  const entry = await registerMarketOutput({
+    kind: "ppt",
+    title: outline.deckTitle,
+  });
+  const dir = marketOutputDir(entry.id);
+  const safePptName = `gamma-deck-${entry.id}.pptx`;
+
+  if (gamma.exportUrl) {
+    const buffer = await downloadRemoteFile(gamma.exportUrl);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, safePptName), buffer);
+    await updateMarketOutputFiles(entry.id, [safePptName]);
+  } else {
+    await updateMarketOutputFiles(entry.id, []);
+  }
+
+  return {
+    output: { ...entry, files: gamma.exportUrl ? [safePptName] : [] },
+    outline,
+    downloadUrl: gamma.exportUrl
+      ? marketOutputFileUrl(entry.id, safePptName)
+      : gamma.gammaUrl,
+    gammaUrl: gamma.gammaUrl,
+    provider: "gamma" as const,
+  };
+}
+
+export async function generateMarketPpt(topic: string, context?: string) {
+  const outline = await generateDeckOutline(topic, context);
+
+  const { isGammaConfigured } = await import("@/lib/ai/gamma-config");
+  if (!isMarketForceLocal() && isGammaConfigured()) {
+    try {
+      return await generateMarketPptViaGamma(topic, context, outline);
+    } catch (error) {
+      console.warn("[Market PPT] Gamma failed, falling back to local pptx:", error);
+    }
+  }
+
+  const entry = await registerMarketOutput({
+    kind: "ppt",
+    title: outline.deckTitle,
+  });
+  const dir = marketOutputDir(entry.id);
+  const safePptName = `market-deck-${entry.id}.pptx`;
+  await buildPptxFile(outline, path.join(dir, safePptName));
+  await updateMarketOutputFiles(entry.id, [safePptName]);
+
+  return {
+    output: { ...entry, files: [safePptName] },
+    outline,
+    downloadUrl: marketOutputFileUrl(entry.id, safePptName),
+    provider: "local" as const,
+  };
+}
+
+export async function generateMarketImages(topic: string, context?: string) {
+  const outline = await generateDeckOutline(topic, context);
+  const entry = await registerMarketOutput({
+    kind: "image",
+    title: outline.deckTitle,
+  });
+  const dir = marketOutputDir(entry.id);
+
+  const { buildDalleSlideImages, isDalleConfigured } = await import(
+    "@/lib/ai/market-dalle-images"
+  );
+  let files: string[];
+  let usedDalle = false;
+
+  if (!isMarketForceLocal() && isDalleConfigured()) {
+    const result = await buildDalleSlideImages(outline, dir);
+    files = result.files;
+    usedDalle = result.usedDalle;
+  } else {
+    files = await buildSlideImages(outline, dir);
+  }
+
+  await updateMarketOutputFiles(entry.id, files);
+
+  return {
+    output: { ...entry, files },
+    outline,
+    images: files.map((f) => ({
+      name: f,
+      url: marketOutputFileUrl(entry.id, f),
+    })),
+    provider: usedDalle ? ("dalle" as const) : ("svg" as const),
+  };
+}

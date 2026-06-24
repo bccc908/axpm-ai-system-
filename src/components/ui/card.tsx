@@ -10,7 +10,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-xl border border-card-border bg-card p-5 shadow-sm",
+        "glass-panel glass-panel-hover rounded-2xl p-5 md:p-6",
         className,
       )}
     >
@@ -29,10 +29,14 @@ export function CardHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="mb-4 flex items-start justify-between gap-4">
+    <div className="mb-5 flex items-start justify-between gap-4">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-        {description && <p className="mt-0.5 text-sm text-muted">{description}</p>}
+        <h2 className="font-display text-lg font-semibold tracking-tight text-foreground md:text-xl">
+          {title}
+        </h2>
+        {description ? (
+          <p className="mt-1 text-sm leading-relaxed text-muted">{description}</p>
+        ) : null}
       </div>
       {action}
     </div>

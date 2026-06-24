@@ -11,7 +11,7 @@ export const MAC_VOICES = [
   { id: "Sandy", labelZh: "Sandy（中文女声）", labelEn: "Sandy (Chinese female)" },
 ] as const;
 
-export type TtsPriority = "edge" | "mac" | "auto";
+export type TtsPriority = "piper" | "minimax" | "edge" | "mac" | "auto";
 
 export const DEFAULT_EDGE_VOICE = "zh-CN-YunxiNeural";
 export const DEFAULT_MAC_VOICE = "Meijia";

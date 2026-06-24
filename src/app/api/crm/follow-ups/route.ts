@@ -4,7 +4,7 @@ import { createFollowUp, listFollowUps } from "@/lib/crm/store";
 
 const schema = z.object({
   client_id: z.string().min(1),
-  channel: z.enum(["whatsapp", "wechat", "telegram", "email", "phone"]).default("phone"),
+  channel: z.enum(["whatsapp", "wechat", "telegram", "email", "phone", "web"]).default("phone"),
   summary: z.string().min(1),
   notes: z.string().nullable().optional(),
   completed_at: z.string().nullable().optional(),

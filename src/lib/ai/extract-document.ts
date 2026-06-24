@@ -1,6 +1,9 @@
 import "server-only";
 
+import fs from "fs/promises";
+import os from "os";
 import path from "path";
+import { randomUUID } from "crypto";
 import type OpenAI from "openai";
 import { getOpenAI, getChatModel, openAiErrorMessage } from "@/lib/ai/client";
 import { isOpenAIReachable } from "@/lib/ai/openai-reachable";
@@ -86,6 +89,28 @@ async function extractDocxText(buffer: Buffer) {
     );
   }
   return truncate(text);
+}
+
+async function extractLegacyDocText(buffer: Buffer) {
+  const WordExtractor = (await import("word-extractor")).default;
+  const tmp = path.join(os.tmpdir(), `axpm-${randomUUID()}.doc`);
+  try {
+    await fs.writeFile(tmp, buffer);
+    const extractor = new WordExtractor();
+    const doc = await extractor.extract(tmp);
+    const text = [doc.getBody(), doc.getHeaders(), doc.getFootnotes()]
+      .map((part) => part?.trim())
+      .filter(Boolean)
+      .join("\n\n");
+    if (!text) {
+      throw new Error(
+        "Word document has no readable text — try saving as .docx with content or export as .txt",
+      );
+    }
+    return truncate(text);
+  } finally {
+    await fs.unlink(tmp).catch(() => undefined);
+  }
 }
 
 async function extractPdfLocal(buffer: Buffer) {
@@ -188,9 +213,7 @@ export async function extractDocumentText(
   const normalizedMime = normalizeKnowledgeMimeType(safeName, mimeType);
 
   if (isLegacyDocFile(safeName, normalizedMime)) {
-    throw new Error(
-      "Old .doc format is not supported. In Word choose Save As → .docx, or export as PDF / .txt",
-    );
+    return extractLegacyDocText(buffer);
   }
 
   if (isTextFile(safeName, normalizedMime)) {

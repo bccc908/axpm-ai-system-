@@ -25,16 +25,31 @@ export type AppSettings = {
   presenterEdgeVoice?: string | null;
   /** macOS say voice e.g. Meijia */
   presenterMacVoice?: string | null;
-  /** edge = online first, mac = local first, auto = edge then mac fallback */
-  presenterTtsPriority?: "edge" | "mac" | "auto" | null;
+  /** piper = self-hosted, edge = online, mac = macOS say, minimax = cloud API, auto = own engines first */
+  presenterTtsPriority?: "piper" | "minimax" | "edge" | "mac" | "auto" | null;
   /** Auto-create CRM client from WeChat Work / WhatsApp / inbound chat (default true) */
   autoCreateClientsFromChat?: boolean;
   /** Telegram alert when a new client is auto-created or registers */
   notifyNewClientTelegram?: boolean;
+  /** Telegram alert when a customer sends a new inbound message */
+  notifyInboundMessageTelegram?: boolean;
   /** Auto-send AI reply when customer messages on WhatsApp / WeChat Work */
   autoReplyEnabled?: boolean;
   autoReplyWhatsApp?: boolean;
   autoReplyWeChat?: boolean;
+  /** Website live-chat widget */
+  widgetEnabled?: boolean;
+  widgetTitle?: string | null;
+  widgetSubtitle?: string | null;
+  widgetWelcomeMessage?: string | null;
+  widgetPrimaryColor?: string | null;
+  widgetButtonLabel?: string | null;
+  /** Round-robin assign website widget leads to team members */
+  crmWidgetAutoAssign?: boolean;
+  crmAssignmentIndex?: number;
+  crmWorkflows?: import("@/types/crm-workflows").CrmWorkflow[];
+  /** Send Telegram when CRM workflow rules fire (default true) */
+  crmWorkflowNotifyTelegram?: boolean;
 };
 
 export async function readAppSettings(): Promise<AppSettings> {

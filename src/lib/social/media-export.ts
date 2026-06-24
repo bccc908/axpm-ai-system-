@@ -19,7 +19,7 @@ export type MediaExportResult = {
   height: number;
   mode: "presenter" | "slides";
   videoWarning?: string;
-  speechSource?: "edge" | "mac" | "silent";
+  speechSource?: "piper" | "minimax" | "edge" | "mac" | "silent";
 };
 
 function fileUrl(exportId: string, filename: string) {

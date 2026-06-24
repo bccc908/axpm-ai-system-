@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
+import Link from "next/link";
+import { Loader2, Pencil, Plus, Trash2, X, ExternalLink } from "lucide-react";
 import { useLocale } from "@/components/providers/locale-provider";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -44,7 +45,7 @@ function tagsToString(tags: string[]): string {
   return tags.join(", ");
 }
 
-export function ClientsManager() {
+export function ClientsManager({ embedded }: { embedded?: boolean }) {
   const { t, locale } = useLocale();
   const [clients, setClients] = useState<Client[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -65,6 +66,7 @@ export function ClientsManager() {
   const [tagsStr, setTagsStr] = useState("");
   const [followUpNotes, setFollowUpNotes] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   function resetForm() {
     setName("");
@@ -229,16 +231,27 @@ export function ClientsManager() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("clients.title")}</h1>
-          <p className="mt-1 text-muted">{t("clients.subtitle")}</p>
+      {!embedded && (
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">{t("clients.title")}</h1>
+            <p className="mt-1 text-muted">{t("clients.subtitle")}</p>
+          </div>
+          <button type="button" onClick={() => { setShowForm(!showForm); cancelEdit(); }} className={btnPrimary}>
+            <Plus className="h-4 w-4" />
+            {t("clients.addClient")}
+          </button>
         </div>
-        <button type="button" onClick={() => { setShowForm(!showForm); cancelEdit(); }} className={btnPrimary}>
-          <Plus className="h-4 w-4" />
-          {t("clients.addClient")}
-        </button>
-      </div>
+      )}
+
+      {embedded && (
+        <div className="flex justify-end">
+          <button type="button" onClick={() => { setShowForm(!showForm); cancelEdit(); }} className={btnPrimary}>
+            <Plus className="h-4 w-4" />
+            {t("clients.addClient")}
+          </button>
+        </div>
+      )}
 
       <RegisterLinkBanner />
 
@@ -291,6 +304,14 @@ export function ClientsManager() {
 
       <Card>
         <CardHeader title={t("clients.allClients")} description={t("common.records", { count: clients.length })} />
+        <div className="mb-4">
+          <input
+            className={inputClass}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t("crmPro.searchContacts")}
+          />
+        </div>
         {loading ? (
           <div className="flex justify-center py-8 text-muted"><Loader2 className="h-5 w-5 animate-spin" /></div>
         ) : (
@@ -308,11 +329,26 @@ export function ClientsManager() {
                 </tr>
               </thead>
               <tbody>
-                {clients.map((client) => {
+                {clients
+                  .filter((client) => {
+                    const q = search.trim().toLowerCase();
+                    if (!q) return true;
+                    return (
+                      client.name.toLowerCase().includes(q) ||
+                      client.email?.toLowerCase().includes(q) ||
+                      client.phone?.includes(q) ||
+                      client.tags.some((tag) => tag.toLowerCase().includes(q))
+                    );
+                  })
+                  .map((client) => {
                   const assignee = teamMembers.find((m) => m.id === client.assigned_to);
                   return (
                     <tr key={client.id} className="border-b border-card-border/50">
-                      <td className="py-3 pr-4 font-medium text-foreground">{client.name}</td>
+                      <td className="py-3 pr-4 font-medium text-foreground">
+                        <Link href={`/dashboard/clients/${client.id}`} className="hover:text-accent">
+                          {client.name}
+                        </Link>
+                      </td>
                       <td className="py-3 pr-4">
                         <Badge variant={leadStatusVariant[client.lead_status] ?? "muted"}>
                           {t(`clients.leadStatus.${client.lead_status}` as "clients.leadStatus.new")}
@@ -330,6 +366,9 @@ export function ClientsManager() {
                       </td>
                       <td className="py-3 pl-2">
                         <div className="flex gap-1">
+                          <Link href={`/dashboard/clients/${client.id}`} className={btnGhost} title={t("crmPro.openContact")}>
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Link>
                           <button type="button" className={btnGhost} onClick={() => startEdit(client)} title={t("common.edit")}>
                             <Pencil className="h-3.5 w-3.5" />
                           </button>

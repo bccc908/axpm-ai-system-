@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/app-shell";
+import { AuthProvider } from "@/components/providers/auth-provider";
 import { LocaleProvider } from "@/components/providers/locale-provider";
 
 export default function DashboardLayout({
@@ -8,7 +9,9 @@ export default function DashboardLayout({
 }) {
   return (
     <LocaleProvider>
-      <AppShell>{children}</AppShell>
+      <AuthProvider>
+        <AppShell>{children}</AppShell>
+      </AuthProvider>
     </LocaleProvider>
   );
 }

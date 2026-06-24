@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>E-Sign Tool v7.3</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: #f0f4f8; color: #1a2332; }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 20px 16px 40px; }
+    h1 { margin: 0 0 4px; font-size: 1.6rem; }
+    .ver { display: inline-block; background: #1565c0; color: #fff; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; vertical-align: middle; }
+    .sub { color: #5c6b80; margin: 0 0 16px; }
+    .panel { background: #fff; border: 1px solid #d8dee8; border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+    h2 { margin: 0 0 8px; font-size: 1.1rem; }
+    .hint { color: #5c6b80; font-size: 0.92rem; margin: 0 0 12px; }
+    .warn { color: #b45309; font-weight: 500; }
+    .ok { color: #15803d; font-weight: 600; }
+    label.btn { display: inline-block; padding: 12px 18px; background: #1565c0; color: #fff; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem; }
+    label.btn input { display: none; }
+    button { padding: 12px 16px; border: 1px solid #d8dee8; border-radius: 8px; background: #fff; cursor: pointer; margin: 4px 4px 4px 0; font-size: 0.95rem; }
+    button.primary { background: #1565c0; color: #fff; border-color: #1565c0; font-weight: 600; }
+    button.active { background: #e3f2fd; border-color: #1565c0; color: #1565c0; font-weight: 600; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .crop-box, .edit-box { margin: 12px 0; border: 2px solid #1565c0; border-radius: 8px; overflow: auto; background: #fff; touch-action: none; }
+    canvas { display: block; max-width: 100%; height: auto; }
+    #cropCanvas { cursor: crosshair; background: #333; }
+    #editCanvas { cursor: crosshair; min-height: 120px; }
+    .row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 10px 0; font-size: 0.95rem; }
+    .row input[type=range] { flex: 1; min-width: 120px; }
+    .white-bg { display: inline-block; padding: 10px; margin: 10px 0; background: #fff; border: 1px solid #d8dee8; }
+    .white-bg img { max-width: 100%; display: block; }
+    .banner { background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 0.92rem; }
+    .steps { background: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 8px; padding: 12px; margin-bottom: 14px; font-size: 0.95rem; }
+    .steps ol { margin: 6px 0 0; padding-left: 20px; }
+    .status { padding: 10px 12px; border-radius: 8px; margin: 10px 0; font-size: 0.95rem; }
+    .status.info { background: #e3f2fd; color: #0d47a1; }
+    .status.err { background: #fff3e0; color: #b45309; }
+    .form-stage { position: relative; margin: 12px 0; border: 2px solid #1565c0; overflow: hidden; touch-action: none; background: #fff; }
+    .form-stage img.form-bg { display: block; width: 100%; pointer-events: none; }
+    .sig-overlay { position: absolute; border: 2px dashed #1565c0; cursor: move; touch-action: none; background: transparent; }
+    .sig-overlay img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+    .resize-handle { position: absolute; right: -8px; bottom: -8px; width: 16px; height: 16px; background: #1565c0; border-radius: 3px; cursor: nwse-resize; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>E-Sign Tool <span class="ver">v7.3</span></h1>
+  <p class="sub">Step 1: make signature → Step 2: insert on PDF/PNG form → download.</p>
+
+  <div class="banner">
+    <strong>iPhone users:</strong> use JPG/PNG photo, or upload a PDF scan (Settings → Camera → Formats → <em>Most Compatible</em>).<br>
+    Open in <strong>Chrome</strong> or <strong>Safari</strong>. Double-click <code>E-Sign Tool.html</code> or use localhost.
+  </div>
+
+  <section class="panel">
+    <h2>Step 1 — Signature</h2>
+    <div class="steps">
+      <ol>
+        <li>Upload photo or <strong>PDF</strong></li>
+        <li>Drag box around <strong>signature only</strong> (small box, not whole page)</li>
+        <li><strong>Use crop</strong> → move slider until paper is white, signature is black</li>
+        <li>Eraser to clean up → <strong>AI touch up</strong> → Download</li>
+      </ol>
+    </div>
+
+    <label class="btn">① Upload photo / PDF<input type="file" id="sigFile" accept="image/jpeg,image/png,image/webp,image/*,.pdf,application/pdf"></label>
+    <p class="hint" id="fileName" hidden></p>
+
+    <div class="crop-box" id="cropBox" hidden>
+      <canvas id="cropCanvas"></canvas>
+    </div>
+    <p class="hint" id="cropHint" hidden>Drag a box around your signature</p>
+    <p class="hint" id="cropSize" hidden></p>
+    <button class="primary" id="cropBtn" hidden disabled>② Use crop</button>
+
+    <div id="editSection" hidden>
+      <div class="status info" id="editStatus">Move slider until signature is black on white paper.</div>
+      <div class="row">
+        <span>Paper → white</span>
+        <input type="range" id="threshSlider" min="0" max="100" value="50">
+        <span id="threshVal">50</span>
+      </div>
+      <p class="hint">Paper still visible? Move slider <strong>right</strong>. Signature disappearing? Move <strong>left</strong>.</p>
+      <div class="row">
+        <button id="toolErase" class="active">Eraser (remove)</button>
+        <button id="toolRestore">Restore ink</button>
+        <button id="undoBtn">Undo</button>
+        <span>Brush</span>
+        <input type="range" id="brushSize" min="4" max="60" value="20">
+        <span id="brushVal">20</span>
+      </div>
+      <div class="row">
+        <button id="touchUpBtn">✨ AI touch up</button>
+        <span>Strength</span>
+        <input type="range" id="touchSlider" min="1" max="3" value="2">
+        <span id="touchVal">2</span>
+      </div>
+      <p class="hint">Touch up removes specks, connects broken strokes, smooths edges — stays black on white.</p>
+      <div class="edit-box">
+        <canvas id="editCanvas"></canvas>
+      </div>
+      <button class="primary" id="doneBtn">③ Download signature.png</button>
+    </div>
+
+    <div class="status err" id="err1" hidden></div>
+    <div id="sigResult" hidden>
+      <p class="ok">Done! Upload this file on bank registration page.</p>
+      <div class="white-bg"><img id="sigPreview" alt="signature"></div>
+      <button class="primary" id="dlSig">Download signature.png again</button>
+    </div>
+  </section>
+
+  <section class="panel" id="step2Panel">
+    <h2>Step 2 — Insert signature on document</h2>
+    <div class="steps">
+      <ol>
+        <li>Finish Step 1 first (signature.png ready)</li>
+        <li>Upload bank form — <strong>PDF</strong> or <strong>PNG/JPG</strong> (screenshot also OK)</li>
+        <li>Drag signature to the <strong>Tandatangan / sign box</strong></li>
+        <li>Use <strong>Smaller / Bigger</strong> or slider to fit sign box → Download signed file</li>
+      </ol>
+    </div>
+    <p class="warn" id="needSig2">Finish Step 1 and download signature first — or upload signature.png below.</p>
+    <label class="btn" id="sigPngLabel" style="margin-bottom:8px">Upload signature.png (if Step 1 done already)<input type="file" id="sigPngFile" accept="image/png,image/jpeg,image/webp"></label>
+    <label class="btn" id="formUploadLabel">④ Upload form (PDF / PNG / JPG)<input type="file" id="formFile" accept=".pdf,application/pdf,image/png,image/jpeg,image/webp,image/*"></label>
+    <div class="status info" id="formStatus" hidden></div>
+    <p class="hint" id="formHint" hidden>Drag signature to sign box · use Smaller/Bigger or slider to resize · scroll wheel on signature also works</p>
+    <div class="row" id="sigSizeRow" hidden>
+      <button type="button" id="sigSmallerBtn">− Smaller</button>
+      <span>Size</span>
+      <input type="range" id="sigSizeSlider" min="2" max="60" value="20">
+      <button type="button" id="sigBiggerBtn">+ Bigger</button>
+      <span id="sigSizeLabel">—</span>
+    </div>
+    <div class="form-stage" id="formStage" hidden></div>
+    <div class="row" id="formActions" hidden>
+      <button class="primary" id="mergePngBtn">Download signed-form.png</button>
+      <button class="primary" id="mergePdfBtn" hidden>Download signed-form.pdf</button>
+      <button id="copySigBtn">Copy signature (paste on bank site)</button>
+    </div>
+    <div class="status err" id="err2" hidden></div>
+    <div id="formResult" hidden>
+      <p class="ok">Signed document preview</p>
+      <div class="white-bg"><img id="mergedPreview" alt="signed form"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const lum = (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b;
+
+  const $ = id => document.getElementById(id);
+  const cropCanvas = $('cropCanvas');
+  const cctx = cropCanvas.getContext('2d');
+  const editCanvas = $('editCanvas');
+  const editCtx = editCanvas.getContext('2d');
+
+  let srcImg = null, scale = 1, cropRect = null, dragCrop = false, cropStart = null;
+  let originalCrop = null;   // ImageData color
+  let workData = null;       // ImageData black/white opaque
+  let w = 0, h = 0;
+  let undoStack = [], tool = 'erase', signaturePng = null;
+
+  // Step 2 — form + signature placement
+  let formImg = null, formScale = 1, pdfBytes = null;
+  let sigPos = { x: 60, y: 60 }, sigSize = { w: 160, h: 55 }, sigAspect = 2.9;
+  let dragMode = null, dragStart = null, mergedUrl = null;
+
+  async function refreshSigAspect() {
+    if (!signaturePng) return;
+    const img = await loadImg(signaturePng);
+    sigAspect = Math.max(0.5, img.width / img.height);
+  }
+
+  function clampSigWidth(w) {
+    if (!formImg) return w;
+    const minW = 12;
+    const maxW = Math.round(formImg.width * 0.75);
+    return Math.min(maxW, Math.max(minW, w));
+  }
+
+  function setSigWidth(w) {
+    sigSize.w = Math.round(clampSigWidth(w));
+    sigSize.h = Math.max(8, Math.round(sigSize.w / sigAspect));
+    updateSigOverlay();
+  }
+
+  function scaleSig(factor) {
+    setSigWidth(sigSize.w * factor);
+  }
+
+  function updateSigOverlay() {
+    const overlay = $('sigOverlay');
+    if (!overlay) return;
+    overlay.style.left = sigPos.x * formScale + 'px';
+    overlay.style.top = sigPos.y * formScale + 'px';
+    overlay.style.width = sigSize.w * formScale + 'px';
+    overlay.style.height = sigSize.h * formScale + 'px';
+    const label = $('sigSizeLabel');
+    if (label) label.textContent = Math.round(sigSize.w) + ' × ' + Math.round(sigSize.h) + ' px';
+    const slider = $('sigSizeSlider');
+    if (slider && formImg) {
+      const pct = Math.round((sigSize.w / formImg.width) * 100);
+      slider.value = Math.min(60, Math.max(2, pct));
+    }
+  }
+
+  function showErr2(msg) { $('err2').textContent = msg; $('err2').hidden = false; $('formStatus').hidden = true; }
+  function clearErr2() { $('err2').hidden = true; }
+  function showFormStatus(msg) { $('formStatus').textContent = msg; $('formStatus').hidden = false; $('err2').hidden = true; }
+  function enableStep2() {
+    $('needSig2').hidden = true;
+    $('formUploadLabel').style.opacity = '1';
+    $('sigPngLabel').style.opacity = '1';
+  }
+  function saveSignature(dataUrl) {
+    signaturePng = dataUrl;
+    try { sessionStorage.setItem('esign-signature-png', dataUrl); } catch (_) {}
+    enableStep2();
+  }
+
+  function showErr(msg) {
+    $('err1').textContent = msg;
+    $('err1').hidden = false;
+  }
+  function clearErr() { $('err1').hidden = true; }
+
+  function canvasPt(canvas, e) {
+    const r = canvas.getBoundingClientRect();
+    const sx = canvas.width / r.width;
+    const sy = canvas.height / r.height;
+    return { x: (e.clientX - r.left) * sx, y: (e.clientY - r.top) * sy };
+  }
+
+  function loadImg(src) {
+    return new Promise((ok, no) => {
+      const i = new Image();
+      i.onload = () => ok(i);
+      i.onerror = () => no(new Error('Cannot read image — use JPG or PNG (not HEIC)'));
+      i.src = src;
+    });
+  }
+
+  function drawCropUI() {
+    if (!srcImg) return;
+    const maxW = Math.min(860, window.innerWidth - 40);
+    scale = Math.min(1, maxW / srcImg.width);
+    cropCanvas.width = Math.round(srcImg.width * scale);
+    cropCanvas.height = Math.round(srcImg.height * scale);
+    cctx.drawImage(srcImg, 0, 0, cropCanvas.width, cropCanvas.height);
+    if (cropRect) {
+      cctx.strokeStyle = '#1565c0'; cctx.lineWidth = 2;
+      cctx.strokeRect(cropRect.x, cropRect.y, cropRect.w, cropRect.h);
+      cctx.fillStyle = 'rgba(21,101,192,0.3)';
+      cctx.fillRect(cropRect.x, cropRect.y, cropRect.w, cropRect.h);
+      $('cropSize').textContent = 'Crop: ' + Math.round(cropRect.w / scale) + ' × ' + Math.round(cropRect.h / scale) + ' px';
+      $('cropSize').hidden = false;
+    }
+  }
+
+  cropCanvas.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    cropStart = canvasPt(cropCanvas, e);
+    dragCrop = true;
+    cropRect = null;
+  });
+  cropCanvas.addEventListener('pointermove', e => {
+    if (!dragCrop || !cropStart) return;
+    const p = canvasPt(cropCanvas, e);
+    cropRect = {
+      x: Math.min(cropStart.x, p.x), y: Math.min(cropStart.y, p.y),
+      w: Math.abs(p.x - cropStart.x), h: Math.abs(p.y - cropStart.y),
+    };
+    drawCropUI();
+    $('cropBtn').disabled = cropRect.w < 10 || cropRect.h < 10;
+  });
+  cropCanvas.addEventListener('pointerup', () => { dragCrop = false; });
+
+  $('sigFile').addEventListener('change', async e => {
+    clearErr();
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const isPdf = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
+    $('fileName').textContent = isPdf ? 'Loading PDF page 1… ' + f.name : 'File: ' + f.name;
+    $('fileName').hidden = false;
+    try {
+      if (isPdf) {
+        srcImg = await pdfFirstPageToImage(f);
+        $('fileName').textContent = 'PDF page 1: ' + f.name + ' — drag box around signature';
+      } else {
+        srcImg = await loadImg(URL.createObjectURL(f));
+        $('fileName').textContent = 'File: ' + f.name;
+      }
+    } catch (err) {
+      showErr((isPdf ? 'PDF failed (try JPG photo): ' : '') + (err.message || 'Upload failed'));
+      return;
+    }
+    cropRect = null;
+    $('cropBox').hidden = false;
+    $('cropHint').hidden = false;
+    $('cropBtn').hidden = false;
+    $('cropBtn').disabled = true;
+    $('editSection').hidden = true;
+    $('sigResult').hidden = true;
+    $('cropSize').hidden = true;
+    drawCropUI();
+  });
+
+  function getCropData() {
+    const x = Math.round(cropRect.x / scale);
+    const y = Math.round(cropRect.y / scale);
+    const cw = Math.max(1, Math.round(cropRect.w / scale));
+    const ch = Math.max(1, Math.round(cropRect.h / scale));
+    const c = document.createElement('canvas');
+    c.width = cw; c.height = ch;
+    c.getContext('2d').drawImage(srcImg, x, y, cw, ch, 0, 0, cw, ch);
+    return c.getContext('2d').getImageData(0, 0, cw, ch);
+  }
+
+  function estimatePaperLum(data) {
+    const lums = [];
+    for (let i = 0; i < data.length; i += 4) {
+      lums.push(lum(data[i], data[i + 1], data[i + 2]));
+    }
+    lums.sort((a, b) => b - a);
+    return lums[Math.floor(lums.length * 0.15)] || 220;
+  }
+
+  function applyThreshold() {
+    if (!originalCrop) return;
+    const data = originalCrop.data;
+    const paper = estimatePaperLum(data);
+    const t = +$('threshSlider').value;
+    const cutoff = paper - (5 + t * 0.55);
+
+    workData = new ImageData(w, h);
+    for (let i = 0; i < w * h; i++) {
+      const j = i * 4;
+      const l = lum(data[j], data[j + 1], data[j + 2]);
+      if (l < cutoff) {
+        workData.data[j] = 0; workData.data[j + 1] = 0; workData.data[j + 2] = 0; workData.data[j + 3] = 255;
+      } else {
+        workData.data[j] = 255; workData.data[j + 1] = 255; workData.data[j + 2] = 255; workData.data[j + 3] = 255;
+      }
+    }
+    drawWork();
+    undoStack = [copyData(workData)];
+  }
+
+  function copyData(img) {
+    return new ImageData(new Uint8ClampedArray(img.data), img.width, img.height);
+  }
+
+  function drawWork() {
+    if (!workData) return;
+    const maxW = Math.min(860, window.innerWidth - 40);
+    const s = Math.max(Math.min(1, maxW / w), Math.min(1, 400 / w));
+    editCanvas.width = Math.round(w * s);
+    editCanvas.height = Math.round(h * s);
+    const tmp = document.createElement('canvas');
+    tmp.width = w; tmp.height = h;
+    tmp.getContext('2d').putImageData(workData, 0, 0);
+    editCtx.imageSmoothingEnabled = false;
+    editCtx.drawImage(tmp, 0, 0, editCanvas.width, editCanvas.height);
+  }
+
+  $('cropBtn').addEventListener('click', () => {
+    clearErr();
+    if (!cropRect || cropRect.w < 10) { showErr('Draw a crop box first'); return; }
+    originalCrop = getCropData();
+    w = originalCrop.width;
+    h = originalCrop.height;
+    if (w < 20 || h < 20) { showErr('Crop box too small — draw bigger box around signature'); return; }
+    $('editSection').hidden = false;
+    $('editStatus').textContent = 'Good — now move slider until signature is black, paper is white.';
+    applyThreshold();
+  });
+
+  $('threshSlider').addEventListener('input', e => {
+    $('threshVal').textContent = e.target.value;
+    applyThreshold();
+  });
+
+  $('toolErase').addEventListener('click', () => {
+    tool = 'erase';
+    $('toolErase').classList.add('active');
+    $('toolRestore').classList.remove('active');
+  });
+  $('toolRestore').addEventListener('click', () => {
+    tool = 'restore';
+    $('toolRestore').classList.add('active');
+    $('toolErase').classList.remove('active');
+  });
+  $('brushSize').addEventListener('input', e => { $('brushVal').textContent = e.target.value; });
+
+  $('undoBtn').addEventListener('click', () => {
+    if (undoStack.length <= 1) return;
+    undoStack.pop();
+    workData = copyData(undoStack[undoStack.length - 1]);
+    drawWork();
+  });
+
+  function origIsInk(x, y) {
+    const j = (y * w + x) * 4;
+    const paper = estimatePaperLum(originalCrop.data);
+    const t = +$('threshSlider').value;
+    const cutoff = paper - (5 + t * 0.55);
+    return lum(originalCrop.data[j], originalCrop.data[j + 1], originalCrop.data[j + 2]) < cutoff;
+  }
+
+  function paintAt(ex, ey) {
+    if (!workData) return;
+    const brush = +$('brushSize').value;
+    const s = editCanvas.width / w;
+    const cx = ex / s, cy = ey / s;
+    for (let dy = -brush; dy <= brush; dy++) {
+      for (let dx = -brush; dx <= brush; dx++) {
+        if (dx * dx + dy * dy > brush * brush) continue;
+        const x = Math.round(cx + dx), y = Math.round(cy + dy);
+        if (x < 0 || y < 0 || x >= w || y >= h) continue;
+        const j = (y * w + x) * 4;
+        if (tool === 'erase') {
+          workData.data[j] = 255; workData.data[j + 1] = 255; workData.data[j + 2] = 255;
+        } else if (origIsInk(x, y)) {
+          workData.data[j] = 0; workData.data[j + 1] = 0; workData.data[j + 2] = 0;
+        }
+        workData.data[j + 3] = 255;
+      }
+    }
+    drawWork();
+  }
+
+  let painting = false;
+  editCanvas.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    if (!workData) return;
+    undoStack.push(copyData(workData));
+    if (undoStack.length > 30) undoStack.shift();
+    painting = true;
+    editCanvas.setPointerCapture(e.pointerId);
+    paintAt(canvasPt(editCanvas, e).x, canvasPt(editCanvas, e).y);
+  });
+  editCanvas.addEventListener('pointermove', e => {
+    if (!painting) return;
+    const p = canvasPt(editCanvas, e);
+    paintAt(p.x, p.y);
+  });
+  editCanvas.addEventListener('pointerup', () => { painting = false; });
+  editCanvas.addEventListener('pointerleave', () => { painting = false; });
+
+  function getInkMask() {
+    const ink = new Uint8Array(w * h);
+    for (let i = 0; i < w * h; i++) ink[i] = workData.data[i * 4] < 128 ? 1 : 0;
+    return ink;
+  }
+
+  function inkToWorkData(ink) {
+    const out = new ImageData(w, h);
+    for (let i = 0; i < w * h; i++) {
+      const j = i * 4;
+      const v = ink[i] ? 0 : 255;
+      out.data[j] = v; out.data[j + 1] = v; out.data[j + 2] = v; out.data[j + 3] = 255;
+    }
+    return out;
+  }
+
+  function findComponents(ink) {
+    const labels = new Int32Array(w * h);
+    const comps = [];
+    let nid = 1;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const idx = y * w + x;
+        if (!ink[idx] || labels[idx]) continue;
+        const id = nid++;
+        const pixels = [];
+        const stack = [idx];
+        labels[idx] = id;
+        while (stack.length) {
+          const cur = stack.pop();
+          pixels.push(cur);
+          const cx = cur % w, cy = (cur / w) | 0;
+          for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]) {
+            const nx = cx + dx, ny = cy + dy;
+            if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+            const ni = ny * w + nx;
+            if (ink[ni] && !labels[ni]) { labels[ni] = id; stack.push(ni); }
+          }
+        }
+        comps.push({ pixels, count: pixels.length });
+      }
+    }
+    return comps;
+  }
+
+  function dilate(ink, r) {
+    const out = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (!ink[y * w + x]) continue;
+        for (let dy = -r; dy <= r; dy++) {
+          for (let dx = -r; dx <= r; dx++) {
+            const nx = x + dx, ny = y + dy;
+            if (nx >= 0 && ny >= 0 && nx < w && ny < h) out[ny * w + nx] = 1;
+          }
+        }
+      }
+    }
+    return out;
+  }
+
+  function erode(ink, r) {
+    const out = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (!ink[y * w + x]) continue;
+        let ok = true;
+        for (let dy = -r; dy <= r && ok; dy++) {
+          for (let dx = -r; dx <= r; dx++) {
+            const nx = x + dx, ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= w || ny >= h || !ink[ny * w + nx]) { ok = false; break; }
+          }
+        }
+        if (ok) out[y * w + x] = 1;
+      }
+    }
+    return out;
+  }
+
+  function aiTouchUp() {
+    if (!workData) return;
+    const strength = +$('touchSlider').value;
+    let ink = getInkMask();
+
+    // Remove tiny specks
+    const minSpeck = strength === 1 ? 8 : strength === 2 ? 5 : 3;
+    for (const c of findComponents(ink)) {
+      if (c.count < minSpeck) for (const p of c.pixels) ink[p] = 0;
+    }
+
+    // Connect broken strokes (close gaps)
+    ink = dilate(ink, 1);
+    ink = erode(ink, 1);
+    if (strength >= 2) {
+      ink = dilate(ink, 1);
+      ink = erode(ink, 1);
+    }
+
+    // Remove specks again after smoothing
+    for (const c of findComponents(ink)) {
+      if (c.count < 4) for (const p of c.pixels) ink[p] = 0;
+    }
+
+    // Drop blobs far from main signature (stray noise)
+    const comps = findComponents(ink).sort((a, b) => b.count - a.count);
+    if (comps.length > 1 && comps[0].count > 20) {
+      const main = comps[0];
+      const cx = main.pixels.reduce((s, p) => s + (p % w), 0) / main.count;
+      const cy = main.pixels.reduce((s, p) => s + ((p / w) | 0), 0) / main.count;
+      const maxDist = Math.max(w, h) * (strength === 1 ? 0.35 : 0.5);
+      for (let i = 1; i < comps.length; i++) {
+        const c = comps[i];
+        const px = c.pixels.reduce((s, p) => s + (p % w), 0) / c.count;
+        const py = c.pixels.reduce((s, p) => s + ((p / w) | 0), 0) / c.count;
+        const dist = Math.hypot(px - cx, py - cy);
+        if (c.count < 30 && dist > maxDist) {
+          for (const p of c.pixels) ink[p] = 0;
+        }
+      }
+    }
+
+    workData = inkToWorkData(ink);
+    drawWork();
+    $('editStatus').textContent = 'Touch up done — click again if needed, or Download.';
+  }
+
+  $('touchUpBtn').addEventListener('click', () => {
+    clearErr();
+    if (!workData) { showErr('Use crop first'); return; }
+    undoStack.push(copyData(workData));
+    if (undoStack.length > 30) undoStack.shift();
+    aiTouchUp();
+  });
+
+  $('touchSlider').addEventListener('input', e => { $('touchVal').textContent = e.target.value; });
+
+  function exportPng() {
+    if (!workData) throw new Error('No image yet');
+    let minX = w, minY = h, maxX = 0, maxY = 0;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const j = (y * w + x) * 4;
+        if (workData.data[j] < 128) {
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (minX > maxX) throw new Error('No signature found — move slider left');
+
+    const pad = Math.max(10, Math.round(Math.max(maxX - minX, maxY - minY) * 0.1));
+    minX = Math.max(0, minX - pad);
+    minY = Math.max(0, minY - pad);
+    maxX = Math.min(w - 1, maxX + pad);
+    maxY = Math.min(h - 1, maxY + pad);
+    const cw = maxX - minX + 1, ch = maxY - minY + 1;
+
+    const c = document.createElement('canvas');
+    c.width = cw; c.height = ch;
+    const ctx = c.getContext('2d');
+    const out = ctx.createImageData(cw, ch);
+    for (let y = minY; y <= maxY; y++) {
+      for (let x = minX; x <= maxX; x++) {
+        const si = (y * w + x) * 4;
+        const oi = ((y - minY) * cw + (x - minX)) * 4;
+        const black = workData.data[si] < 128;
+        out.data[oi] = black ? 0 : 255;
+        out.data[oi + 1] = black ? 0 : 255;
+        out.data[oi + 2] = black ? 0 : 255;
+        out.data[oi + 3] = 255;
+      }
+    }
+    ctx.putImageData(out, 0, 0);
+    return c.toDataURL('image/png');
+  }
+
+  function download(url, name) {
+    const a = document.createElement('a');
+    a.href = url; a.download = name; a.click();
+  }
+
+  $('doneBtn').addEventListener('click', () => {
+    clearErr();
+    try {
+      const png = exportPng();
+      saveSignature(png);
+      $('sigPreview').src = signaturePng;
+      $('sigResult').hidden = false;
+      download(signaturePng, 'signature.png');
+      $('editStatus').textContent = 'Signature ready — scroll down to Step 2.';
+      document.getElementById('step2Panel').scrollIntoView({ behavior: 'smooth' });
+    } catch (e) {
+      showErr(e.message || 'Export failed');
+    }
+  });
+
+  $('sigPngFile').addEventListener('change', async e => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    clearErr2();
+    showFormStatus('Loading signature…');
+    try {
+      const img = await loadImg(URL.createObjectURL(f));
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = img.height;
+      c.getContext('2d').drawImage(img, 0, 0);
+      saveSignature(c.toDataURL('image/png'));
+      $('sigPreview').src = signaturePng;
+      $('sigResult').hidden = false;
+      showFormStatus('Signature loaded — now upload your form below.');
+    } catch (err) {
+      showErr2('Could not load signature: ' + (err.message || 'try another file'));
+    }
+  });
+
+  // Restore signature if page refreshed
+  try {
+    const saved = sessionStorage.getItem('esign-signature-png');
+    if (saved) {
+      saveSignature(saved);
+      $('sigPreview').src = saved;
+      $('sigResult').hidden = false;
+    }
+  } catch (_) {}
+
+  $('dlSig').addEventListener('click', () => {
+    if (signaturePng) download(signaturePng, 'signature.png');
+  });
+
+  async function pdfFirstPageToImage(file) {
+    if (!window.pdfjsLib) {
+      throw new Error('PDF not ready — refresh page or use JPG/PNG instead');
+    }
+    const pdfjsLib = window.pdfjsLib;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const bytes = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(bytes) }).promise;
+    const page = await pdf.getPage(1);
+    const vp = page.getViewport({ scale: 2 });
+    const c = document.createElement('canvas');
+    c.width = vp.width; c.height = vp.height;
+    await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+    return loadImg(c.toDataURL('image/png'));
+  }
+
+  async function loadPdfFirstPage(file) {
+    pdfBytes = await file.arrayBuffer();
+    const img = await pdfFirstPageToImage(file);
+    return img;
+  }
+
+  function buildFormStage() {
+    if (!formImg || !signaturePng) return;
+    clearErr2();
+    const stage = $('formStage');
+    stage.hidden = false;
+    $('formHint').hidden = false;
+    $('sigSizeRow').hidden = false;
+    $('formActions').hidden = false;
+    $('mergePdfBtn').hidden = !pdfBytes;
+    const maxW = Math.min(860, window.innerWidth - 40);
+    formScale = Math.min(1, maxW / formImg.width);
+    const sw = Math.round(formImg.width * formScale);
+    const sh = Math.round(formImg.height * formScale);
+    stage.style.width = sw + 'px';
+    stage.style.height = sh + 'px';
+    stage.innerHTML = `
+      <img class="form-bg" src="${formImg.src}" width="${sw}" height="${sh}" alt="form">
+      <div class="sig-overlay" id="sigOverlay" style="left:${sigPos.x * formScale}px;top:${sigPos.y * formScale}px;width:${sigSize.w * formScale}px;height:${sigSize.h * formScale}px">
+        <img src="${signaturePng}" alt="sig">
+        <span class="resize-handle" id="resizeH"></span>
+      </div>`;
+    const overlay = $('sigOverlay');
+    const resizeH = $('resizeH');
+    overlay.addEventListener('pointerdown', e => {
+      if (e.target === resizeH) return;
+      dragMode = 'move';
+      dragStart = { x: e.clientX, y: e.clientY, ox: sigPos.x, oy: sigPos.y };
+      overlay.setPointerCapture(e.pointerId);
+    });
+    overlay.addEventListener('wheel', e => {
+      e.preventDefault();
+      scaleSig(e.deltaY > 0 ? 0.92 : 1.08);
+    }, { passive: false });
+    resizeH.addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      dragMode = 'resize';
+      dragStart = { x: e.clientX, y: e.clientY, ow: sigSize.w, oh: sigSize.h };
+      resizeH.setPointerCapture(e.pointerId);
+    });
+    stage.onpointermove = e => {
+      if (!dragStart) return;
+      const dx = (e.clientX - dragStart.x) / formScale;
+      const dy = (e.clientY - dragStart.y) / formScale;
+      if (dragMode === 'move') {
+        sigPos.x = dragStart.ox + dx;
+        sigPos.y = dragStart.oy + dy;
+        updateSigOverlay();
+      } else if (dragMode === 'resize') {
+        setSigWidth(dragStart.ow + (dx + dy) / 2);
+      }
+    };
+    stage.onpointerup = () => { dragMode = null; dragStart = null; };
+    stage.onpointerleave = () => { dragMode = null; dragStart = null; };
+    updateSigOverlay();
+    showFormStatus('Form loaded! Drag signature to sign box, use Smaller/Bigger or slider, then Download.');
+    stage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  $('formFile').addEventListener('change', async e => {
+    clearErr2();
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (!signaturePng) {
+      showErr2('Need signature first — finish Step 1 OR click "Upload signature.png" above');
+      e.target.value = '';
+      return;
+    }
+    showFormStatus('Loading ' + f.name + '… please wait');
+    const isPdf = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
+    try {
+      pdfBytes = null;
+      if (isPdf) {
+        formImg = await loadPdfFirstPage(f);
+      } else {
+        formImg = await loadImg(URL.createObjectURL(f));
+      }
+      await refreshSigAspect();
+      sigPos = { x: Math.round(formImg.width * 0.08), y: Math.round(formImg.height * 0.55) };
+      setSigWidth(Math.round(formImg.width * 0.22));
+      $('formResult').hidden = true;
+      buildFormStage();
+    } catch (err) {
+      showErr2((isPdf ? 'PDF failed (try PNG screenshot): ' : '') + (err.message || 'Could not load form'));
+      e.target.value = '';
+    }
+  });
+
+  async function mergeToCanvas() {
+    const sig = await loadImg(signaturePng);
+    const c = document.createElement('canvas');
+    c.width = formImg.width; c.height = formImg.height;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(formImg, 0, 0);
+    ctx.drawImage(sig, sigPos.x, sigPos.y, sigSize.w, sigSize.h);
+    return c;
+  }
+
+  $('mergePngBtn').addEventListener('click', async () => {
+    clearErr2();
+    if (!formImg || !signaturePng) { showErr2('Upload form first'); return; }
+    try {
+      const c = await mergeToCanvas();
+      mergedUrl = c.toDataURL('image/png');
+      $('mergedPreview').src = mergedUrl;
+      $('formResult').hidden = false;
+      download(mergedUrl, 'signed-form.png');
+    } catch (e) { showErr2(e.message || 'Export failed'); }
+  });
+
+  $('mergePdfBtn').addEventListener('click', async () => {
+    clearErr2();
+    if (!pdfBytes || !signaturePng || !formImg) { showErr2('Upload PDF form first'); return; }
+    try {
+      const { PDFDocument } = await import('https://cdn.jsdelivr.net/npm/pdf-lib/+esm');
+      const pdfDoc = await PDFDocument.load(pdfBytes);
+      const page = pdfDoc.getPages()[0];
+      const { width, height } = page.getSize();
+      const pngBuf = await fetch(signaturePng).then(r => r.arrayBuffer());
+      const pngImg = await pdfDoc.embedPng(pngBuf);
+      const sx = width / formImg.width;
+      const sy = height / formImg.height;
+      page.drawImage(pngImg, {
+        x: sigPos.x * sx,
+        y: height - (sigPos.y + sigSize.h) * sy,
+        width: sigSize.w * sx,
+        height: sigSize.h * sy,
+      });
+      const out = await pdfDoc.save();
+      const blob = new Blob([out], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      download(url, 'signed-form.pdf');
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch (e) { showErr2(e.message || 'PDF export failed — try PNG instead'); }
+  });
+
+  $('sigSmallerBtn').addEventListener('click', () => scaleSig(0.88));
+  $('sigBiggerBtn').addEventListener('click', () => scaleSig(1.14));
+  $('sigSizeSlider').addEventListener('input', e => {
+    if (!formImg) return;
+    setSigWidth(formImg.width * (Number(e.target.value) / 100));
+  });
+
+  $('copySigBtn').addEventListener('click', async () => {
+    if (!signaturePng) { showErr2('Finish Step 1 first'); return; }
+    try {
+      const blob = await fetch(signaturePng).then(r => r.blob());
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      alert('Signature copied — on bank page, click in sign box and press Cmd+V (Mac) or Ctrl+V (Windows).');
+    } catch {
+      showErr2('Copy failed — use Download signed-form.png instead');
+    }
+  });
+
+})();
+</script>
+</body>
+</html>

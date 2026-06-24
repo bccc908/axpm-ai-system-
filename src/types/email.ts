@@ -17,7 +17,10 @@ export type EmailTimezone =
   | "Asia/Hong_Kong";
 
 export type EmailAutoSettings = {
+  /** Work + finance summary (AXPM Daily Digest) */
   dailyDigest: boolean;
+  /** Personal daily fortune reading (今日运程) */
+  dailyFortune: boolean;
   paymentReminders: boolean;
   clientFollowUps: boolean;
 };
@@ -38,7 +41,15 @@ export type EmailSettings = {
 
 export type EmailLogEntry = {
   id: string;
-  type: "test" | "daily_digest" | "payment_reminder" | "client_follow_up" | "finance_summary";
+  type:
+    | "test"
+    | "daily_digest"
+    | "daily_fortune"
+    | "payment_reminder"
+    | "client_follow_up"
+    | "finance_summary"
+    | "crm_outbound"
+    | "outbound";
   subject: string;
   recipients: string[];
   sentAt: string;

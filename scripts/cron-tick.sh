@@ -37,8 +37,11 @@ run() {
 }
 
 run "Daily digest (Telegram)" "$BASE/api/digest/daily$QS"
+run "Daily fortune (Telegram)" "$BASE/api/fortune/daily$QS"
+run "Daily gold signal (Telegram)" "$BASE/api/gold-signals/daily$QS"
 run "Email automation" "$BASE/api/email/automation$QS"
 run "Finance automation" "$BASE/api/finance/automation$QS"
 run "Social publish queue" "$BASE/api/social/publish$QS"
+run "System backup" "$BASE/api/system/backup$QS"
 
 echo "Done."

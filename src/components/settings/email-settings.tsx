@@ -16,15 +16,16 @@ type EmailStatus = {
 };
 
 const inputClass =
-  "w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none";
+  "input-premium w-full rounded-xl px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:outline-none";
 
-export function EmailSettingsPanel() {
+export function EmailSettingsPanel({ showPageTitle = true }: { showPageTitle?: boolean }) {
   const { t, locale } = useLocale();
   const [status, setStatus] = useState<EmailStatus | null>(null);
   const [log, setLog] = useState<EmailLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [sendingFortune, setSendingFortune] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const [enabled, setEnabled] = useState(false);
@@ -32,12 +33,13 @@ export function EmailSettingsPanel() {
   const [customHost, setCustomHost] = useState("");
   const [customPort, setCustomPort] = useState(587);
   const [customSecure, setCustomSecure] = useState(false);
-  const [fromName, setFromName] = useState("AXPM Operations");
+  const [fromName, setFromName] = useState("信号旗 Operations");
   const [recipients, setRecipients] = useState("");
   const [ccRecipients, setCcRecipients] = useState("");
   const [emailLocale, setEmailLocale] = useState<"en" | "zh" | "both">("both");
   const [timezone, setTimezone] = useState<EmailSettings["timezone"]>("Asia/Kuala_Lumpur");
-  const [autoDigest, setAutoDigest] = useState(true);
+  const [autoDigest, setAutoDigest] = useState(false);
+  const [autoFortune, setAutoFortune] = useState(true);
   const [autoPayments, setAutoPayments] = useState(true);
   const [autoFollowUps, setAutoFollowUps] = useState(true);
 
@@ -61,6 +63,7 @@ export function EmailSettingsPanel() {
       setEmailLocale(cfg.locale);
       setTimezone(cfg.timezone);
       setAutoDigest(cfg.auto.dailyDigest);
+      setAutoFortune(cfg.auto.dailyFortune ?? true);
       setAutoPayments(cfg.auto.paymentReminders);
       setAutoFollowUps(cfg.auto.clientFollowUps);
     } finally {
@@ -92,6 +95,7 @@ export function EmailSettingsPanel() {
           timezone,
           auto: {
             dailyDigest: autoDigest,
+            dailyFortune: autoFortune,
             paymentReminders: autoPayments,
             clientFollowUps: autoFollowUps,
           },
@@ -105,6 +109,25 @@ export function EmailSettingsPanel() {
       load();
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function sendFortuneNow() {
+    setSendingFortune(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/email/send-fortune?force=1", { method: "POST" });
+      const data = await res.json();
+      if (data.sent) {
+        setMessage(t("email.fortuneSent"));
+      } else if (data.skipped) {
+        setMessage(`${data.reason} · ${data.today ?? ""}`);
+      } else {
+        setMessage(data.error ?? t("email.testFailed"));
+      }
+      load();
+    } finally {
+      setSendingFortune(false);
     }
   }
 
@@ -156,7 +179,7 @@ export function EmailSettingsPanel() {
     <div className="space-y-4">
       <Card>
         <CardHeader
-          title={t("email.title")}
+          title={showPageTitle ? t("email.title") : t("email.settingsTitle")}
           description={t("email.subtitle")}
         />
         <div className="mb-4 flex flex-wrap items-center gap-4 text-sm">
@@ -225,6 +248,24 @@ export function EmailSettingsPanel() {
         </div>
 
         <p className="mt-3 text-xs text-muted">{t("email.envHint")}</p>
+        {provider === "gmail" && !status.hasCredentials ? (
+          <div className="mt-3 rounded-xl border border-accent/25 bg-accent/5 p-4 text-sm">
+            <p className="font-medium text-foreground">{t("email.gmailSetupTitle")}</p>
+            <ol className="mt-2 list-decimal space-y-1 pl-5 text-muted">
+              <li>{t("email.gmailSetup1")}</li>
+              <li>{t("email.gmailSetup2")}</li>
+              <li>{t("email.gmailSetup3")}</li>
+            </ol>
+            <a
+              href="https://myaccount.google.com/apppasswords"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-flex text-sm font-medium text-accent hover:underline"
+            >
+              {t("email.gmailAppPasswordLink")}
+            </a>
+          </div>
+        ) : null}
         {status.smtp.host && (
           <p className="mt-1 text-xs text-muted">
             SMTP: {status.smtp.host}:{status.smtp.port} · {status.smtp.fromEmail || "—"}
@@ -233,6 +274,11 @@ export function EmailSettingsPanel() {
 
         <div className="mt-4 space-y-2">
           <p className="text-sm font-medium text-foreground">{t("email.autoTypes")}</p>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={autoFortune} onChange={(e) => setAutoFortune(e.target.checked)} />
+            {t("email.autoFortune")}
+          </label>
+          <p className="pl-6 text-xs text-muted">{t("email.autoFortuneHint")}</p>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={autoDigest} onChange={(e) => setAutoDigest(e.target.checked)} />
             {t("email.autoDigest")}
@@ -252,15 +298,24 @@ export function EmailSettingsPanel() {
             type="button"
             onClick={save}
             disabled={saving}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted disabled:opacity-50"
+            className="rounded-xl btn-premium px-4 py-2.5 text-sm disabled:opacity-50"
           >
             {saving ? <Loader2 className="inline h-4 w-4 animate-spin" /> : t("common.save")}
           </button>
           <button
             type="button"
+            onClick={() => void sendFortuneNow()}
+            disabled={sendingFortune}
+            className="inline-flex items-center gap-2 rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-2.5 text-sm text-sky-200 hover:bg-sky-500/15 disabled:opacity-50"
+          >
+            {sendingFortune ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            {t("email.sendFortuneNow")}
+          </button>
+          <button
+            type="button"
             onClick={sendTest}
             disabled={testing}
-            className="inline-flex items-center gap-2 rounded-lg border border-card-border px-4 py-2 text-sm hover:bg-card-border/50 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-sm hover:border-accent/30 disabled:opacity-50"
           >
             {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             {t("email.sendTest")}

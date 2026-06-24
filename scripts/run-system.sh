@@ -29,9 +29,17 @@ lsof -tiTCP:"$PORT" | xargs kill -9 2>/dev/null || true
 echo "Building production app..."
 npm run build
 
-echo "Starting server on http://localhost:$PORT ..."
-nohup npm run start >> "$LOG_FILE" 2>&1 &
-echo $! > "$PID_FILE"
+echo "Starting server (all network interfaces, port $PORT) ..."
+nohup npx next start -H 0.0.0.0 -p "$PORT" >> "$LOG_FILE" 2>&1 &
+sleep 2
+SERVER_PID="$(lsof -tiTCP:"$PORT" -sTCP:LISTEN 2>/dev/null | head -1)"
+if [[ -z "$SERVER_PID" ]]; then
+  echo "Server failed to bind on port $PORT — check $LOG_FILE"
+  exit 1
+fi
+echo "$SERVER_PID" > "$PID_FILE"
+
+LAN_IP="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}' || true)"
 
 for i in {1..30}; do
   CODE="$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 "http://localhost:$PORT/" 2>/dev/null || echo 000)"
@@ -42,14 +50,18 @@ for i in {1..30}; do
 done
 
 echo ""
-echo "=== AXPM AI System is running ==="
-echo "  Web:    http://localhost:$PORT"
+echo "=== 信号旗 is running ==="
+echo "  This Mac:   http://localhost:$PORT"
+if [[ -n "$LAN_IP" ]]; then
+  echo "  Staff LAN:  http://$LAN_IP:$PORT  (same Wi‑Fi / office network)"
+fi
 echo "  Log:    $LOG_FILE"
 echo "  PID:    $(cat "$PID_FILE")"
 echo ""
 echo "Quick links:"
 echo "  Dashboard:  http://localhost:$PORT/dashboard"
-echo "  AI Chat:    http://localhost:$PORT/dashboard/ai-assistant/test"
+echo "  Inbox:      http://localhost:$PORT/dashboard/conversations"
+echo "  CRM:        http://localhost:$PORT/dashboard/crm"
 echo "  Settings:   http://localhost:$PORT/dashboard/settings"
 echo ""
 echo "Run automation now:  npm run cron:tick"

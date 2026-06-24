@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { useLocale } from "@/components/providers/locale-provider";
+import { AuthUsersPanel } from "@/components/settings/auth-users-panel";
 import { EmailSettingsPanel } from "@/components/settings/email-settings";
+import { DataBackupPanel } from "@/components/settings/data-backup-panel";
+import { SupabaseImportPanel } from "@/components/settings/supabase-import-panel";
 import { AgentKnowledgeUpload } from "@/components/ai/agent-knowledge-upload";
 import { Card, CardHeader } from "@/components/ui/card";
 
@@ -18,6 +21,7 @@ type SettingsData = {
     whatsappNotifyPhone?: string | null;
     autoCreateClientsFromChat?: boolean;
     notifyNewClientTelegram?: boolean;
+    notifyInboundMessageTelegram?: boolean;
     autoReplyEnabled?: boolean;
     autoReplyWhatsApp?: boolean;
     autoReplyWeChat?: boolean;
@@ -37,6 +41,7 @@ type SettingsData = {
     social: { facebook: boolean; instagram: boolean; wechatOa: boolean; tiktok: boolean; xiaohongshu?: boolean; douyin?: boolean };
     openclaw?: { configured: boolean; gatewayUrl: string; provider: string };
     googleDrive: { configured: boolean; folderIdSet: boolean };
+    marketAi?: { unstructured: boolean; gamma: boolean; dalle: boolean; webSearch?: boolean };
   };
   cronDigestUrl: string;
   cronEmailUrl: string;
@@ -44,7 +49,14 @@ type SettingsData = {
   whatsappWebhookUrl?: string;
   whatsappVerifyTokenSet?: boolean;
   whatsappPublicUrlWarning?: boolean;
+  authSecretWarning?: boolean;
+  widgetPublicUrlWarning?: boolean;
+  widgetDeployReady?: boolean;
+  widgetAllowedOrigins?: string[];
   appUrl?: string;
+  widgetEmbedCode?: string;
+  widgetPreviewUrl?: string;
+  widgetStats?: { messageCount: number; sessionCount: number };
 };
 
 export function SettingsDashboard() {
@@ -62,14 +74,26 @@ export function SettingsDashboard() {
   const [replyAgentPrompt, setReplyAgentPrompt] = useState("");
   const [autoCreateFromChat, setAutoCreateFromChat] = useState(true);
   const [notifyNewClientTelegram, setNotifyNewClientTelegram] = useState(true);
+  const [notifyInboundMessageTelegram, setNotifyInboundMessageTelegram] = useState(true);
   const [autoReplyEnabled, setAutoReplyEnabled] = useState(false);
   const [autoReplyWhatsApp, setAutoReplyWhatsApp] = useState(true);
   const [autoReplyWeChat, setAutoReplyWeChat] = useState(true);
   const [openclawReachable, setOpenclawReachable] = useState<boolean | null>(null);
   const [whatsappTesting, setWhatsappTesting] = useState(false);
   const [whatsappTestMsg, setWhatsappTestMsg] = useState<string | null>(null);
+  const [facebookTesting, setFacebookTesting] = useState(false);
+  const [facebookTestMsg, setFacebookTestMsg] = useState<string | null>(null);
   const [webhookCopied, setWebhookCopied] = useState(false);
   const [registerUrl, setRegisterUrl] = useState("");
+  const [widgetEnabled, setWidgetEnabled] = useState(true);
+  const [widgetTitle, setWidgetTitle] = useState("");
+  const [widgetSubtitle, setWidgetSubtitle] = useState("");
+  const [widgetWelcomeMessage, setWidgetWelcomeMessage] = useState("");
+  const [widgetPrimaryColor, setWidgetPrimaryColor] = useState("#3b82f6");
+  const [widgetButtonLabel, setWidgetButtonLabel] = useState("");
+  const [widgetCopied, setWidgetCopied] = useState(false);
+  const [widgetSaving, setWidgetSaving] = useState(false);
+  const [crmWidgetAutoAssign, setCrmWidgetAutoAssign] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -87,9 +111,17 @@ export function SettingsDashboard() {
       setReplyAgentPrompt(json.settings?.replyAgentPrompt ?? "");
       setAutoCreateFromChat(json.settings?.autoCreateClientsFromChat !== false);
       setNotifyNewClientTelegram(json.settings?.notifyNewClientTelegram !== false);
+      setNotifyInboundMessageTelegram(json.settings?.notifyInboundMessageTelegram !== false);
       setAutoReplyEnabled(json.settings?.autoReplyEnabled === true);
       setAutoReplyWhatsApp(json.settings?.autoReplyWhatsApp !== false);
       setAutoReplyWeChat(json.settings?.autoReplyWeChat !== false);
+      setWidgetEnabled(json.settings?.widgetEnabled !== false);
+      setWidgetTitle(json.settings?.widgetTitle ?? "");
+      setWidgetSubtitle(json.settings?.widgetSubtitle ?? "");
+      setWidgetWelcomeMessage(json.settings?.widgetWelcomeMessage ?? "");
+      setWidgetPrimaryColor(json.settings?.widgetPrimaryColor ?? "#3b82f6");
+      setWidgetButtonLabel(json.settings?.widgetButtonLabel ?? "");
+      setCrmWidgetAutoAssign(json.settings?.crmWidgetAutoAssign !== false);
       const regRes = await fetch("/api/public/register");
       const reg = await regRes.json();
       setRegisterUrl(reg.registerUrl ?? "");
@@ -122,9 +154,17 @@ export function SettingsDashboard() {
           replyAgentPrompt: replyAgentPrompt.trim() || null,
           autoCreateClientsFromChat: autoCreateFromChat,
           notifyNewClientTelegram,
+          notifyInboundMessageTelegram,
           autoReplyEnabled,
           autoReplyWhatsApp,
           autoReplyWeChat,
+          widgetEnabled,
+          widgetTitle: widgetTitle.trim() || null,
+          widgetSubtitle: widgetSubtitle.trim() || null,
+          widgetWelcomeMessage: widgetWelcomeMessage.trim() || null,
+          widgetPrimaryColor: widgetPrimaryColor.trim() || null,
+          widgetButtonLabel: widgetButtonLabel.trim() || null,
+          crmWidgetAutoAssign,
         }),
       });
       load();
@@ -144,12 +184,24 @@ export function SettingsDashboard() {
       });
       const json = await res.json();
       setWhatsappTestMsg(
-        res.ok ? t("settings.whatsappTestSent") : json.error ?? t("settings.whatsappTestFailed"),
+        json.ok ? t("settings.whatsappTestSent") : `${t("settings.whatsappTestFailed")}: ${json.error ?? ""}`,
       );
-    } catch {
-      setWhatsappTestMsg(t("settings.whatsappTestFailed"));
     } finally {
       setWhatsappTesting(false);
+    }
+  }
+
+  async function testFacebook() {
+    setFacebookTesting(true);
+    setFacebookTestMsg(null);
+    try {
+      const res = await fetch("/api/social/facebook/test", { method: "POST" });
+      const json = await res.json();
+      setFacebookTestMsg(
+        json.ok ? t("settings.metaTestSent") : `${t("settings.metaTestFailed")}: ${json.error ?? ""}`,
+      );
+    } finally {
+      setFacebookTesting(false);
     }
   }
 
@@ -158,6 +210,35 @@ export function SettingsDashboard() {
     await navigator.clipboard.writeText(data.whatsappWebhookUrl);
     setWebhookCopied(true);
     setTimeout(() => setWebhookCopied(false), 2000);
+  }
+
+  async function copyWidgetEmbed() {
+    if (!data?.widgetEmbedCode) return;
+    await navigator.clipboard.writeText(data.widgetEmbedCode);
+    setWidgetCopied(true);
+    setTimeout(() => setWidgetCopied(false), 2000);
+  }
+
+  async function saveWidgetSettings() {
+    setWidgetSaving(true);
+    try {
+      await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          widgetEnabled,
+          widgetTitle: widgetTitle.trim() || null,
+          widgetSubtitle: widgetSubtitle.trim() || null,
+          widgetWelcomeMessage: widgetWelcomeMessage.trim() || null,
+          widgetPrimaryColor: widgetPrimaryColor.trim() || null,
+          widgetButtonLabel: widgetButtonLabel.trim() || null,
+          crmWidgetAutoAssign,
+        }),
+      });
+      await load();
+    } finally {
+      setWidgetSaving(false);
+    }
   }
 
   if (loading || !data) {
@@ -181,6 +262,14 @@ export function SettingsDashboard() {
         <h1 className="text-2xl font-bold text-foreground">{t("settings.title")}</h1>
         <p className="mt-1 text-muted">{t("settings.subtitle")}</p>
       </div>
+
+      {data.authSecretWarning ? (
+        <p className="rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
+          {t("settings.authSecretWarning")}
+        </p>
+      ) : null}
+
+      <AuthUsersPanel />
 
       <Card>
         <CardHeader title={t("settings.integrations")} description={t("settings.integrationsDesc")} />
@@ -213,6 +302,13 @@ export function SettingsDashboard() {
           <div className="flex justify-between"><span>抖音 Douyin</span><Status ok={Boolean(data.integrations.social.douyin)} /></div>
           <div className="flex justify-between"><span>Google Drive (Receipts)</span><Status ok={data.integrations.googleDrive.configured} /></div>
           <div className="flex justify-between"><span>Supabase</span><Status ok={data.integrations.supabase.configured} /></div>
+          {!data.integrations.supabase.configured && (
+            <p className="text-xs text-muted">{t("settings.supabaseMigrationHint")}</p>
+          )}
+          <div className="flex justify-between"><span>Market AI · Unstructured</span><Status ok={Boolean(data.integrations.marketAi?.unstructured)} /></div>
+          <div className="flex justify-between"><span>Market AI · Gamma PPT</span><Status ok={Boolean(data.integrations.marketAi?.gamma)} /></div>
+          <div className="flex justify-between"><span>Market AI · DALL·E</span><Status ok={Boolean(data.integrations.marketAi?.dalle)} /></div>
+          <div className="flex justify-between"><span>Market AI · Web Search</span><Status ok={Boolean(data.integrations.marketAi?.webSearch)} /></div>
         </div>
       </Card>
 
@@ -279,12 +375,169 @@ export function SettingsDashboard() {
             {t("settings.notifyNewClientTelegram")}
             <Status ok={data.integrations.telegram.isReady} />
           </label>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={notifyInboundMessageTelegram}
+              onChange={(e) => setNotifyInboundMessageTelegram(e.target.checked)}
+              className="rounded border-card-border"
+            />
+            {t("settings.notifyInboundMessageTelegram")}
+            <Status ok={data.integrations.telegram.isReady} />
+          </label>
           <div>
             <p className="text-xs font-medium text-muted">{t("settings.registerLinkLabel")}</p>
             <code className="mt-1 block truncate rounded-lg border border-card-border bg-background px-3 py-2 text-xs">
               {registerUrl || `${data.cronDigestUrl?.replace(/\/api\/digest.*/, "")}/register`}
             </code>
           </div>
+        </div>
+      </Card>
+
+      <Card className="border-accent/20 bg-accent/5">
+        <CardHeader
+          title={t("settings.widgetTitle")}
+          description={t("settings.widgetDesc")}
+        />
+        <div className="space-y-3 text-sm">
+          {data.widgetPublicUrlWarning && (
+            <p className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
+              {t("settings.widgetPublicWarning")}
+            </p>
+          )}
+          {!data.widgetPublicUrlWarning && data.widgetDeployReady && (
+            <p className="rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-xs text-success">
+              {t("settings.widgetDeployReady")}
+            </p>
+          )}
+          <div className="rounded-lg border border-card-border bg-background/50 px-3 py-2 text-xs text-muted">
+            <p>
+              <span className="font-medium text-foreground">{t("settings.widgetApiBase")}: </span>
+              <code>{data.appUrl}</code>
+            </p>
+            {data.widgetAllowedOrigins?.length ? (
+              <p className="mt-2">
+                <span className="font-medium text-foreground">{t("settings.widgetAllowedOrigins")}: </span>
+                {data.widgetAllowedOrigins.join(", ")}
+              </p>
+            ) : null}
+          </div>
+          <ol className="list-decimal space-y-1 pl-4 text-xs text-muted">
+            <li>{t("settings.widgetDeployStep1")}</li>
+            <li>{t("settings.widgetDeployStep2")}</li>
+            <li>{t("settings.widgetDeployStep3")}</li>
+          </ol>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={widgetEnabled}
+              onChange={(e) => setWidgetEnabled(e.target.checked)}
+              className="rounded border-card-border"
+            />
+            {t("settings.widgetEnabled")}
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={crmWidgetAutoAssign}
+              onChange={(e) => setCrmWidgetAutoAssign(e.target.checked)}
+              className="rounded border-card-border"
+            />
+            {t("settings.crmWidgetAutoAssign")}
+          </label>
+          <input
+            className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm"
+            value={widgetTitle}
+            onChange={(e) => setWidgetTitle(e.target.value)}
+            placeholder={t("settings.widgetTitlePlaceholder")}
+          />
+          <input
+            className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm"
+            value={widgetSubtitle}
+            onChange={(e) => setWidgetSubtitle(e.target.value)}
+            placeholder={t("settings.widgetSubtitlePlaceholder")}
+          />
+          <textarea
+            className="min-h-[88px] w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm"
+            value={widgetWelcomeMessage}
+            onChange={(e) => setWidgetWelcomeMessage(e.target.value)}
+            placeholder={t("settings.widgetWelcomePlaceholder")}
+          />
+          <input
+            className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm"
+            value={widgetButtonLabel}
+            onChange={(e) => setWidgetButtonLabel(e.target.value)}
+            placeholder={t("settings.widgetButtonLabelPlaceholder")}
+          />
+          <div className="flex items-center gap-3">
+            <label className="text-xs text-muted">{t("settings.widgetColorLabel")}</label>
+            <input
+              type="color"
+              value={widgetPrimaryColor}
+              onChange={(e) => setWidgetPrimaryColor(e.target.value)}
+              className="h-9 w-14 cursor-pointer rounded border border-card-border bg-background"
+            />
+            <code className="text-xs text-muted">{widgetPrimaryColor}</code>
+          </div>
+          {data.widgetStats && (
+            <p className="text-xs text-muted">
+              {t("settings.widgetStats", {
+                sessions: data.widgetStats.sessionCount,
+                messages: data.widgetStats.messageCount,
+              })}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={widgetSaving}
+              onClick={() => void saveWidgetSettings()}
+              className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted disabled:opacity-50"
+            >
+              {widgetSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {t("settings.widgetSave")}
+            </button>
+            <button
+              type="button"
+              onClick={() => void copyWidgetEmbed()}
+              className="rounded-lg border border-card-border px-3 py-2 text-xs text-muted hover:text-foreground"
+            >
+              {widgetCopied ? t("settings.widgetCopied") : t("settings.widgetCopyEmbed")}
+            </button>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-muted">{t("settings.widgetEmbedLabel")}</p>
+            <code className="mt-1 block overflow-x-auto rounded-lg border border-card-border bg-background px-3 py-2 text-xs whitespace-pre-wrap break-all">
+              {data.widgetEmbedCode}
+            </code>
+          </div>
+          <p className="text-xs text-muted">
+            {t("settings.widgetWebsiteHint")}{" "}
+            <a
+              href="https://www.atlasdigital.my"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent hover:underline"
+            >
+              atlasdigital.my
+            </a>
+          </p>
+          {data.widgetPreviewUrl && (
+            <a
+              href={data.widgetPreviewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex text-sm text-accent hover:underline"
+            >
+              {t("settings.widgetPreviewLink")}
+            </a>
+          )}
+          <a
+            href="/dashboard/conversations"
+            className="inline-flex text-sm text-accent hover:underline"
+          >
+            {t("settings.widgetOpenInbox")}
+          </a>
         </div>
       </Card>
 
@@ -352,6 +605,50 @@ WHATSAPP_NOTIFY_PHONE=+60123456789`}
               {whatsappTestMsg}
             </p>
           )}
+        </div>
+      </Card>
+
+      <Card className="border-accent/20 bg-accent/5">
+        <CardHeader title={t("settings.metaTitle")} description={t("settings.metaDesc")} />
+        <div className="space-y-3 text-sm">
+          <div className="flex justify-between">
+            <span>Facebook Page</span>
+            <Status ok={Boolean(data.integrations.social.facebook)} />
+          </div>
+          <ol className="space-y-1 text-xs text-muted">
+            <li>{t("settings.metaStep1")}</li>
+            <li>{t("settings.metaStep2")}</li>
+            <li>{t("settings.metaStep3")}</li>
+            <li>{t("settings.metaStep4")}</li>
+            <li>{t("settings.metaStep5")}</li>
+          </ol>
+          <p className="text-xs text-muted">{t("settings.metaEnvKeys")}</p>
+          <pre className="overflow-x-auto rounded-lg border border-card-border bg-background p-3 text-[11px]">
+{`META_PAGE_ID=你的专页数字ID
+META_PAGE_ACCESS_TOKEN=从Graph API复制的Page Token`}
+          </pre>
+          <button
+            type="button"
+            onClick={testFacebook}
+            disabled={facebookTesting || !data.integrations.social.facebook}
+            className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted disabled:opacity-50"
+          >
+            {facebookTesting && <Loader2 className="h-4 w-4 animate-spin" />}
+            {t("settings.metaTestSend")}
+          </button>
+          {facebookTestMsg && (
+            <p
+              className={`text-xs ${facebookTestMsg.includes("失败") || facebookTestMsg.includes("failed") || facebookTestMsg.includes("Failed") ? "text-danger" : "text-success"}`}
+            >
+              {facebookTestMsg}
+            </p>
+          )}
+          <a
+            href="/dashboard/social-media"
+            className="inline-block text-xs text-accent hover:underline"
+          >
+            → {t("nav.socialMedia")}
+          </a>
         </div>
       </Card>
 
@@ -474,7 +771,7 @@ DOUYIN_ACCESS_TOKEN=可选（直接填 token）`}
           className="mt-3 w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm min-h-[140px] resize-y"
         />
         <p className="mt-2 text-xs text-muted">
-          <a href="/dashboard/ai-assistant" className="text-accent hover:underline">
+          <a href="/dashboard/conversations?tab=reply-agent" className="text-accent hover:underline">
             Reply Agent
           </a>
         </p>
@@ -535,16 +832,11 @@ DOUYIN_ACCESS_TOKEN=可选（直接填 token）`}
       </Card>
 
       <Card>
-        <CardHeader title={t("settings.dataStorage")} description={t("settings.dataStorageDesc")} />
-        <ul className="space-y-1 text-sm text-muted">
-          <li>data/personal-assistant.json</li>
-          <li>data/personal-finance.json</li>
-          <li>data/crm.json</li>
-          <li>data/settings.json</li>
-          <li>data/conversations.json</li>
-          <li>data/social-posts.json</li>
-          <li>data/receipts/</li>
-        </ul>
+        <DataBackupPanel />
+      </Card>
+
+      <Card>
+        <SupabaseImportPanel />
       </Card>
     </div>
   );

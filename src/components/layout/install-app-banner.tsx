@@ -9,17 +9,42 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
+type PlatformHint = "macSafari" | "macChrome" | "ios" | "android" | "generic";
+
+function detectPlatformHint(): PlatformHint {
+  if (typeof navigator === "undefined") return "generic";
+  const ua = navigator.userAgent;
+  const isIOS = /iPhone|iPad|iPod/.test(ua);
+  const isAndroid = /Android/.test(ua);
+  const isMac = /Macintosh|Mac OS X/.test(ua) && !isIOS;
+  const isSafari = /Safari/.test(ua) && !/Chrome|Chromium|Edg/.test(ua);
+
+  if (isIOS) return "ios";
+  if (isAndroid) return "android";
+  if (isMac && isSafari) return "macSafari";
+  if (isMac) return "macChrome";
+  return "generic";
+}
+
 export function InstallAppBanner() {
   const { t } = useLocale();
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [platformHint, setPlatformHint] = useState<PlatformHint>("generic");
 
   useEffect(() => {
     const standalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
     setIsStandalone(standalone);
+    setPlatformHint(detectPlatformHint());
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {
+        /* ignore — install hints still shown */
+      });
+    }
 
     const handler = (e: Event) => {
       e.preventDefault();
@@ -31,11 +56,21 @@ export function InstallAppBanner() {
 
   if (isStandalone || dismissed) return null;
 
+  const hintKey =
+    platformHint === "macSafari"
+      ? "app.installMacSafariHint"
+      : platformHint === "macChrome"
+        ? "app.installMacChromeHint"
+        : platformHint === "ios"
+          ? "app.installIosHint"
+          : platformHint === "android"
+            ? "app.installAndroidHint"
+            : "app.installGenericHint";
+
   async function handleInstall() {
     if (deferred) {
       await deferred.prompt();
       setDeferred(null);
-      return;
     }
   }
 
@@ -44,12 +79,10 @@ export function InstallAppBanner() {
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-foreground">{t("app.installTitle")}</p>
         <p className="mt-0.5 text-xs text-muted">{t("app.installDesc")}</p>
-        {!deferred && (
-          <p className="mt-2 text-xs text-muted">{t("app.installIosHint")}</p>
-        )}
+        {!deferred ? <p className="mt-2 text-xs text-muted">{t(hintKey)}</p> : null}
       </div>
       <div className="flex shrink-0 gap-2">
-        {deferred && (
+        {deferred ? (
           <button
             type="button"
             onClick={handleInstall}
@@ -58,7 +91,7 @@ export function InstallAppBanner() {
             <Download className="h-3.5 w-3.5" />
             {t("app.installBtn")}
           </button>
-        )}
+        ) : null}
         <button
           type="button"
           onClick={() => setDismissed(true)}

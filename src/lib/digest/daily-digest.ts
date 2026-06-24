@@ -1,5 +1,6 @@
 import { getFinanceOverview, getPaymentsNeedingReminder } from "@/lib/finance/store";
 import { listJobs, listPlans, todayDateString } from "@/lib/personal/store";
+import { getCrmOverview } from "@/lib/crm/store";
 import { formatCurrency } from "@/lib/utils";
 
 export async function buildDailyDigestMessage(
@@ -9,11 +10,12 @@ export async function buildDailyDigestMessage(
   },
 ) {
   const today = todayDateString();
-  const [jobs, plans, finance, dueSoon] = await Promise.all([
+  const [jobs, plans, finance, dueSoon, crm] = await Promise.all([
     listJobs(),
     listPlans(),
     getFinanceOverview(),
     getPaymentsNeedingReminder(),
+    getCrmOverview(),
   ]);
 
   const pendingJobs = jobs.filter((j) => j.status === "todo" || j.status === "in_progress");
@@ -59,6 +61,17 @@ export async function buildDailyDigestMessage(
         p.daysUntil === 0 ? "TODAY" : p.daysUntil === 1 ? "tomorrow" : `${p.daysUntil}d`;
       lines.push(`• ${p.title} — ${amount} (${when})`);
     }
+  }
+
+  if (crm.followUpsDueToday > 0) {
+    lines.push("", `<b>CRM — Follow up today (${crm.followUpsDueToday})</b>`);
+    for (const c of crm.clientsDueToday.slice(0, 5)) {
+      const deposit =
+        c.deposit_amount > 0 ? ` · ${formatCurrency(c.deposit_amount, "MYR")}` : "";
+      lines.push(`• ${c.name} (${c.lead_status})${deposit}`);
+    }
+  } else if (crm.totalClients > 0) {
+    lines.push("", `<b>CRM</b>`, `• ${crm.totalClients} clients · no follow-ups due today`);
   }
 
   if (todayPlan?.notes) {

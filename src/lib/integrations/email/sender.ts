@@ -40,6 +40,7 @@ export async function sendEmail(
       host: config.smtpHost,
       port: config.smtpPort,
       secure: config.smtpSecure,
+      requireTLS: config.smtpPort === 587 && !config.smtpSecure,
       auth: {
         user: config.credentials.user,
         pass: config.credentials.pass,

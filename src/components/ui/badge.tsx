@@ -1,11 +1,11 @@
 import { cn } from "@/lib/utils";
 
 const variants = {
-  default: "bg-accent/20 text-accent border-accent/30",
-  success: "bg-success/20 text-success border-success/30",
-  warning: "bg-warning/20 text-warning border-warning/30",
-  danger: "bg-danger/20 text-danger border-danger/30",
-  muted: "bg-card border-card-border text-muted",
+  default: "border-accent/35 bg-accent/15 text-accent",
+  success: "border-success/35 bg-success/10 text-success",
+  warning: "border-warning/35 bg-warning/10 text-warning",
+  danger: "border-danger/35 bg-danger/10 text-danger",
+  muted: "border-card-border bg-white/5 text-muted",
 } as const;
 
 export function Badge({
@@ -20,7 +20,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",
+        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium backdrop-blur-sm",
         variants[variant],
         className,
       )}

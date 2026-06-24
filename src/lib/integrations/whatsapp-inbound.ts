@@ -1,5 +1,6 @@
 import { ensureClientFromContact } from "@/lib/crm/auto-client";
 import { createMessage } from "@/lib/conversations/store";
+import { notifyInboundMessageTelegram } from "@/lib/integrations/inbound-notify";
 
 type WaTextMessage = {
   from: string;
@@ -68,6 +69,14 @@ export async function handleWhatsAppWebhook(body: unknown) {
             ? new Date(Number(msg.timestamp) * 1000).toISOString()
             : undefined,
         });
+
+        await notifyInboundMessageTelegram({
+          channel: "whatsapp",
+          clientName: client.name,
+          clientId: client.id,
+          preview: msg.text.body,
+          created,
+        }).catch(() => undefined);
 
         const { maybeAutoReply } = await import("@/lib/ai/auto-reply");
         const auto = await maybeAutoReply({

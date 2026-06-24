@@ -52,51 +52,62 @@ export async function isDeepSeekReachable(): Promise<boolean> {
   }
 }
 
-function chatCompletionsUrl() {
-  const base = getDeepSeekBaseURL().replace(/\/$/, "");
-  return base.endsWith("/v1")
-    ? `${base}/chat/completions`
-    : `${base}/chat/completions`;
-}
-
 export async function deepSeekChat(params: {
   messages: DeepSeekMessage[];
   model?: string;
   json?: boolean;
   temperature?: number;
   maxTokens?: number;
+  apiKey?: string;
+  baseUrl?: string;
 }): Promise<
   | { ok: true; content: string; model: string; usage?: unknown }
   | { ok: false; error: string }
 > {
-  const apiKey = getDeepSeekApiKey();
+  const apiKey = params.apiKey?.trim() || getDeepSeekApiKey();
   if (!apiKey) {
     return { ok: false, error: "DEEPSEEK_API_KEY not set in .env.local" };
   }
 
   const model = params.model ?? getDeepSeekModel();
+  const base = (params.baseUrl ?? getDeepSeekBaseURL()).replace(/\/$/, "");
+  const chatUrl = base.endsWith("/v1")
+    ? `${base}/chat/completions`
+    : `${base}/chat/completions`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 90_000);
 
   try {
-    const res = await fetch(chatCompletionsUrl(), {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: params.messages,
-        temperature: params.temperature ?? 0.45,
-        max_tokens: params.maxTokens ?? 900,
-        ...(params.json ? { response_format: { type: "json_object" } } : {}),
-      }),
-      signal: controller.signal,
-    });
+    const body: Record<string, unknown> = {
+      model,
+      messages: params.messages,
+      temperature: params.temperature ?? 0.45,
+      max_tokens: params.maxTokens ?? 900,
+    };
 
-    const data = (await res.json().catch(() => ({}))) as {
-      choices?: { message?: { content?: string } }[];
+    const attempt = async (jsonMode: boolean) => {
+      const res = await fetch(chatUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...body,
+          ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
+        }),
+        signal: controller.signal,
+      });
+      return res;
+    };
+
+    const res = await attempt(Boolean(params.json));
+
+    let data = (await res.json().catch(() => ({}))) as {
+      choices?: {
+        finish_reason?: string;
+        message?: { content?: string | null; reasoning_content?: string | null };
+      }[];
       usage?: unknown;
       error?: { message?: string };
     };
@@ -118,9 +129,44 @@ export async function deepSeekChat(params: {
       return { ok: false, error: msg };
     }
 
-    const content = data.choices?.[0]?.message?.content?.trim() ?? "";
+    const choice = data.choices?.[0];
+    const message = choice?.message as
+      | { content?: string | null; reasoning_content?: string | null }
+      | undefined;
+    let content =
+      message?.content?.trim() ||
+      message?.reasoning_content?.trim() ||
+      "";
+
+    if (!content && params.json) {
+      const retry = await attempt(false);
+      const retryData = (await retry.json().catch(() => ({}))) as typeof data;
+      if (retry.ok) {
+        const retryMsg = retryData.choices?.[0]?.message as
+          | { content?: string | null; reasoning_content?: string | null }
+          | undefined;
+        content =
+          retryMsg?.content?.trim() ||
+          retryMsg?.reasoning_content?.trim() ||
+          "";
+        if (content) {
+          data = retryData;
+        }
+      }
+    }
+
     if (!content) {
-      return { ok: false, error: "DeepSeek returned an empty response" };
+      const finish = choice?.finish_reason ?? "unknown";
+      const hint =
+        finish === "length"
+          ? "（上下文过长，已截断）"
+          : finish === "content_filter"
+            ? "（内容被过滤）"
+            : "";
+      return {
+        ok: false,
+        error: `DeepSeek returned an empty response${hint}`,
+      };
     }
 
     return {

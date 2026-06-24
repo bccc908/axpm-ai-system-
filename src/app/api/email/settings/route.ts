@@ -19,6 +19,7 @@ const schema = z.object({
   auto: z
     .object({
       dailyDigest: z.boolean().optional(),
+      dailyFortune: z.boolean().optional(),
       paymentReminders: z.boolean().optional(),
       clientFollowUps: z.boolean().optional(),
     })

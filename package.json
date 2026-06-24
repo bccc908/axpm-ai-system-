@@ -3,20 +3,31 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -H 0.0.0.0",
     "dev:reset": "lsof -tiTCP:3000 | xargs kill -9 2>/dev/null; rm -rf .next && next dev",
     "fix": "npm run dev:reset",
     "build": "lsof -tiTCP:3000 | xargs kill -9 2>/dev/null; next build",
-    "start": "next start",
-    "start:prod": "next start",
+    "start": "next start -H 0.0.0.0",
+    "start:prod": "next start -H 0.0.0.0",
     "system": "bash scripts/run-system.sh",
     "system:stop": "bash scripts/stop-system.sh",
     "system:upgrade": "bash scripts/upgrade-system.sh",
+    "go-live": "bash scripts/go-live.sh",
+    "go-live-quick": "bash scripts/go-live-quick.sh",
+    "set-tunnel-token": "bash scripts/set-tunnel-token.sh",
+    "setup-talent-domain": "bash scripts/setup-talent-domain.sh",
     "openclaw:start": "bash scripts/start-openclaw.sh",
     "cron:tick": "bash scripts/cron-tick.sh",
+    "install:piper": "bash scripts/install-piper.sh",
     "automation:install": "bash scripts/install-automation.sh",
+    "boot:install": "bash scripts/install-boot.sh",
     "handover:export": "bash scripts/handover-export.sh",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "vitest run",
+    "fortune:ziwei-check": "npx tsx src/lib/fortune/ziwei.sanity.ts",
+    "gold:signal": "npx tsx scripts/gold-signal-ops.ts",
+    "gold:daily": "npx tsx scripts/gold-daily-ops.ts",
+    "gold:setup": "bash scripts/setup-gold-atas.sh"
   },
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
@@ -25,17 +36,20 @@
     "clsx": "^2.1.1",
     "edge-tts-universal": "^1.4.0",
     "googleapis": "^173.0.0",
+    "lightweight-charts": "^5.2.0",
     "lucide-react": "^0.511.0",
     "mammoth": "^1.12.0",
     "next": "^15.3.3",
     "nodemailer": "^8.0.10",
     "openai": "^4.103.0",
     "pdf-parse": "^2.4.5",
+    "pptxgenjs": "^4.0.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "sharp": "^0.34.5",
     "tailwind-merge": "^3.3.0",
     "undici": "^8.3.0",
+    "word-extractor": "^1.0.4",
     "zod": "^3.25.28"
   },
   "devDependencies": {
@@ -49,6 +63,7 @@
     "eslint": "^9.27.0",
     "eslint-config-next": "^15.3.3",
     "tailwindcss": "^4.1.7",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.6"
   }
 }

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Noto_Serif_SC } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -12,14 +12,20 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const notoSerif = Noto_Serif_SC({
+  variable: "--font-noto-serif",
+  weight: ["400", "500", "600", "700"],
+  preload: false,
+});
+
 export const metadata: Metadata = {
-  title: "AXPM AI Operation System",
-  description: "AI-powered client follow-up, CRM, and operations for AXPM",
-  applicationName: "AXPM",
+  title: "信号旗 · AI 运营系统",
+  description: "信号旗 — CRM、财务、收件箱与 AI 助手",
+  applicationName: "信号旗",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "AXPM",
+    title: "信号旗",
   },
   formatDetection: {
     telephone: false,
@@ -27,7 +33,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#3b82f6",
+  themeColor: "#050508",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -41,8 +47,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+    <html lang="zh-CN">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} ${notoSerif.variable} antialiased`}
+      >
         {children}
       </body>
     </html>

@@ -1,13 +1,36 @@
-export async function sendWhatsAppMessage(
+export type WhatsAppSendResult =
+  | { ok: true; messageId?: string }
+  | { ok: false; error: string };
+
+export function getWhatsAppConfig() {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN?.trim() ?? "";
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID?.trim() ?? "";
+  const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN?.trim() ?? "";
+  const notifyPhone =
+    process.env.WHATSAPP_NOTIFY_PHONE?.trim() ?? "";
+
+  return {
+    configured: Boolean(token && phoneNumberId),
+    hasToken: Boolean(token),
+    hasPhoneNumberId: Boolean(phoneNumberId),
+    verifyTokenSet: Boolean(verifyToken),
+    notifyPhone,
+    token,
+    phoneNumberId,
+  };
+}
+
+export async function sendWhatsAppMessageDetailed(
   to: string,
   message: string,
-): Promise<boolean> {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+): Promise<WhatsAppSendResult> {
+  const { token, phoneNumberId, configured } = getWhatsAppConfig();
 
-  if (!token || !phoneNumberId) {
-    console.warn("[WhatsApp] Missing WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID");
-    return false;
+  if (!configured) {
+    return {
+      ok: false,
+      error: "WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID are not set in .env.local",
+    };
   }
 
   const res = await fetch(
@@ -27,12 +50,35 @@ export async function sendWhatsAppMessage(
     },
   );
 
-  return res.ok;
+  const data = (await res.json().catch(() => ({}))) as {
+    messages?: { id?: string }[];
+    error?: { message?: string };
+  };
+
+  if (!res.ok) {
+    return {
+      ok: false,
+      error: data.error?.message ?? `WhatsApp API error (${res.status})`,
+    };
+  }
+
+  return { ok: true, messageId: data.messages?.[0]?.id };
+}
+
+export async function sendWhatsAppMessage(
+  to: string,
+  message: string,
+): Promise<boolean> {
+  const result = await sendWhatsAppMessageDetailed(to, message);
+  if (!result.ok) {
+    console.warn("[WhatsApp]", result.error);
+  }
+  return result.ok;
 }
 
 export function formatFollowUpReminder(params: {
   clientName: string;
   dueAt: string;
 }): string {
-  return `AXPM Follow-Up Reminder\n\nClient: ${params.clientName}\nDue: ${params.dueAt}\n\nPlease complete your follow-up today.`;
+  return `信号旗 Follow-Up Reminder\n\nClient: ${params.clientName}\nDue: ${params.dueAt}\n\nPlease complete your follow-up today.`;
 }

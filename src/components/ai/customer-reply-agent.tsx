@@ -26,6 +26,7 @@ const channelLabel: Record<Channel, string> = {
   telegram: "Telegram",
   email: "Email",
   phone: "Phone",
+  web: "Website",
 };
 
 export function CustomerReplyAgent({

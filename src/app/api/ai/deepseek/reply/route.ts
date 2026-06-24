@@ -7,7 +7,7 @@ export const maxDuration = 90;
 export const dynamic = "force-dynamic";
 
 const schema = z.object({
-  channel: z.enum(["whatsapp", "wechat", "telegram", "email", "phone"]),
+  channel: z.enum(["whatsapp", "wechat", "telegram", "email", "phone", "web"]),
   clientName: z.string().min(1),
   customerQuestion: z.string().min(1),
   conversationHistory: z.string().optional(),

@@ -9,9 +9,10 @@ const channelPlaybook: Record<Channel, string> = {
   telegram: "Telegram: direct and scannable. Bullet steps only if 3+ items.",
   email:
     "Email: greeting + 2–3 short paragraphs + professional sign-off (e.g. Best regards, [Your name] — AXPM). One CTA.",
+  web:
+    "Website live chat: 2–4 short lines. Professional and welcoming. End with one easy question. Chinese or English — match the visitor.",
   phone: "SMS-style: under 320 characters. One action only.",
 };
-
 const toneGuide: Record<ReplyTone, string> = {
   professional:
     "Tone: senior relationship manager — confident, calm, precise. Build trust; never sound robotic or salesy.",

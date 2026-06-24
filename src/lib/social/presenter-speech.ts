@@ -7,10 +7,13 @@ import { promisify } from "util";
 import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
 import { EdgeTTS } from "edge-tts-universal";
 import type { SlideNarration } from "@/lib/social/presenter-narration";
+import { isMiniMaxConfigured, synthesizeMiniMaxMp3 } from "@/lib/social/minimax-tts";
+import { synthesizePiperWav } from "@/lib/social/piper-tts";
+import { getTtsEngineOrder, type TtsEngineId } from "@/lib/local/self-hosted-config";
 import { getPresenterSettings } from "@/lib/social/presenter-settings";
 import { MAC_VOICES } from "@/lib/social/presenter-voices";
-import { VIDEO_TARGET_SECONDS } from "@/lib/social/video-spec";
 import { VIDEO_ENCODE } from "@/lib/social/video-quality";
+import { VIDEO_TARGET_SECONDS } from "@/lib/social/video-spec";
 
 const execFileAsync = promisify(execFile);
 const ffmpeg = () => ffmpegInstaller.path;
@@ -23,7 +26,7 @@ const EXEC_ENV: NodeJS.ProcessEnv = {
   PATH: `/usr/bin:/bin:/usr/sbin:/sbin:${process.env.PATH ?? ""}`,
 };
 
-export type SpeechSource = "edge" | "mac" | "silent";
+export type SpeechSource = "piper" | "minimax" | "edge" | "mac" | "silent";
 
 export type PresenterSpeechResult = {
   audioPath?: string;
@@ -181,6 +184,46 @@ async function macToWav(
   throw lastError ?? new Error("Mac TTS failed");
 }
 
+async function miniMaxToWav(text: string, wavPath: string) {
+  const tmpMp3 = `${wavPath}.minimax.mp3`;
+  await synthesizeMiniMaxMp3(text, tmpMp3);
+  try {
+    await anyToWav(tmpMp3, wavPath);
+  } finally {
+    await fs.unlink(tmpMp3).catch(() => undefined);
+  }
+}
+
+async function piperToWav(text: string, wavPath: string) {
+  await synthesizePiperWav(text, wavPath);
+}
+
+async function runEngine(
+  engine: TtsEngineId,
+  text: string,
+  wavPath: string,
+  workDir: string,
+  macVoices: string[],
+  edgeVoice: string,
+): Promise<void> {
+  switch (engine) {
+    case "piper":
+      await piperToWav(text, wavPath);
+      return;
+    case "minimax":
+      await miniMaxToWav(text, wavPath);
+      return;
+    case "mac":
+      await macToWav(text, wavPath, workDir, macVoices);
+      return;
+    case "edge":
+      await edgeToWav(text, wavPath, edgeVoice);
+      return;
+    default:
+      throw new Error(`Unknown TTS engine: ${engine}`);
+  }
+}
+
 async function synthesizeTextToWav(
   text: string,
   wavPath: string,
@@ -191,37 +234,35 @@ async function synthesizeTextToWav(
     settings.macVoice,
     ...MAC_VOICE_IDS.filter((v) => v !== settings.macVoice),
   ];
-  const tryMacFirst =
-    process.platform === "darwin" &&
-    (settings.ttsPriority === "mac" || settings.ttsPriority === "auto");
+  const order = getTtsEngineOrder(settings.ttsPriority);
+  const hasMiniMax = isMiniMaxConfigured();
 
-  if (tryMacFirst) {
-    try {
-      await macToWav(text, wavPath, workDir, macVoices);
-      return "mac";
-    } catch (error) {
-      console.warn("[Presenter TTS] Mac failed, trying Edge:", error);
-      await fs.unlink(wavPath).catch(() => undefined);
-    }
-  }
+  for (const engine of order) {
+    if (engine === "minimax" && !hasMiniMax) continue;
 
-  for (let i = 0; i < EDGE_RETRIES; i++) {
     try {
-      await edgeToWav(text, wavPath, settings.edgeVoice);
-      return "edge";
+      await runEngine(engine, text, wavPath, workDir, macVoices, settings.edgeVoice);
+      return engine;
     } catch (error) {
-      console.warn(`[Presenter TTS] Edge ${i + 1}/${EDGE_RETRIES}:`, error);
+      console.warn(`[Presenter TTS] ${engine} failed, trying next:`, error);
       await fs.unlink(wavPath).catch(() => undefined);
-      if (i < EDGE_RETRIES - 1) await sleep(600 * (i + 1));
     }
   }
 
   if (process.platform === "darwin") {
-    await macToWav(text, wavPath, workDir, macVoices);
-    return "mac";
+    for (let i = 0; i < EDGE_RETRIES; i++) {
+      try {
+        await edgeToWav(text, wavPath, settings.edgeVoice);
+        return "edge";
+      } catch (error) {
+        console.warn(`[Presenter TTS] Edge fallback ${i + 1}/${EDGE_RETRIES}:`, error);
+        await fs.unlink(wavPath).catch(() => undefined);
+        if (i < EDGE_RETRIES - 1) await sleep(600 * (i + 1));
+      }
+    }
   }
 
-  throw new Error("No TTS engine available");
+  throw new Error("No TTS engine available — install Piper or check network for Edge TTS");
 }
 
 async function concatWavs(parts: string[], outputWav: string) {
@@ -283,9 +324,15 @@ async function synthesizeFullTrack(
     duration: VIDEO_TARGET_SECONDS,
     source,
     warning:
-      source === "mac"
-        ? "已用 Mac 中文配音（更稳定）。可在页面切换在线声线。"
-        : undefined,
+      source === "piper"
+        ? "已用 Piper 本地配音（自托管）"
+        : source === "minimax"
+          ? "已用 MiniMax AI 配音"
+          : source === "mac"
+            ? "已改用 Mac 中文配音"
+            : source === "edge"
+              ? "已用 Edge 在线配音"
+              : undefined,
   };
 }
 
@@ -297,19 +344,25 @@ async function synthesizeSegmentTrack(
 ): Promise<PresenterSpeechResult> {
   const fitted: string[] = [];
   let source: SpeechSource = "edge";
+  let piperUsed = false;
+  let minimaxUsed = false;
   let macUsed = false;
 
   for (let i = 0; i < segments.length; i++) {
     const raw = path.join(workDir, `voice-seg-${i}-raw.wav`);
     const fit = path.join(workDir, `voice-seg-${i}.wav`);
     const segSource = await synthesizeTextToWav(segments[i].text, raw, workDir);
+    if (segSource === "piper") piperUsed = true;
+    if (segSource === "minimax") minimaxUsed = true;
     if (segSource === "mac") macUsed = true;
     await fitWavToDuration(raw, fit, segments[i].seconds);
     fitted.push(fit);
     await fs.unlink(raw).catch(() => undefined);
   }
 
-  if (macUsed) source = "mac";
+  if (piperUsed) source = "piper";
+  else if (minimaxUsed) source = "minimax";
+  else if (macUsed) source = "mac";
 
   const mergedWav = path.join(workDir, "voice-merged.wav");
   await concatWavs(fitted, mergedWav);
@@ -327,7 +380,13 @@ async function synthesizeSegmentTrack(
     audioPath: outputPath,
     duration: VIDEO_TARGET_SECONDS,
     source,
-    warning: macUsed ? "已用 Mac 中文配音（分段模式）" : undefined,
+    warning: piperUsed
+      ? "已用 Piper 本地配音（分段模式）"
+      : minimaxUsed
+        ? "已用 MiniMax AI 配音（分段模式）"
+        : macUsed
+          ? "已用 Mac 中文配音（分段模式）"
+          : undefined,
   };
 }
 

@@ -1,6 +1,9 @@
-# AXPM AI Operation System
+# AXPM AI Operation System（信号旗）
 
-AI-powered client follow-up, CRM, personal assistant, and operations platform for AXPM.
+AI-powered CRM, fortune reading, personal assistant, and operations platform.
+
+**中文使用指南：** [docs/信号旗-使用指南.md](./docs/信号旗-使用指南.md)  
+**公网地址：** https://talent.kaydenchiew.com/dashboard
 
 ## Quick Start
 
@@ -41,26 +44,46 @@ npm run automation:install
 
 Open [http://localhost:3000](http://localhost:3000) — redirects to the CRM dashboard.
 
+### Go live (public URL)
+
+```bash
+npm run system      # Terminal 1 — app on :3000
+npm run go-live     # Terminal 2 — https://talent.kaydenchiew.com
+```
+
+See [scripts/cloudflare-tunnel-setup.md](./scripts/cloudflare-tunnel-setup.md) and `npm run setup-talent-domain`.
+
 **Install as app (phone / tablet):** Open in **Safari** (iPhone) or **Chrome** (Android) → tap **Install app** banner, or use browser menu **Add to Home Screen**. Opens full-screen like a native app with bottom navigation on mobile.
 
 **Languages:** English and 中文 (Chinese) — switch via the language selector in the sidebar.
 
 ## Core Modules
 
-| Module | Route | Status |
-|--------|-------|--------|
+| Category | Module | Route |
+|----------|--------|-------|
+| **Operations** | Overview, To-Do, My Assistant, Finance | `/dashboard`, `/dashboard/todos`, … |
+| **AI & Fortune** | 命理运势（面相·易经·奇门·紫微·塔罗…） | `/dashboard/fortune` |
+| **AI & Fortune** | Market AI (reports, PPT, competitors) | `/dashboard/market-ai` |
+| **Clients** | CRM, Inbox, Reminders | `/dashboard/crm`, `/dashboard/conversations` |
+| **Marketing** | Social Media, Automation | `/dashboard/social-media` |
+| **Account** | Plan, Team, Settings | `/dashboard/account`, `/dashboard/settings` |
+
+| Module | Route | Notes |
+|--------|-------|-------|
 | Operations Overview | `/dashboard` | Live CRM + personal snapshot |
 | **My Assistant** | `/dashboard/my-assistant` | Jobs, work log, daily planning |
 | **Personal Finance** | `/dashboard/finance` | Income, expenses (MYR/CNY), payment reminders |
-| Client Database | `/dashboard/clients` | Full CRUD + **auto-create** from chats & registration link |
-| **Client registration** | `/register` | Public form — auto-adds lead to CRM |
-| **WeChat Logs** | `/dashboard/conversations` | Paste/import, 企业微信 send + auto-capture |
-| **Customer Reply Agent** | `/dashboard/ai-assistant` | Paste customer question → AI replies (WhatsApp / WeChat / Telegram / email); also on WeChat Logs page |
-| Reminders | `/dashboard/reminders` | Due clients, tasks, schedule reminders, multi-channel send |
-| AI Automation | `/dashboard/automation` | Lead analysis + daily report generation |
-| Team Management | `/dashboard/team` | Team members + recent follow-ups |
-| **Settings** | `/dashboard/settings` | Integrations, email SMTP, digest hour, data paths |
-| **Social Media** | `/dashboard/social-media` | Auto-post to Facebook, Instagram, WeChat 公众号 |
+| **Fortune / 命理** | `/dashboard/fortune` | Face reading, I Ching, Qimen, Zi Wei, share links |
+| **Market AI** | `/dashboard/market-ai` | Document analysis, charts, PPT |
+| Client Database | `/dashboard/clients` | Full CRUD + auto-create from chats |
+| **CRM** | `/dashboard/crm` | Leads, pipeline, reports |
+| **Inbox** | `/dashboard/conversations` | Paste/import, AI reply agent |
+| Reminders | `/dashboard/reminders` | Due clients, Telegram/WhatsApp |
+| AI Automation | `/dashboard/automation` | Lead analysis + daily report |
+| **Social Media** | `/dashboard/social-media` | Facebook, presenter video pipeline |
+| **Settings** | `/dashboard/settings` | Integrations, email, backup |
+
+**Public fortune share:** `https://talent.kaydenchiew.com/share/fortune/{token}` (no login required).
 
 **Voice input:** Tap the mic icon on text fields (My Assistant, Finance, Clients, AI Assistant) to speak instead of typing. Uses browser speech recognition (English / 中文). If unavailable, falls back to OpenAI Whisper when `OPENAI_API_KEY` is set.
 
@@ -76,7 +99,9 @@ All modules persist to local JSON files (no database required for development):
 | `data/settings.json` | Digest hour, preferences |
 | `data/conversations.json` | WeChat conversation messages |
 | `data/social-posts.json` | Social media posts queue |
-| `data/receipts/` | Receipt/resit image files (backed up to Google Drive) |
+| `data/receipts/` | Receipt image files (Google Drive backup) |
+| `data/fortune-*.json` | Fortune profiles & readings (per user) |
+| `data/fortune-public-shares/` | Public share link index |
 
 Files are auto-created on first API call with seed data from `src/lib/mock-data.ts`.
 
@@ -406,12 +431,19 @@ src/
 │   └── dashboard/               # Overview + live stats
 ├── lib/
 │   ├── crm/                     # CRM file store
+│   ├── fortune/                 # Fortune, face reading, hexagram, qimen
 │   ├── personal/                # Assistant file store
 │   ├── finance/                 # Finance file store
 │   ├── digest/                  # Daily digest builder
-│   ├── ai/                      # OpenAI integration
+│   ├── ai/                      # DeepSeek / OpenAI integration
 │   ├── integrations/            # Telegram, WhatsApp
 │   └── i18n/                    # English + 中文
+docs/
+├── 信号旗-使用指南.md           # Chinese quick reference (talent domain, fortune, go-live)
+scripts/
+├── go-live.sh                   # App + Cloudflare tunnel
+├── cloudflare-tunnel-setup.md   # talent.kaydenchiew.com setup
+└── setup-talent-domain.sh       # Domain env helper
 └── types/                       # TypeScript types
 supabase/migrations/             # SQL schema (optional)
 ```

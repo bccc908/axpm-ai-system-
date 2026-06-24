@@ -3,8 +3,10 @@
 import {
   Bell,
   DollarSign,
+  Kanban,
   Loader2,
   MessageSquare,
+  MessagesSquare,
   NotebookPen,
   Users,
   Wallet,
@@ -16,6 +18,7 @@ import { PersonalLiveStats } from "@/components/dashboard/personal-live-stats";
 import { useLocale } from "@/components/providers/locale-provider";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { formatDateLocalized } from "@/lib/i18n";
 import { formatCurrency } from "@/lib/utils";
@@ -97,7 +100,7 @@ export function DashboardHome() {
         <button
           type="button"
           onClick={() => load()}
-          className="mt-4 rounded-lg bg-accent px-4 py-2 text-sm text-white"
+          className="mt-4 rounded-xl btn-premium px-4 py-2.5 text-sm"
         >
           {t("common.refresh")}
         </button>
@@ -109,10 +112,7 @@ export function DashboardHome() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{t("dashboard.title")}</h1>
-        <p className="mt-1 text-muted">{t("dashboard.subtitle")}</p>
-      </div>
+      <PageHeader title={t("dashboard.title")} subtitle={t("dashboard.subtitle")} />
 
       <IntegrationsStatus />
 
@@ -129,7 +129,7 @@ export function DashboardHome() {
         <Card className="border-accent/30 bg-accent/5">
           <CardHeader title={t("dashboard.myAssistantTitle")} description={t("dashboard.myAssistantDesc")} action={<Link href="/dashboard/my-assistant" className="text-sm text-accent hover:underline">{t("common.open")}</Link>} />
           <p className="text-sm text-muted">{t("dashboard.myAssistantBody")}</p>
-          <Link href="/dashboard/my-assistant" className="mt-4 inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted transition-colors">
+          <Link href="/dashboard/my-assistant" className="mt-4 inline-flex items-center gap-2 rounded-xl btn-premium px-4 py-2.5 text-sm transition-colors">
             <NotebookPen className="h-4 w-4" />{t("dashboard.goAssistant")}
           </Link>
         </Card>
@@ -140,8 +140,22 @@ export function DashboardHome() {
             <Wallet className="h-4 w-4" />{t("dashboard.goFinance")}
           </Link>
         </Card>
+        <Card className="border-accent/20 bg-accent/5">
+          <CardHeader title={t("dashboard.inboxTitle")} description={t("dashboard.inboxDesc")} action={<Link href="/dashboard/conversations" className="text-sm text-accent hover:underline">{t("common.open")}</Link>} />
+          <p className="text-sm text-muted">{t("dashboard.inboxBody")}</p>
+          <Link href="/dashboard/conversations" className="mt-4 inline-flex items-center gap-2 rounded-xl btn-premium px-4 py-2.5 text-sm transition-colors">
+            <MessagesSquare className="h-4 w-4" />{t("dashboard.goInbox")}
+          </Link>
+        </Card>
         <Card>
-          <CardHeader title={t("dashboard.clientsDueTitle")} description={t("dashboard.clientsDueDesc")} action={<Link href="/dashboard/clients" className="text-sm text-accent hover:underline">{t("dashboard.viewAll")}</Link>} />
+          <CardHeader title={t("dashboard.crmTitle")} description={t("dashboard.crmDesc")} action={<Link href="/dashboard/crm" className="text-sm text-accent hover:underline">{t("common.open")}</Link>} />
+          <p className="text-sm text-muted">{t("dashboard.crmBody")}</p>
+          <Link href="/dashboard/crm" className="mt-4 inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-accent/30 hover:text-accent">
+            <Kanban className="h-4 w-4" />{t("dashboard.goCrm")}
+          </Link>
+        </Card>
+        <Card>
+          <CardHeader title={t("dashboard.clientsDueTitle")} description={t("dashboard.clientsDueDesc")} action={<Link href="/dashboard/crm?tab=contacts" className="text-sm text-accent hover:underline">{t("dashboard.viewAll")}</Link>} />
           <div className="space-y-3">
             {overview.clientsDueToday.length === 0 ? (
               <p className="text-sm text-muted">{t("dashboard.noFollowUps")}</p>

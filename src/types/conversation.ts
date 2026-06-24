@@ -6,7 +6,8 @@ export type MessageSource =
   | "import"
   | "wechat_work"
   | "wechat_official"
-  | "whatsapp";
+  | "whatsapp"
+  | "web_widget";
 
 export interface ConversationMessage {
   id: string;

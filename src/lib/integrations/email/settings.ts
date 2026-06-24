@@ -17,7 +17,8 @@ export const defaultEmailSettings: EmailSettings = {
   locale: "both",
   timezone: "Asia/Kuala_Lumpur",
   auto: {
-    dailyDigest: true,
+    dailyDigest: false,
+    dailyFortune: true,
     paymentReminders: true,
     clientFollowUps: true,
   },
@@ -27,7 +28,24 @@ export async function readEmailSettings(): Promise<EmailSettings> {
   try {
     const raw = await fs.readFile(SETTINGS_FILE, "utf-8");
     const data = JSON.parse(raw) as { email?: Partial<EmailSettings> };
-    return { ...defaultEmailSettings, ...data.email, auto: { ...defaultEmailSettings.auto, ...data.email?.auto } };
+    const merged: EmailSettings = {
+      ...defaultEmailSettings,
+      ...data.email,
+      auto: { ...defaultEmailSettings.auto, ...data.email?.auto },
+    };
+
+    const rawAuto = data.email?.auto;
+    const needsFortuneMigration =
+      rawAuto?.dailyFortune === undefined &&
+      (rawAuto?.dailyDigest === true || merged.auto.dailyDigest);
+
+    if (needsFortuneMigration) {
+      merged.auto.dailyFortune = true;
+      merged.auto.dailyDigest = false;
+      await saveEmailSettings({ auto: merged.auto });
+    }
+
+    return merged;
   } catch {
     return { ...defaultEmailSettings };
   }

@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
+import { getWhatsAppConfig, sendWhatsAppMessageDetailed } from "@/lib/integrations/whatsapp";
 
 export async function POST(request: Request) {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN?.trim();
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID?.trim();
-  const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN?.trim();
+  const wa = getWhatsAppConfig();
 
-  if (!token || !phoneNumberId) {
+  if (!wa.configured) {
     return NextResponse.json(
       {
         ok: false,
@@ -19,55 +18,30 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as { to?: string };
   const to =
     body.to?.trim() ||
-    process.env.WHATSAPP_NOTIFY_PHONE?.trim() ||
+    wa.notifyPhone ||
     "";
 
   if (!to) {
     return NextResponse.json(
       {
         ok: false,
-        error: "Set your phone in Settings → WhatsApp (or WHATSAPP_NOTIFY_PHONE in .env.local)",
+        error: "Set your WhatsApp number below (or WHATSAPP_NOTIFY_PHONE in .env.local)",
       },
       { status: 400 },
     );
   }
 
-  const message = "AXPM test — WhatsApp is linked successfully.";
-  const res = await fetch(
-    `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to: to.replace(/\D/g, ""),
-        type: "text",
-        text: { body: message },
-      }),
-    },
-  );
+  const message = "信号旗 test — WhatsApp is linked successfully.";
+  const result = await sendWhatsAppMessageDetailed(to, message);
 
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error:
-          (data as { error?: { message?: string } }).error?.message ??
-          "WhatsApp send failed — check token and phone number ID",
-        details: data,
-      },
-      { status: 400 },
-    );
+  if (!result.ok) {
+    return NextResponse.json({ ok: false, error: result.error }, { status: 400 });
   }
 
   return NextResponse.json({
     ok: true,
     sent: true,
     to,
-    verifyTokenSet: Boolean(verifyToken),
+    verifyTokenSet: wa.verifyTokenSet,
   });
 }

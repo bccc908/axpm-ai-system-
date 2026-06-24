@@ -13,6 +13,12 @@ import {
   isOpenClawConfigured,
 } from "@/lib/ai/openclaw-config";
 import { getLlmDisplayName, getLlmProvider, isLlmConfigured } from "@/lib/ai/llm-config";
+import { isDalleConfigured } from "@/lib/ai/market-dalle-images";
+import { isGammaConfigured } from "@/lib/ai/gamma-config";
+import { isUnstructuredConfigured } from "@/lib/ai/unstructured-config";
+import { getActiveWebSearchProvider, isWebSearchConfigured } from "@/lib/ai/web-search-config";
+import { countWebWidgetMessages } from "@/lib/widget/chat-handler";
+import { buildWidgetEmbedCode, getPublicWidgetConfig } from "@/lib/widget/config";
 
 const SETTINGS_FILE = path.join(process.cwd(), "data", "settings.json");
 
@@ -22,6 +28,13 @@ const defaultSettings = {
   financeAutoMode: true,
   financeStartMonth: "2026-06",
 };
+
+function isAuthSecretWeak() {
+  const secret =
+    process.env.AUTH_SECRET?.trim() || process.env.CRON_SECRET?.trim() || "";
+  if (!secret) return true;
+  return secret === "signalqi-dev-change-me-in-production" || secret.length < 24;
+}
 
 async function readSettings() {
   try {
@@ -44,6 +57,8 @@ export async function GET() {
   const wechatWork = getWeChatWorkConfig();
   const social = getSocialIntegrationStatus();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const widgetConfig = await getPublicWidgetConfig();
+  const widgetStats = await countWebWidgetMessages();
 
   return NextResponse.json({
     settings,
@@ -96,6 +111,13 @@ export async function GET() {
         douyin: social.douyin.configured,
       },
       googleDrive: getGoogleDriveConfig(),
+      marketAi: {
+        unstructured: isUnstructuredConfigured(),
+        gamma: isGammaConfigured(),
+        dalle: isDalleConfigured(),
+        webSearch: isWebSearchConfigured(),
+        webSearchProvider: getActiveWebSearchProvider(),
+      },
     },
     appUrl,
     cronDigestUrl: `${appUrl}/api/digest/daily`,
@@ -105,8 +127,21 @@ export async function GET() {
     whatsappWebhookUrl: `${appUrl}/api/webhooks/whatsapp`,
     whatsappVerifyTokenSet: Boolean(process.env.WHATSAPP_VERIFY_TOKEN?.trim()),
     whatsappPublicUrlWarning: appUrl.includes("localhost"),
+    widgetPublicUrlWarning: appUrl.includes("localhost") || appUrl.includes("127.0.0.1"),
+    authSecretWarning:
+      isAuthSecretWeak() &&
+      !appUrl.includes("localhost") &&
+      !appUrl.includes("127.0.0.1"),
+    widgetDeployReady:
+      !appUrl.includes("localhost") &&
+      !appUrl.includes("127.0.0.1") &&
+      widgetConfig.enabled,
+    widgetAllowedOrigins: widgetConfig.allowedOrigins,
     financeAutoMode: settings.financeAutoMode !== false,
     financeStartMonth: settings.financeStartMonth ?? "2026-06",
+    widgetEmbedCode: buildWidgetEmbedCode(appUrl, widgetConfig),
+    widgetPreviewUrl: `${appUrl}/widget/chat`,
+    widgetStats,
   });
 }
 
@@ -125,9 +160,18 @@ const schema = z.object({
   socialMarketingPrompt: z.string().nullable().optional(),
   autoCreateClientsFromChat: z.boolean().optional(),
   notifyNewClientTelegram: z.boolean().optional(),
+  notifyInboundMessageTelegram: z.boolean().optional(),
   autoReplyEnabled: z.boolean().optional(),
   autoReplyWhatsApp: z.boolean().optional(),
   autoReplyWeChat: z.boolean().optional(),
+  widgetEnabled: z.boolean().optional(),
+  widgetTitle: z.string().nullable().optional(),
+  widgetSubtitle: z.string().nullable().optional(),
+  widgetWelcomeMessage: z.string().nullable().optional(),
+  widgetPrimaryColor: z.string().nullable().optional(),
+  widgetButtonLabel: z.string().nullable().optional(),
+  crmWidgetAutoAssign: z.boolean().optional(),
+  crmAssignmentIndex: z.number().int().min(0).optional(),
 });
 
 export async function PATCH(request: Request) {

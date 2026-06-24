@@ -15,7 +15,7 @@ const inputClass =
 const btnPrimary =
   "inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted transition-colors disabled:opacity-50";
 
-export function ConversationRecorder() {
+export function ConversationRecorder({ onSaved }: { onSaved?: () => void }) {
   const { t, locale } = useLocale();
   const [clients, setClients] = useState<Client[]>([]);
   const [threads, setThreads] = useState<ConversationThread[]>([]);
@@ -34,6 +34,7 @@ export function ConversationRecorder() {
   const [workReady, setWorkReady] = useState(false);
   const [summarizing, setSummarizing] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
+  const [channelFilter, setChannelFilter] = useState<"wechat" | "web">("wechat");
 
   const selectedClient = clients.find((c) => c.id === selectedClientId);
 
@@ -50,8 +51,8 @@ export function ConversationRecorder() {
         fetch("/api/clients"),
         fetch(
           selectedClientId
-            ? `/api/conversations?client_id=${selectedClientId}&channel=wechat&limit=200`
-            : "/api/conversations?channel=wechat&limit=50",
+            ? `/api/conversations?client_id=${selectedClientId}&channel=${channelFilter}&limit=200`
+            : `/api/conversations?channel=${channelFilter}&limit=50`,
         ),
       ]);
       const [clientData, convData] = await Promise.all([clientRes.json(), convRes.json()]);
@@ -61,7 +62,7 @@ export function ConversationRecorder() {
     } finally {
       setLoading(false);
     }
-  }, [selectedClientId]);
+  }, [selectedClientId, channelFilter]);
 
   useEffect(() => {
     load();
@@ -96,6 +97,7 @@ export function ConversationRecorder() {
         setStatus(t("conversations.imported", { count: data.imported }));
         setPaste("");
         load();
+        onSaved?.();
       } else {
         setStatus(data.error ?? t("conversations.importFailed"));
       }
@@ -129,6 +131,7 @@ export function ConversationRecorder() {
         setQuickContent("");
         setStatus(t("conversations.saved"));
         load();
+        onSaved?.();
       }
     } finally {
       setSaving(false);
@@ -153,6 +156,7 @@ export function ConversationRecorder() {
         setSendContent("");
         setStatus(t("conversations.workSent"));
         load();
+        onSaved?.();
       } else {
         setStatus(data.error ?? t("conversations.workSendFailed"));
       }
@@ -203,6 +207,31 @@ export function ConversationRecorder() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">{t("conversations.title")}</h1>
         <p className="mt-1 text-muted">{t("conversations.subtitle")}</p>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setChannelFilter("wechat")}
+          className={`rounded-lg px-3 py-1.5 text-sm ${
+            channelFilter === "wechat"
+              ? "bg-accent/15 text-accent"
+              : "border border-card-border text-muted hover:text-foreground"
+          }`}
+        >
+          {t("conversations.channelWechat")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setChannelFilter("web")}
+          className={`rounded-lg px-3 py-1.5 text-sm ${
+            channelFilter === "web"
+              ? "bg-accent/15 text-accent"
+              : "border border-card-border text-muted hover:text-foreground"
+          }`}
+        >
+          {t("conversations.channelWebsite")}
+        </button>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">

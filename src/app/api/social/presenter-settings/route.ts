@@ -7,6 +7,7 @@ import {
   EDGE_VOICES,
   MAC_VOICES,
 } from "@/lib/social/presenter-voices";
+import { getDefaultTtsPriority } from "@/lib/local/self-hosted-config";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ const macIds = MAC_VOICES.map((v) => v.id);
 const schema = z.object({
   edgeVoice: z.enum(edgeIds as [string, ...string[]]).optional(),
   macVoice: z.enum(macIds as [string, ...string[]]).optional(),
-  ttsPriority: z.enum(["edge", "mac", "auto"]).optional(),
+  ttsPriority: z.enum(["piper", "minimax", "edge", "mac", "auto"]).optional(),
 });
 
 export async function GET() {
@@ -25,7 +26,7 @@ export async function GET() {
     {
       edgeVoice: settings.presenterEdgeVoice ?? DEFAULT_EDGE_VOICE,
       macVoice: settings.presenterMacVoice ?? DEFAULT_MAC_VOICE,
-      ttsPriority: settings.presenterTtsPriority ?? (process.platform === "darwin" ? "mac" : "auto"),
+      ttsPriority: settings.presenterTtsPriority ?? getDefaultTtsPriority(),
       edgeVoices: EDGE_VOICES,
       macVoices: MAC_VOICES,
     },
@@ -49,7 +50,7 @@ export async function PATCH(request: Request) {
       {
         edgeVoice: settings.presenterEdgeVoice ?? DEFAULT_EDGE_VOICE,
         macVoice: settings.presenterMacVoice ?? DEFAULT_MAC_VOICE,
-        ttsPriority: settings.presenterTtsPriority ?? (process.platform === "darwin" ? "mac" : "auto"),
+        ttsPriority: settings.presenterTtsPriority ?? getDefaultTtsPriority(),
       },
       { headers: { "Cache-Control": "no-store" } },
     );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -15,6 +15,7 @@ import {
 import { InstallAppBanner } from "@/components/layout/install-app-banner";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { Sidebar } from "@/components/layout/sidebar";
+import { useAuth } from "@/components/providers/auth-provider";
 import { useLocale } from "@/components/providers/locale-provider";
 import { cn } from "@/lib/utils";
 
@@ -22,20 +23,24 @@ const bottomNav = [
   { href: "/dashboard", labelKey: "nav.overview", icon: LayoutDashboard },
   { href: "/dashboard/todos", labelKey: "nav.todos", icon: CheckSquare },
   { href: "/dashboard/finance", labelKey: "nav.finance", icon: Wallet },
-  { href: "/dashboard/ai-assistant", labelKey: "nav.aiAssistant", icon: MessageSquare },
-  { href: "/dashboard/clients", labelKey: "nav.clients", icon: Users },
+  { href: "/dashboard/conversations", labelKey: "nav.conversations", icon: MessageSquare },
+  { href: "/dashboard/crm", labelKey: "nav.crm", icon: Users },
 ] as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { t } = useLocale();
+  const { canHref } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const mobileNav = bottomNav.filter(({ href }) => canHref(href));
 
   return (
-    <div className="flex h-[100dvh] overflow-hidden">
+    <div className="premium-canvas flex h-[100dvh] overflow-hidden">
       {/* Desktop sidebar */}
       <div className="hidden md:flex md:shrink-0">
-        <Sidebar />
+        <Suspense fallback={null}>
+          <Sidebar />
+        </Suspense>
       </div>
 
       {/* Mobile drawer */}
@@ -47,15 +52,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             aria-label={t("common.cancel")}
             onClick={() => setMenuOpen(false)}
           />
-          <div className="absolute left-0 top-0 flex h-full w-[min(280px,85vw)] flex-col bg-card shadow-xl">
+          <div className="absolute left-0 top-0 flex h-full w-[min(280px,85vw)] flex-col border-r border-white/[0.08] bg-[#08080c] shadow-2xl">
             <div className="flex items-center justify-between border-b border-card-border px-4 py-3">
-              <span className="font-bold text-foreground">AXPM</span>
+              <span className="font-bold text-foreground">{t("app.brand")}</span>
               <button type="button" onClick={() => setMenuOpen(false)} className="p-2 text-muted">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="flex-1 overflow-hidden" onClick={() => setMenuOpen(false)}>
-              <Sidebar />
+              <Suspense fallback={null}>
+                <Sidebar />
+              </Suspense>
             </div>
           </div>
         </div>
@@ -63,7 +70,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile top bar */}
-        <header className="flex items-center justify-between border-b border-card-border bg-card px-4 py-3 md:hidden">
+        <header className="flex items-center justify-between border-b border-white/[0.06] bg-[#08080c]/80 px-4 py-3 backdrop-blur-xl md:hidden">
           <button
             type="button"
             onClick={() => setMenuOpen(true)}
@@ -72,7 +79,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <p className="text-sm font-semibold text-foreground">{t("app.title")}</p>
+          <p className="font-display text-sm font-semibold text-gradient-gold">{t("app.title")}</p>
           <LanguageSwitcher className="text-xs" />
         </header>
 
@@ -84,8 +91,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
 
         {/* Mobile bottom navigation */}
-        <nav className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-card-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden">
-          {bottomNav.map(({ href, labelKey, icon: Icon }) => {
+        <nav className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-white/[0.08] bg-[#08080c]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden">
+          {mobileNav.map(({ href, labelKey, icon: Icon }) => {
             const active =
               pathname === href ||
               (href !== "/dashboard" && pathname.startsWith(href));

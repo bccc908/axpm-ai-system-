@@ -10,6 +10,7 @@ import {
 } from "@/lib/mock-data";
 import type { CrmData, CrmOverview } from "@/types/crm";
 import type { Client, DailyReport, FollowUp, Reminder, TeamTask } from "@/types/database";
+import { buildDefaultPipeline } from "@/lib/crm/pipelines-default";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const DATA_FILE = path.join(DATA_DIR, "crm.json");
@@ -23,6 +24,29 @@ function seedData(): CrmData {
     reminders: [],
     conversationSummaries: [],
     dailyReports: [mockDailyReport],
+    activities: [],
+    deals: [],
+    pipelines: [buildDefaultPipeline()],
+    leads: [],
+    accounts: [],
+  };
+}
+
+function migrateCrmData(raw: Partial<CrmData>): CrmData {
+  const seed = seedData();
+  return {
+    clients: raw.clients ?? seed.clients,
+    followUps: raw.followUps ?? seed.followUps,
+    teamMembers: raw.teamMembers ?? seed.teamMembers,
+    tasks: raw.tasks ?? seed.tasks,
+    reminders: raw.reminders ?? seed.reminders,
+    conversationSummaries: raw.conversationSummaries ?? seed.conversationSummaries,
+    dailyReports: raw.dailyReports ?? seed.dailyReports,
+    activities: raw.activities ?? seed.activities,
+    deals: raw.deals ?? seed.deals,
+    pipelines: raw.pipelines?.length ? raw.pipelines : seed.pipelines,
+    leads: raw.leads ?? seed.leads,
+    accounts: raw.accounts ?? seed.accounts,
   };
 }
 
@@ -38,10 +62,10 @@ async function ensureDataFile() {
 export async function readCrmData(): Promise<CrmData> {
   await ensureDataFile();
   const raw = await fs.readFile(DATA_FILE, "utf-8");
-  return JSON.parse(raw) as CrmData;
+  return migrateCrmData(JSON.parse(raw) as Partial<CrmData>);
 }
 
-async function writeCrmData(data: CrmData) {
+export async function writeCrmData(data: CrmData) {
   await ensureDataFile();
   await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
 }
@@ -92,6 +116,8 @@ export async function deleteClient(id: string) {
   const before = data.clients.length;
   data.clients = data.clients.filter((c) => c.id !== id);
   data.followUps = data.followUps.filter((f) => f.client_id !== id);
+  data.deals = (data.deals ?? []).filter((d) => d.client_id !== id);
+  data.activities = (data.activities ?? []).filter((a) => a.client_id !== id);
   if (data.clients.length === before) return false;
   await writeCrmData(data);
   return true;
@@ -123,9 +149,12 @@ export async function listTeamMembers() {
   return data.teamMembers;
 }
 
-export async function listTasks() {
+export async function listTasks(filters?: { client_id?: string; deal_id?: string }) {
   const data = await readCrmData();
-  return data.tasks.sort(
+  let tasks = [...data.tasks];
+  if (filters?.client_id) tasks = tasks.filter((t) => t.client_id === filters.client_id);
+  if (filters?.deal_id) tasks = tasks.filter((t) => t.deal_id === filters.deal_id);
+  return tasks.sort(
     (a, b) =>
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   );

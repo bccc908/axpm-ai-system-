@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "AXPM AI Operations",
-    short_name: "AXPM",
-    description: "CRM, finance, WeChat, and AI assistant for AXPM",
+    name: "信号旗 AI 运营系统",
+    short_name: "信号旗",
+    description: "CRM、财务、微信与 AI 助手 — Signal Flag Operations",
     start_url: "/dashboard",
     scope: "/",
     display: "standalone",
@@ -15,5 +15,6 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/icon", sizes: "512x512", type: "image/png", purpose: "any" },
       { src: "/apple-icon", sizes: "180x180", type: "image/png", purpose: "any" },
     ],
+    id: "/",
   };
 }

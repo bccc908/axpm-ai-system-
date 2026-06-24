@@ -12,6 +12,7 @@ import { buildTestEmail } from "./templates";
 import { getPaymentsNeedingReminder, runFinanceAutomation } from "@/lib/finance/store";
 import { isFinanceAutoMode } from "@/lib/finance/settings";
 import { getCrmOverview } from "@/lib/crm/store";
+import { runDailyFortuneEmail } from "@/lib/fortune/daily";
 
 export async function sendTestEmail() {
   const config = await getEmailConfig();
@@ -34,6 +35,46 @@ export async function sendDailyDigestEmail() {
 
   const ok = results.every((r) => r.ok);
   return { ok, results };
+}
+
+export async function sendDailyFortuneEmail(options?: { force?: boolean }) {
+  const config = await getEmailConfig();
+  if (!config.isReady) {
+    return { ok: false as const, error: "Email not configured" };
+  }
+
+  const result = await runDailyFortuneEmail({ force: options?.force });
+
+  if ("skipped" in result && result.skipped) {
+    if (!result.ok && result.reason === "no_owner") {
+      return { ok: false as const, error: "No owner fortune profile" };
+    }
+    return { ok: true as const, skipped: true, reason: result.reason, today: result.today };
+  }
+
+  if ("partial" in result && result.partial) {
+    const err =
+      "email" in result && result.email && !result.email.ok ? result.email.error : "Fortune email failed";
+    return { ok: false as const, error: err, partial: true };
+  }
+
+  if (
+    result.ok &&
+    "reading" in result &&
+    "email" in result &&
+    result.email &&
+    result.email.ok === true
+  ) {
+    const { reading, email, today } = result;
+    return {
+      ok: true as const,
+      today,
+      title: reading.title,
+      messageId: email.messageId,
+    };
+  }
+
+  return { ok: false as const, error: "Fortune email failed" };
 }
 
 export async function sendPaymentReminderEmail() {
@@ -113,6 +154,10 @@ export async function runEmailAutomation() {
     hour12: false,
   });
   const currentHour = Number(hour);
+
+  if (settings.auto.dailyFortune && currentHour === digestHour) {
+    output.dailyFortune = await sendDailyFortuneEmail();
+  }
 
   if (settings.auto.dailyDigest && currentHour === digestHour) {
     output.dailyDigest = await sendDailyDigestEmail();

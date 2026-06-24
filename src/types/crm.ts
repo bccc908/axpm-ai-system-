@@ -7,6 +7,8 @@ import type {
   TeamMember,
   TeamTask,
 } from "@/types/database";
+import type { CrmActivity, CrmDeal, CrmPipeline } from "@/types/crm-pro";
+import type { CrmAccount, CrmLead } from "@/types/crm-zoho";
 
 export interface CrmData {
   clients: Client[];
@@ -16,6 +18,11 @@ export interface CrmData {
   reminders: Reminder[];
   conversationSummaries: ConversationSummary[];
   dailyReports: DailyReport[];
+  activities: CrmActivity[];
+  deals: CrmDeal[];
+  pipelines: CrmPipeline[];
+  leads: CrmLead[];
+  accounts: CrmAccount[];
 }
 
 export interface CrmOverview {

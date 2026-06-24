@@ -4,7 +4,7 @@ import type { Channel, Client } from "@/types/database";
 import { createClient, listClients, updateClient } from "@/lib/crm/store";
 import { attachMessagesToClient } from "@/lib/conversations/link-client";
 
-export type ClientContactSource = "conversation" | "register" | "whatsapp" | "wechat_work";
+export type ClientContactSource = "conversation" | "register" | "whatsapp" | "wechat_work" | "web_widget";
 
 export type EnsureClientInput = {
   name: string;
@@ -87,7 +87,9 @@ async function notifyNewClientTelegram(client: Client, source: ClientContactSour
         ? "WhatsApp"
         : source === "wechat_work"
           ? "WeChat Work"
-          : "Conversation";
+          : source === "web_widget"
+            ? "Website chat"
+            : "Conversation";
 
   const lines = [
     "👤 <b>New client recorded</b>",
@@ -127,7 +129,7 @@ export async function ensureClientFromContact(
   | { client: Client; created: boolean; skipped?: false }
   | { client: null; created: false; skipped: true }
 > {
-  const chatSources: ClientContactSource[] = ["conversation", "whatsapp", "wechat_work"];
+  const chatSources: ClientContactSource[] = ["conversation", "whatsapp", "wechat_work", "web_widget"];
   if (chatSources.includes(input.source) && !(await isAutoCreateFromChatEnabled())) {
     const existing = await findClientByContact({
       name: input.name,
@@ -184,7 +186,13 @@ export async function ensureClientFromContact(
   followUp.setDate(followUp.getDate() + 2);
 
   const sourceTag =
-    input.source === "register" ? "register" : input.source === "whatsapp" ? "whatsapp" : "auto-chat";
+    input.source === "register"
+      ? "register"
+      : input.source === "whatsapp"
+        ? "whatsapp"
+        : input.source === "web_widget"
+          ? "website"
+          : "auto-chat";
 
   const autoNote = `Auto-recorded from ${input.source} on ${now.toLocaleString("en-US", { timeZone: "Asia/Kuala_Lumpur" })}`;
   const client = await createClient({
@@ -250,6 +258,17 @@ export async function registerClientFromForm(input: {
       patch.notes = existing.notes ? `${existing.notes}\n${noteLine}` : noteLine;
     }
     const client = (await updateClient(existing.id, patch)) ?? existing;
+    await (await import("@/lib/crm/zoho-store")).ensureLeadFromInbound({
+      name: client.name,
+      email: client.email,
+      phone: client.phone,
+      whatsapp: client.whatsapp,
+      wechat: client.wechat,
+      source: "register",
+      channel: "email",
+      client_id: client.id,
+      notes: noteLine,
+    });
     return { client, created: false };
   }
 
@@ -268,6 +287,19 @@ export async function registerClientFromForm(input: {
   if (!created.client) {
     throw new Error("Failed to create client from registration");
   }
+
+  await (await import("@/lib/crm/zoho-store")).ensureLeadFromInbound({
+    name: created.client.name,
+    email: created.client.email,
+    phone: created.client.phone,
+    whatsapp: created.client.whatsapp,
+    wechat: created.client.wechat,
+    source: "register",
+    channel: "email",
+    client_id: created.client.id,
+    notes: noteLine,
+  });
+
   return { client: created.client, created: created.created };
 }
 

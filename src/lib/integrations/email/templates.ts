@@ -9,8 +9,8 @@ export type EmailContent = {
 function wrapHtml(title: string, body: string, locale: Locale) {
   const footer =
     locale === "zh"
-      ? "此邮件由 AXPM AI 运营系统自动发送"
-      : "Sent automatically by AXPM AI Operation System";
+      ? "此邮件由信号旗 AI 运营系统自动发送"
+      : "Sent automatically by Signal Flag AI Operation System";
   return `<!DOCTYPE html>
 <html lang="${locale}">
 <head><meta charset="utf-8"><title>${title}</title></head>
@@ -143,6 +143,124 @@ export function buildDailyDigestEmail(params: {
         section("Finance This Month", financeLines),
         paymentLines.length ? section("Payments Due Soon", paymentLines) : "",
         notes ? `<p><strong>Notes:</strong> ${notes}</p>` : "",
+      ].join(""),
+      locale,
+    ),
+  };
+}
+
+function escapeHtmlText(text: string) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function markdownReadingToHtml(reading: string) {
+  return reading
+    .split("\n")
+    .map((line) => {
+      const t = line.trim();
+      if (!t) return "";
+      if (t.startsWith("## "))
+        return `<h3 style="margin:20px 0 8px;font-size:15px;color:#2563eb;">${escapeHtmlText(t.slice(3))}</h3>`;
+      if (t.startsWith("### "))
+        return `<h4 style="margin:12px 0 6px;font-size:14px;">${escapeHtmlText(t.slice(4))}</h4>`;
+      let inner = escapeHtmlText(t).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      if (t.startsWith(">"))
+        inner = `<blockquote style="margin:8px 0;padding-left:12px;border-left:3px solid #2563eb;color:#555;">${inner.slice(2).trim()}</blockquote>`;
+      else inner = `<p style="margin:8px 0;line-height:1.65;">${inner}</p>`;
+      return inner;
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+export function buildDailyFortuneEmail(params: {
+  locale: Locale;
+  dateLabel: string;
+  name: string | null;
+  title: string;
+  summary: string | null;
+  reading: string;
+  zodiac: string | null;
+  lucky: { color: string | null; number: string | null; keyword: string | null } | null;
+}): EmailContent {
+  const { locale, dateLabel, name, title, summary, reading, zodiac, lucky } = params;
+
+  const luckyLine =
+    lucky?.color && locale === "zh"
+      ? `幸运色 ${lucky.color} · 数字 ${lucky.number ?? "—"} · ${lucky.keyword ?? ""}`
+      : lucky?.color
+        ? `Lucky: ${lucky.color} · ${lucky.number ?? "—"} · ${lucky.keyword ?? ""}`
+        : null;
+
+  if (locale === "zh") {
+    const subject = `AXPM 每日决策简报 — ${dateLabel}`;
+    const text = [
+      "AXPM 每日决策简报",
+      dateLabel,
+      name ? `姓名：${name}` : null,
+      "",
+      title,
+      summary ?? "",
+      "",
+      reading,
+      "",
+      zodiac ? `生肖：${zodiac}` : null,
+      luckyLine,
+      "",
+      "仅供娱乐与个人反思 · AXPM Fortune",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    return {
+      subject,
+      text,
+      html: wrapHtml(
+        "每日决策简报",
+        [
+          `<p style="color:#666;">${escapeHtmlText(dateLabel)}</p>`,
+          name ? `<p><strong>${escapeHtmlText(name)}</strong></p>` : "",
+          `<h2 style="margin:12px 0 8px;font-size:17px;">${escapeHtmlText(title)}</h2>`,
+          summary ? `<p style="color:#555;font-style:italic;">${escapeHtmlText(summary)}</p>` : "",
+          markdownReadingToHtml(reading),
+          zodiac || luckyLine
+            ? `<p style="margin-top:16px;font-size:13px;color:#666;">${[zodiac ? `生肖：${escapeHtmlText(zodiac)}` : null, luckyLine ? escapeHtmlText(luckyLine) : null].filter(Boolean).join(" · ")}</p>`
+            : "",
+        ].join(""),
+        locale,
+      ),
+    };
+  }
+
+  const subject = `AXPM Daily Fortune — ${dateLabel}`;
+  const text = [
+    "AXPM Daily Fortune",
+    dateLabel,
+    "",
+    title,
+    summary ?? "",
+    "",
+    reading,
+    "",
+    zodiac ? `Zodiac: ${zodiac}` : null,
+    luckyLine,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return {
+    subject,
+    text,
+    html: wrapHtml(
+      "Daily Fortune",
+      [
+        `<p style="color:#666;">${escapeHtmlText(dateLabel)}</p>`,
+        `<h2 style="margin:12px 0 8px;font-size:17px;">${escapeHtmlText(title)}</h2>`,
+        summary ? `<p style="color:#555;font-style:italic;">${escapeHtmlText(summary)}</p>` : "",
+        markdownReadingToHtml(reading),
       ].join(""),
       locale,
     ),

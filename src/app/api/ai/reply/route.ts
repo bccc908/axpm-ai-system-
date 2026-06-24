@@ -13,7 +13,7 @@ export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 const schema = z.object({
-  channel: z.enum(["whatsapp", "wechat", "telegram", "email", "phone"]),
+  channel: z.enum(["whatsapp", "wechat", "telegram", "email", "phone", "web"]),
   clientName: z.string().min(1),
   customerQuestion: z.string().min(1).optional(),
   context: z.string().optional(),
@@ -50,16 +50,19 @@ export async function POST(request: Request) {
         customBrief: trainingBrief || undefined,
       };
 
+      const llmProvider = getLlmProvider();
       const replyProvider = getReplyProvider();
       const preferOpenClaw =
-        replyProvider === "openclaw" ||
-        (replyProvider === "auto" && isOpenClawConfigured());
+        llmProvider !== "deepseek" &&
+        (replyProvider === "openclaw" ||
+          (replyProvider === "auto" && isOpenClawConfigured()));
 
-      const result = preferOpenClaw
-        ? await generateCustomerReply(input)
-        : getLlmProvider() === "deepseek"
+      const result =
+        llmProvider === "deepseek"
           ? await generateDeepSeekCustomerReply(input)
-          : await generateCustomerReply(input);
+          : preferOpenClaw
+            ? await generateCustomerReply(input)
+            : await generateCustomerReply(input);
 
       const usedTrainingDocs =
         Boolean(trainingBrief?.trim()) && Boolean(result.fallback);

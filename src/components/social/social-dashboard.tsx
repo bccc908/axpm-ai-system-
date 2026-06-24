@@ -23,8 +23,8 @@ import { formatDateLocalized } from "@/lib/i18n";
 import type { SocialIntegrationStatus, SocialPlatform, SocialPost } from "@/types/social";
 import { MARKETING_PROMPT_TEMPLATE } from "@/lib/social/marketing-prompt-template";
 
-type SpeechSource = "edge" | "mac" | "silent";
-type TtsPriority = "edge" | "mac" | "auto";
+type SpeechSource = "piper" | "minimax" | "edge" | "mac" | "silent";
+type TtsPriority = "piper" | "minimax" | "edge" | "mac" | "auto";
 type VoiceOption = { id: string; labelZh: string; labelEn: string };
 
 type SlideCard = { tag: string; headline: string; body: string };
@@ -135,7 +135,13 @@ export function SocialDashboard() {
         if (!r.ok) return;
         if (typeof d.edgeVoice === "string") setEdgeVoice(d.edgeVoice);
         if (typeof d.macVoice === "string") setMacVoice(d.macVoice);
-        if (d.ttsPriority === "edge" || d.ttsPriority === "mac" || d.ttsPriority === "auto") {
+        if (
+          d.ttsPriority === "piper" ||
+          d.ttsPriority === "minimax" ||
+          d.ttsPriority === "edge" ||
+          d.ttsPriority === "mac" ||
+          d.ttsPriority === "auto"
+        ) {
           setTtsPriority(d.ttsPriority);
         }
         if (Array.isArray(d.edgeVoices)) setEdgeVoiceOptions(d.edgeVoices);
@@ -201,6 +207,8 @@ export function SocialDashboard() {
   }
 
   function speechSourceLabel(source: SpeechSource | null | undefined) {
+    if (source === "piper") return t("social.speechSourcePiper");
+    if (source === "minimax") return t("social.speechSourceMiniMax");
     if (source === "edge") return t("social.speechSourceEdge");
     if (source === "mac") return t("social.speechSourceMac");
     if (source === "silent") return t("social.speechSourceSilent");
@@ -262,7 +270,13 @@ export function SocialDashboard() {
       if (data.slides?.[0]?.url) {
         setImageUrl(`${window.location.origin}${data.slides[0].url}`);
       }
-      if (data.speechSource === "edge" || data.speechSource === "mac" || data.speechSource === "silent") {
+      if (
+        data.speechSource === "piper" ||
+        data.speechSource === "minimax" ||
+        data.speechSource === "edge" ||
+        data.speechSource === "mac" ||
+        data.speechSource === "silent"
+      ) {
         setLastSpeechSource(data.speechSource);
       }
       setVideoCacheBust(Date.now());
@@ -389,7 +403,13 @@ export function SocialDashboard() {
       if (data.slides?.[0]?.url) {
         setImageUrl(`${window.location.origin}${data.slides[0].url}`);
       }
-      if (data.speechSource === "edge" || data.speechSource === "mac" || data.speechSource === "silent") {
+      if (
+        data.speechSource === "piper" ||
+        data.speechSource === "minimax" ||
+        data.speechSource === "edge" ||
+        data.speechSource === "mac" ||
+        data.speechSource === "silent"
+      ) {
         setLastSpeechSource(data.speechSource);
       }
       setVideoCacheBust(Date.now());
@@ -709,8 +729,10 @@ export function SocialDashboard() {
                       {(
                         [
                           ["auto", t("social.presenterTtsAuto")],
+                          ["piper", t("social.presenterTtsPiper")],
                           ["edge", t("social.presenterTtsEdge")],
                           ["mac", t("social.presenterTtsMac")],
+                          ["minimax", t("social.presenterTtsMiniMax")],
                         ] as const
                       ).map(([id, label]) => (
                         <button

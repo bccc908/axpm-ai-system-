@@ -1,5 +1,14 @@
 import { NextResponse } from "next/server";
-import { transcribeAudio } from "@/lib/ai/transcribe";
+import { getTranscribeProviders, transcribeAudio } from "@/lib/ai/transcribe";
+
+export async function GET() {
+  const providers = getTranscribeProviders();
+  return NextResponse.json({
+    ready: providers.length > 0,
+    providers,
+    preferred: providers[0] ?? null,
+  });
+}
 
 export async function POST(request: Request) {
   try {
@@ -13,13 +22,14 @@ export async function POST(request: Request) {
 
     const buffer = Buffer.from(await audio.arrayBuffer());
     const lang = language === "zh" ? "zh" : language === "en" ? "en" : undefined;
-    const result = await transcribeAudio(buffer, "recording.webm", lang);
+    const filename = audio instanceof File && audio.name ? audio.name : "recording.webm";
+    const result = await transcribeAudio(buffer, filename, lang);
 
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
 
-    return NextResponse.json({ text: result.text });
+    return NextResponse.json({ text: result.text, provider: result.provider });
   } catch (error) {
     console.error("[Voice Transcribe]", error);
     return NextResponse.json({ error: "Failed to transcribe audio" }, { status: 500 });

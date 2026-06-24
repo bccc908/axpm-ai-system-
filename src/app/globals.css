@@ -1,16 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0f1a;
-  --foreground: #f1f5f9;
-  --card: #111827;
-  --card-border: #1e293b;
-  --accent: #3b82f6;
-  --accent-muted: #1d4ed8;
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --muted: #94a3b8;
+  --background: #050508;
+  --foreground: #f4f4f5;
+  --card: rgba(16, 14, 22, 0.65);
+  --card-solid: #121018;
+  --card-border: rgba(255, 255, 255, 0.08);
+  --accent: #d4a853;
+  --accent-muted: #b8923f;
+  --accent-glow: rgba(212, 168, 83, 0.35);
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --muted: #9ca3af;
+  --ring: rgba(212, 168, 83, 0.45);
 }
 
 @theme inline {
@@ -26,10 +29,343 @@
   --color-muted: var(--muted);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-noto-serif);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ambient background for dashboard */
+.premium-canvas {
+  position: relative;
+  isolation: isolate;
+}
+
+.premium-canvas::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(212, 168, 83, 0.12), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 90% 0%, rgba(120, 80, 200, 0.08), transparent 50%),
+    radial-gradient(ellipse 50% 30% at 50% 100%, rgba(212, 168, 83, 0.06), transparent 55%),
+    var(--background);
+  pointer-events: none;
+}
+
+.premium-canvas::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.35;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+.font-display {
+  font-family: var(--font-display), var(--font-sans), serif;
+}
+
+.text-gradient-gold {
+  background: linear-gradient(135deg, #f5e6c8 0%, #d4a853 45%, #a67c3d 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.glass-panel {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  border: 1px solid var(--card-border);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+    0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+.glass-panel-hover {
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.25s ease;
+}
+
+.glass-panel-hover:hover {
+  border-color: rgba(212, 168, 83, 0.25);
+  box-shadow:
+    0 0 0 1px rgba(212, 168, 83, 0.08) inset,
+    0 12px 40px rgba(0, 0, 0, 0.4),
+    0 0 48px -12px var(--accent-glow);
+}
+
+.btn-premium {
+  background: linear-gradient(135deg, #e8c97a 0%, #c9a227 50%, #a67c3d 100%);
+  color: #1a1208;
+  font-weight: 600;
+  box-shadow: 0 2px 16px rgba(212, 168, 83, 0.35);
+  transition: filter 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-premium:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 0 4px 24px rgba(212, 168, 83, 0.45);
+}
+
+.btn-premium:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.input-premium {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--card-border);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-premium:focus {
+  outline: none;
+  border-color: rgba(212, 168, 83, 0.45);
+  box-shadow: 0 0 0 3px rgba(212, 168, 83, 0.12);
+}
+
+.nav-pill-active {
+  background: linear-gradient(135deg, rgba(212, 168, 83, 0.22) 0%, rgba(212, 168, 83, 0.08) 100%);
+  border: 1px solid rgba(212, 168, 83, 0.35);
+  color: #f5e6c8;
+  box-shadow: 0 0 24px -8px var(--accent-glow);
+}
+
+.sidebar-glow-line {
+  background: linear-gradient(180deg, transparent, var(--accent), transparent);
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.badge-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(212, 168, 83, 0.15) 0%,
+    rgba(212, 168, 83, 0.35) 50%,
+    rgba(212, 168, 83, 0.15) 100%
+  );
+  background-size: 200% auto;
+  animation: shimmer 4s linear infinite;
+}
+
+/* ── Gold trading desk ── */
+.gold-desk {
+  --gold-surface: #060a12;
+  --gold-surface-2: #080e18;
+  --gold-line: rgba(56, 120, 180, 0.12);
+  --gold-line-accent: rgba(56, 189, 248, 0.22);
+}
+
+.gold-desk-panel {
+  background: linear-gradient(
+    165deg,
+    rgba(10, 16, 28, 0.95) 0%,
+    rgba(6, 10, 18, 0.98) 55%,
+    rgba(4, 7, 14, 1) 100%
+  );
+  border: 1px solid var(--gold-line);
+  border-radius: 14px;
+  box-shadow:
+    0 0 0 1px rgba(56, 120, 180, 0.04) inset,
+    0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.gold-desk-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.85rem;
+  border-bottom: 1px solid var(--gold-line);
+  background: linear-gradient(180deg, rgba(56, 120, 180, 0.06) 0%, transparent 100%);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #94a8bc;
+}
+
+@keyframes gold-tape-flash {
+  0% {
+    background-color: rgba(56, 189, 248, 0.22);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.gold-ticker-strip {
+  background: linear-gradient(
+    90deg,
+    rgba(56, 120, 180, 0.12) 0%,
+    rgba(14, 40, 70, 0.08) 30%,
+    transparent 65%,
+    rgba(212, 168, 83, 0.05) 100%
+  );
+  border: 1px solid var(--gold-line);
+  border-radius: 14px;
+  box-shadow:
+    0 0 0 1px rgba(56, 120, 180, 0.05) inset,
+    0 0 40px -20px rgba(56, 120, 180, 0.15);
+}
+
+.gold-mode-rail {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  border: 1px solid var(--gold-line);
+  background: rgba(4, 10, 20, 0.65);
+}
+
+.gold-mode-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  transition:
+    color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.gold-mode-tab:hover {
+  color: var(--foreground);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.gold-mode-tab-active {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(0, 180, 255, 0.45) 0%, rgba(255, 204, 0, 0.25) 100%);
+  border: 1px solid rgba(255, 204, 0, 0.65);
+  box-shadow:
+    0 0 24px -2px rgba(255, 204, 0, 0.55),
+    0 0 16px -4px rgba(0, 200, 255, 0.4);
+}
+
+.gold-level-rail {
+  position: relative;
+  margin-top: 1.25rem;
+  padding-left: 1.125rem;
+}
+
+.gold-level-rail::before {
+  content: "";
+  position: absolute;
+  left: 0.35rem;
+  top: 0.65rem;
+  bottom: 0.65rem;
+  width: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 70, 90, 0.85) 0%,
+    rgba(255, 120, 60, 0.35) 45%,
+    rgba(0, 255, 136, 0.85) 100%
+  );
+  box-shadow: 0 0 12px rgba(255, 80, 100, 0.25);
+}
+
+.gold-level-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 3.25rem 1fr auto;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.55rem 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+}
+
+.gold-level-row::before {
+  content: "";
+  position: absolute;
+  left: -0.875rem;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  background: currentColor;
+  box-shadow: 0 0 12px currentColor, 0 0 4px currentColor;
+}
+
+.gold-level-row::after {
+  display: none;
+}
+
+.gold-level-line {
+  height: 1px;
+  align-self: center;
+  background: linear-gradient(90deg, currentColor 0%, rgba(255, 255, 255, 0.08) 70%, transparent 100%);
+  opacity: 0.45;
+}
+
+.gold-trade-plan {
+  background: linear-gradient(165deg, rgba(12, 18, 28, 0.98) 0%, rgba(8, 12, 20, 0.95) 100%);
+  border-color: rgba(212, 168, 83, 0.12);
+}
+
+.gold-trade-plan-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #d4a853;
+}
+
+.gold-trade-plan-thesis {
+  margin-top: 0.875rem;
+  font-size: 0.8125rem;
+  line-height: 1.65;
+  color: rgba(235, 242, 250, 0.92);
+}
+
+.gold-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8;
+  animation: gold-pulse 2s ease-in-out infinite;
+}
+
+@keyframes gold-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.85);
+  }
 }

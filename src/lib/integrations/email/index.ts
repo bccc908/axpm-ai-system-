@@ -5,6 +5,7 @@ export { appendEmailLog, listEmailLog } from "./log";
 export {
   sendTestEmail,
   sendDailyDigestEmail,
+  sendDailyFortuneEmail,
   sendPaymentReminderEmail,
   sendClientFollowUpBatchEmail,
   sendFollowUpEmail,

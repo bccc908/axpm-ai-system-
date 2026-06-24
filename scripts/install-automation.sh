@@ -42,6 +42,7 @@ EOF
   launchctl unload "$PLIST" 2>/dev/null || true
   launchctl load "$PLIST"
   echo "Installed macOS daily automation (9:00 AM) → scripts/cron-tick.sh"
+echo "  Includes: digest, fortune, gold signals, email, finance, social, auto-backup"
   echo "Plist: $PLIST"
   echo ""
   echo "Weekly auto-upgrade (optional, run manually once to add):"

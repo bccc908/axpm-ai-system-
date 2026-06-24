@@ -115,6 +115,14 @@ export async function createMessage(input: {
 
   data.messages.unshift(message);
   await writeData(data);
+
+  try {
+    const { touchSessionFromMessage } = await import("@/lib/inbox/session-store");
+    await touchSessionFromMessage(message);
+  } catch (err) {
+    console.error("[Inbox session sync]", err);
+  }
+
   return message;
 }
 

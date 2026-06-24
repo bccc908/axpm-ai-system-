@@ -1,5 +1,5 @@
-import { ClientsManager } from "@/components/crm/clients-manager";
+import { redirect } from "next/navigation";
 
 export default function ClientsPage() {
-  return <ClientsManager />;
+  redirect("/dashboard/crm?tab=contacts");
 }

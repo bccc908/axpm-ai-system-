@@ -3,6 +3,7 @@ import { createMessage } from "@/lib/conversations/store";
 import { listClients } from "@/lib/crm/store";
 import { ensureClientFromContact } from "@/lib/crm/auto-client";
 import { recordWeChatWorkMessage } from "@/lib/conversations/store";
+import { notifyInboundMessageTelegram } from "@/lib/integrations/inbound-notify";
 
 const QYAPI = "https://qyapi.weixin.qq.com";
 
@@ -232,6 +233,14 @@ export async function handleWeChatWorkEvent(body: Record<string, unknown>) {
   if (result.duplicate) {
     return { recorded: false, reason: "duplicate", clientCreated: ensured.created };
   }
+
+  await notifyInboundMessageTelegram({
+    channel: "wechat",
+    clientName: client.name,
+    clientId: client.id,
+    preview: content,
+    created: ensured.created,
+  }).catch(() => undefined);
 
   const { maybeAutoReply } = await import("@/lib/ai/auto-reply");
   const auto = await maybeAutoReply({

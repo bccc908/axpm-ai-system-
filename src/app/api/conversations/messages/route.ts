@@ -6,7 +6,7 @@ const schema = z.object({
   client_id: z.string().uuid().nullable().optional(),
   client_name: z.string().nullable().optional(),
   wechat_id: z.string().nullable().optional(),
-  channel: z.enum(["whatsapp", "wechat", "telegram", "email", "phone"]).optional(),
+  channel: z.enum(["whatsapp", "wechat", "telegram", "email", "phone", "web"]).optional(),
   direction: z.enum(["inbound", "outbound"]),
   sender_label: z.string().min(1),
   content: z.string().min(1),

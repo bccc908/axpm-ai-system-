@@ -8,7 +8,7 @@ export type LeadStatus =
   | "dormant"
   | "lost";
 
-export type Channel = "whatsapp" | "wechat" | "telegram" | "email" | "phone";
+export type Channel = "whatsapp" | "wechat" | "telegram" | "email" | "phone" | "web";
 
 export type ReminderChannel = "telegram" | "whatsapp";
 
@@ -72,6 +72,8 @@ export interface TeamTask {
   title: string;
   description: string | null;
   assigned_to: string | null;
+  client_id?: string | null;
+  deal_id?: string | null;
   status: TaskStatus;
   due_at: string | null;
   created_at: string;
