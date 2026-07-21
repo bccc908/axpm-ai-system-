@@ -13,7 +13,7 @@ export function GoldSignalHistory({
 }: {
   signals: DeskSignal[];
   onSelect: (signal: DeskSignal) => void;
-  i18nNs?: "goldSignals" | "btcSignals";
+  i18nNs?: "goldSignals" | "btcSignals" | "ethSignals";
 }) {
   const { t, locale } = useLocale();
 

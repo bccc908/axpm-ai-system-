@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { useGoldLiveBars } from "@/components/gold/use-gold-live-bars";
-import { seedBtcBars, useBtcWsMarket } from "@/components/gold/use-btc-ws-market";
+import { seedCryptoBars, useCryptoWsMarket } from "@/components/gold/use-crypto-ws-market";
 import {
   SIGNAL_INSTRUMENTS,
   type SignalInstrument,
@@ -28,18 +28,18 @@ export function GoldDeskProvider({
 }) {
   const config = SIGNAL_INSTRUMENTS[instrument];
   const server = useGoldLiveBars(config.apiBase, "1m", true);
-  const btcWs = useBtcWsMarket(instrument === "btc");
+  const cryptoWs = useCryptoWsMarket(config.wsPair);
 
   const merged = useMemo(() => {
-    if (instrument !== "btc") return server;
+    if (!config.wsPair) return server;
 
-    const wsPrice = btcWs.price;
-    const useWs = btcWs.connected || wsPrice != null;
+    const wsPrice = cryptoWs.price;
+    const useWs = cryptoWs.connected || wsPrice != null;
     const effectiveBars =
-      btcWs.bars.length >= 4
-        ? btcWs.bars
+      cryptoWs.bars.length >= 4
+        ? cryptoWs.bars
         : wsPrice != null
-          ? seedBtcBars(wsPrice)
+          ? seedCryptoBars(wsPrice, 90, config.wsPair)
           : server.structureBars;
     const last = effectiveBars.at(-1) ?? null;
 
@@ -51,15 +51,15 @@ export function GoldDeskProvider({
       structureBars: effectiveBars,
       structureLastBar: last ?? server.structureLastBar,
       lastBar: last ?? server.lastBar,
-      changePct: btcWs.changePct ?? server.changePct,
-      flashKey: Math.max(server.flashKey, btcWs.flashKey),
-      updatedAt: btcWs.updatedAt ?? server.updatedAt,
-      source: btcWs.source ?? server.source,
+      changePct: cryptoWs.changePct ?? server.changePct,
+      flashKey: Math.max(server.flashKey, cryptoWs.flashKey),
+      updatedAt: cryptoWs.updatedAt ?? server.updatedAt,
+      source: cryptoWs.source ?? server.source,
       stale: useWs ? false : server.stale,
       error: useWs && effectiveBars.length >= 4 ? null : server.error,
       loading: useWs && effectiveBars.length >= 4 ? false : server.loading,
     };
-  }, [instrument, server, btcWs]);
+  }, [config.wsPair, server, cryptoWs]);
 
   return (
     <GoldDeskContext.Provider
@@ -69,8 +69,8 @@ export function GoldDeskProvider({
         apiBase: config.apiBase,
         priceTick: config.priceTick,
         badge: config.badge,
-        dataSource: btcWs.source ?? config.dataSource,
-        wsConnected: instrument === "btc" ? btcWs.connected : false,
+        dataSource: cryptoWs.source ?? config.dataSource,
+        wsConnected: config.wsPair ? cryptoWs.connected : false,
       }}
     >
       {children}

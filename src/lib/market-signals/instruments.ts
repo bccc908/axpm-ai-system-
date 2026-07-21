@@ -1,4 +1,6 @@
-export type SignalInstrument = "gold" | "btc";
+export type SignalInstrument = "gold" | "btc" | "eth";
+
+export type SignalI18nNs = "goldSignals" | "btcSignals" | "ethSignals";
 
 export type DeskSignal = {
   id: string;
@@ -31,6 +33,9 @@ export const SIGNAL_INSTRUMENTS: Record<
     priceTick: number;
     badge: string;
     dataSource: string;
+    i18nNs: SignalI18nNs;
+    tabKey: string;
+    wsPair: "btcusdt" | "ethusdt" | null;
   }
 > = {
   gold: {
@@ -41,6 +46,9 @@ export const SIGNAL_INSTRUMENTS: Record<
     priceTick: 0.5,
     badge: "XAUUSD",
     dataSource: "GC=F",
+    i18nNs: "goldSignals",
+    tabKey: "goldSignals.tabGold",
+    wsPair: null,
   },
   btc: {
     id: "btc",
@@ -50,5 +58,20 @@ export const SIGNAL_INSTRUMENTS: Record<
     priceTick: 10,
     badge: "BTCUSD",
     dataSource: "BTC-USD",
+    i18nNs: "btcSignals",
+    tabKey: "goldSignals.tabBtc",
+    wsPair: "btcusdt",
+  },
+  eth: {
+    id: "eth",
+    symbol: "ETHUSD",
+    yahooSymbol: "ETH-USD",
+    apiBase: "/api/eth-signals",
+    priceTick: 1,
+    badge: "ETHUSD",
+    dataSource: "ETH-USD",
+    i18nNs: "ethSignals",
+    tabKey: "goldSignals.tabEth",
+    wsPair: "ethusdt",
   },
 };

@@ -39,7 +39,7 @@ export function GoldSignalSidebar({
   lastDailySent: string | null;
   telegramConfigured: boolean;
   dailyBusy: boolean;
-  i18nNs?: "goldSignals" | "btcSignals";
+  i18nNs?: "goldSignals" | "btcSignals" | "ethSignals";
   onNotesChange: (v: string) => void;
   onDailyToggle: () => void;
   onDailySendNow: () => void;
@@ -203,7 +203,7 @@ function DailyAutomationCard({
   onToggle,
   onSendNow,
 }: {
-  i18nNs: "goldSignals" | "btcSignals";
+  i18nNs: "goldSignals" | "btcSignals" | "ethSignals";
   dailyEnabled: boolean;
   lastDailySent: string | null;
   telegramConfigured: boolean;
@@ -265,7 +265,7 @@ function TradePlanLevelRail({ signal }: { signal: DeskSignal }) {
     levels.push({ label: "STOP", price: signal.stop_loss, tone: "text-rose-400" });
   }
   if (signal.entry_zone) {
-    const flatThreshold = signal.symbol === "BTCUSD" ? 5 : 0.05;
+    const flatThreshold = signal.symbol === "BTCUSD" ? 5 : signal.symbol === "ETHUSD" ? 1 : 0.05;
     const entry =
       Math.abs(signal.entry_zone.high - signal.entry_zone.low) < flatThreshold
         ? signal.entry_zone.high

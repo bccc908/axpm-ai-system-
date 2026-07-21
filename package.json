@@ -28,6 +28,7 @@
     "gold:signal": "npx tsx scripts/gold-signal-ops.ts",
     "gold:daily": "npx tsx scripts/gold-daily-ops.ts",
     "btc:daily": "npx tsx scripts/btc-daily-ops.ts",
+    "eth:daily": "npx tsx scripts/eth-daily-ops.ts",
     "gold:setup": "bash scripts/setup-gold-atas.sh"
   },
   "dependencies": {

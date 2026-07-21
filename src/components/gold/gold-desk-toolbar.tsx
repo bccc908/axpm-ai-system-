@@ -25,7 +25,7 @@ export function GoldDeskToolbar({
   heatmapMode: HeatmapMode;
   loading: boolean;
   generating: boolean;
-  i18nNs?: "goldSignals" | "btcSignals";
+  i18nNs?: "goldSignals" | "btcSignals" | "ethSignals";
   onViewChange: (v: DeskView) => void;
   onHeatmapModeChange: (m: HeatmapMode) => void;
   onRefresh: () => void;

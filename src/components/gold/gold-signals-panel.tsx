@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Bitcoin, TrendingUp } from "lucide-react";
+import { Bitcoin, Hexagon, TrendingUp } from "lucide-react";
 import { useLocale } from "@/components/providers/locale-provider";
 import { GoldDeskProvider } from "@/components/gold/gold-desk-context";
 import { GoldDeskMainView } from "@/components/gold/gold-desk-main-view";
@@ -19,12 +19,12 @@ import {
 } from "@/lib/market-signals/instruments";
 import { cn } from "@/lib/utils";
 
-const INSTRUMENTS: SignalInstrument[] = ["gold", "btc"];
+const INSTRUMENTS: SignalInstrument[] = ["gold", "btc", "eth"];
 
 function MarketSignalsDesk({ instrument }: { instrument: SignalInstrument }) {
   const { t, locale } = useLocale();
   const config = SIGNAL_INSTRUMENTS[instrument];
-  const i18nNs = instrument === "btc" ? "btcSignals" : "goldSignals";
+  const i18nNs = config.i18nNs;
   const [signals, setSignals] = useState<DeskSignal[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -168,6 +168,8 @@ function MarketSignalsDesk({ instrument }: { instrument: SignalInstrument }) {
         icon={
           instrument === "btc" ? (
             <Bitcoin className="h-4 w-4 text-accent" />
+          ) : instrument === "eth" ? (
+            <Hexagon className="h-4 w-4 text-accent" />
           ) : (
             <TrendingUp className="h-4 w-4 text-accent" />
           )
@@ -244,7 +246,7 @@ export function GoldSignalsPanel() {
                 : "border-white/[0.08] bg-white/[0.03] text-muted hover:text-foreground",
             )}
           >
-            {id === "gold" ? t("goldSignals.tabGold") : t("goldSignals.tabBtc")}
+            {t(SIGNAL_INSTRUMENTS[id].tabKey)}
           </button>
         ))}
       </div>
