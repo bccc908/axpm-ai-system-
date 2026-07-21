@@ -10,6 +10,7 @@ import {
   formatSearchResultsForPrompt,
   searchWeb,
 } from "@/lib/ai/web-search";
+import { enforceMinRiskReward, profitPolicyPromptLines } from "@/lib/market-signals/profit-policy";
 
 const signalSchema = z.object({
   bias: z.enum(["long", "short", "neutral", "wait"]),
@@ -88,6 +89,7 @@ function buildSystemPrompt(locale: "en" | "zh") {
 - 价位用美元，保留 1-2 位小数
 - 必须包含 invalidation（失效价位/条件）
 - 非投资建议，risk_notes 写清仓位与波动风险
+${profitPolicyPromptLines("zh")}
 
 严格 JSON，字段：
 bias(long|short|neutral|wait), strength, confidence(0-100), timeframe,
@@ -99,7 +101,8 @@ orderflow_triggers[], risk_notes, invalidation, expires_hours`;
 
 Return strict JSON with: bias, strength, confidence, timeframe, entry_zone, stop_loss, take_profit, thesis, bookmap_playbook, orderflow_triggers, risk_notes, invalidation, expires_hours.
 
-bookmap_playbook must describe ATAS cluster/footprint reading and entry triggers. Not financial advice.`;
+bookmap_playbook must describe ATAS cluster/footprint reading and entry triggers. Not financial advice.
+${profitPolicyPromptLines("en")}`;
 }
 
 async function maybeMacroContext(locale: "en" | "zh") {
@@ -209,6 +212,13 @@ Generate a professional gold trading signal for Bookmap order-flow trading.`;
     };
   }
 
+  const sized = enforceMinRiskReward({
+    bias: parsed.bias,
+    entry_zone: parsed.entry_zone ?? null,
+    stop_loss: parsed.stop_loss ?? null,
+    take_profit: parsed.take_profit,
+  });
+
   const expiresHours = parsed.expires_hours ?? 8;
   const expiresAt = new Date(Date.now() + expiresHours * 3600_000).toISOString();
 
@@ -219,13 +229,15 @@ Generate a professional gold trading signal for Bookmap order-flow trading.`;
     strength: parsed.strength,
     confidence: Math.round(parsed.confidence),
     timeframe: parsed.timeframe,
-    entry_zone: parsed.entry_zone ?? null,
-    stop_loss: parsed.stop_loss ?? null,
-    take_profit: parsed.take_profit,
+    entry_zone: sized.entry_zone,
+    stop_loss: sized.stop_loss,
+    take_profit: sized.take_profit,
     thesis: parsed.thesis,
     bookmap_playbook: parsed.bookmap_playbook,
     orderflow_triggers: parsed.orderflow_triggers,
-    risk_notes: parsed.risk_notes,
+    risk_notes: sized.adjusted
+      ? `${parsed.risk_notes}\n[系统] 目标位已按最低盈亏比（TP1≥2R / TP2≥3R）校准。`
+      : parsed.risk_notes,
     invalidation: parsed.invalidation,
     expires_at: expiresAt,
     notes: params.notes?.trim() || null,
