@@ -19,11 +19,13 @@ export function GoldDeskToolbar({
   onHeatmapModeChange,
   onRefresh,
   onGenerate,
+  i18nNs = "goldSignals",
 }: {
   view: DeskView;
   heatmapMode: HeatmapMode;
   loading: boolean;
   generating: boolean;
+  i18nNs?: "goldSignals" | "btcSignals";
   onViewChange: (v: DeskView) => void;
   onHeatmapModeChange: (m: HeatmapMode) => void;
   onRefresh: () => void;
@@ -59,7 +61,7 @@ export function GoldDeskToolbar({
             className="inline-flex items-center gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-muted transition-colors hover:border-accent/25 hover:text-foreground"
           >
             <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
-            {t("goldSignals.refresh")}
+            {t(`${i18nNs}.refresh`)}
           </button>
           <button
             type="button"
@@ -68,7 +70,7 @@ export function GoldDeskToolbar({
             className="inline-flex items-center gap-2 rounded-xl btn-premium px-4 py-2 text-xs shadow-[0_0_24px_-4px_rgba(212,168,83,0.55)] disabled:opacity-50"
           >
             {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
-            {generating ? t("goldSignals.generating") : t("goldSignals.generate")}
+            {generating ? t(`${i18nNs}.generating`) : t(`${i18nNs}.generate`)}
           </button>
         </div>
       </div>

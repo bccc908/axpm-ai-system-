@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { GoldOhlcBar } from "@/lib/gold-signals/chart-math";
+import { patchFormingBar, type GoldOhlcBar } from "@/lib/gold-signals/chart-math";
 
 const BAR_POLL_MS: Record<string, number> = {
   "1m": 10_000,
@@ -10,28 +10,20 @@ const BAR_POLL_MS: Record<string, number> = {
 
 const QUOTE_POLL_MS = 1_000;
 
-function patchFormingBar(bars: GoldOhlcBar[], price: number | null): GoldOhlcBar[] {
-  if (!bars.length || price == null || !Number.isFinite(price)) return bars;
-  const last = bars[bars.length - 1];
-  const rounded = Math.round(price * 100) / 100;
-  if (last.close === rounded && last.high >= rounded && last.low <= rounded) return bars;
-  return [
-    ...bars.slice(0, -1),
-    {
-      ...last,
-      close: rounded,
-      high: Math.max(last.high, rounded),
-      low: Math.min(last.low, rounded),
-    },
-  ];
-}
-
-export function useGoldLiveBars(interval: "1m" | "5m" = "1m", enabled = true) {
+export function useGoldLiveBars(
+  apiBase: string,
+  interval: "1m" | "5m" = "1m",
+  enabled = true,
+) {
   const [bars, setBars] = useState<GoldOhlcBar[]>([]);
   const [livePrice, setLivePrice] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [source, setSource] = useState<string | null>(null);
+  const [stale, setStale] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [quoteAt, setQuoteAt] = useState<string | null>(null);
+  const [changePct, setChangePct] = useState<number | null>(null);
   const [clock, setClock] = useState(0);
   const [flashKey, setFlashKey] = useState(0);
   const prevBarSigRef = useRef("");
@@ -42,8 +34,9 @@ export function useGoldLiveBars(interval: "1m" | "5m" = "1m", enabled = true) {
     if (!enabled) return;
     if (!hadBarsRef.current) setLoading(true);
     try {
-      const res = await fetch(`/api/gold-signals/chart?interval=${interval}&_=${Date.now()}`, {
+      const res = await fetch(`${apiBase}/chart?interval=${interval}&_=${Date.now()}`, {
         cache: "no-store",
+        credentials: "include",
       });
       const data = await res.json();
       if (res.ok && Array.isArray(data.bars)) {
@@ -55,32 +48,54 @@ export function useGoldLiveBars(interval: "1m" | "5m" = "1m", enabled = true) {
           setFlashKey((k) => k + 1);
         }
         setBars(next);
+        setSource(typeof data.source === "string" ? data.source : null);
+        setStale(Boolean(data.stale));
+        setError(next.length === 0 ? "empty" : null);
         setUpdatedAt(data.updated_at ?? new Date().toISOString());
-        hadBarsRef.current = true;
+        hadBarsRef.current = next.length > 0;
         if (last) {
-          setLivePrice((p) => p ?? last.close);
+          setLivePrice(last.close);
+          if (last.close !== prevPriceRef.current) {
+            prevPriceRef.current = last.close;
+            setFlashKey((k) => k + 1);
+          }
         }
+      } else {
+        setError(typeof data.error === "string" ? data.error : "fetch failed");
+        if (!hadBarsRef.current) setBars([]);
       }
+    } catch {
+      setError("network");
+      if (!hadBarsRef.current) setBars([]);
     } finally {
       setLoading(false);
     }
-  }, [enabled, interval]);
+  }, [apiBase, enabled, interval]);
 
   const loadQuote = useCallback(async () => {
     if (!enabled) return;
     try {
-      const res = await fetch(`/api/gold-signals/quote?_=${Date.now()}`, { cache: "no-store" });
+      const res = await fetch(`${apiBase}/quote?_=${Date.now()}`, {
+        cache: "no-store",
+        credentials: "include",
+      });
       const data = await res.json();
       if (res.ok && typeof data.price === "number") {
         const price = data.price as number;
-        prevPriceRef.current = price;
+        if (price !== prevPriceRef.current) {
+          prevPriceRef.current = price;
+          setFlashKey((k) => k + 1);
+        }
         setLivePrice(price);
         setQuoteAt(data.as_of ?? new Date().toISOString());
+        if (typeof data.change_pct === "number" && Number.isFinite(data.change_pct)) {
+          setChangePct(data.change_pct);
+        }
       }
     } catch {
       /* ignore transient quote errors */
     }
-  }, [enabled]);
+  }, [apiBase, enabled]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -107,10 +122,14 @@ export function useGoldLiveBars(interval: "1m" | "5m" = "1m", enabled = true) {
     /** Raw 1m bars from poll — stable footprint grid */
     structureBars: bars,
     loading,
+    error,
+    source,
+    stale,
     updatedAt: quoteAt ?? updatedAt,
     lastBar,
     structureLastBar,
     livePrice,
+    changePct,
     flashKey,
     clock,
     reload: () => {

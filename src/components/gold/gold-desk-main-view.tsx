@@ -10,7 +10,8 @@ import {
   type DeskView,
   type HeatmapMode,
 } from "@/components/gold/gold-desk-types";
-import type { GoldSignal } from "@/types/gold-signal";
+import type { DeskSignal } from "@/lib/market-signals/instruments";
+import { useGoldDesk } from "@/components/gold/gold-desk-context";
 
 const GoldTradingChart = dynamic(
   () => import("@/components/gold/gold-trading-chart").then((m) => m.GoldTradingChart),
@@ -36,14 +37,19 @@ export function GoldDeskMainView({
   heatmapMode,
   signal,
   loading,
+  i18nNs = "goldSignals",
 }: {
   view: DeskView;
   heatmapMode: HeatmapMode;
-  signal: GoldSignal | null;
+  signal: DeskSignal | null;
   loading: boolean;
+  i18nNs?: string;
 }) {
   const { t } = useLocale();
+  const { livePrice, structureBars } = useGoldDesk();
   const showHeatmap = view === "heatmap";
+  const hasLiveDesk = livePrice != null || structureBars.length >= 4;
+  const showHeatmapEmpty = !signal && !loading && showHeatmap && !hasLiveDesk;
 
   return (
     <div className="gold-desk-panel flex min-h-[480px] flex-col overflow-hidden border-[#1e2836] bg-[#0a0e14] xl:min-h-[620px]">
@@ -71,9 +77,9 @@ export function GoldDeskMainView({
         ) : (
           <GoldHeatmapViz signal={signal} mode={heatmapMode} className="h-full w-full" />
         )}
-        {!signal && !loading && showHeatmap ? (
+        {showHeatmapEmpty ? (
           <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-sm text-muted backdrop-blur-sm">
-            {t("goldSignals.empty")}
+            {t(`${i18nNs}.empty`)}
           </div>
         ) : null}
       </div>

@@ -10,13 +10,19 @@ export interface GoldSpotQuote {
 
 /** Best-effort spot from COMEX GC=F (Yahoo) — no API key. */
 export async function fetchGoldSpotQuote(): Promise<GoldSpotQuote | null> {
+  const yahoo = await fetchYahooSpot();
+  if (yahoo) return yahoo;
+  return fetchGoldPriceDevSpot();
+}
+
+async function fetchYahooSpot(): Promise<GoldSpotQuote | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8_000);
   try {
     const url =
       "https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1m&range=1d";
     const res = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 SignalFlag/1.0" },
+      headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" },
       signal: controller.signal,
       cache: "no-store",
     });
@@ -49,5 +55,30 @@ export async function fetchGoldSpotQuote(): Promise<GoldSpotQuote | null> {
     return null;
   } finally {
     clearTimeout(timer);
+  }
+}
+
+async function fetchGoldPriceDevSpot(): Promise<GoldSpotQuote | null> {
+  try {
+    const res = await fetch("https://api.goldprice.dev/v1/prices?symbol=XAU-USD-SPOT", {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      symbols?: Array<{ price?: string; bid?: string; ask?: string }>;
+    };
+    const row = data.symbols?.[0];
+    const price = Number(row?.price ?? row?.bid ?? row?.ask);
+    if (!Number.isFinite(price)) return null;
+    return {
+      symbol: "XAUUSD",
+      price: Math.round(price * 100) / 100,
+      change_pct: null,
+      as_of: new Date().toISOString(),
+      source: "XAU-USD-SPOT",
+    };
+  } catch {
+    return null;
   }
 }

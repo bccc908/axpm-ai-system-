@@ -4,18 +4,19 @@ import { Clock, TrendingUp } from "lucide-react";
 import { useLocale } from "@/components/providers/locale-provider";
 import { useGoldDesk } from "@/components/gold/gold-desk-context";
 import { BIAS_STYLE, formatPrice } from "@/components/gold/gold-desk-types";
+import type { DeskSignal } from "@/lib/market-signals/instruments";
 import { cn } from "@/lib/utils";
-import type { GoldSignal } from "@/types/gold-signal";
 
 export function GoldTickerStrip({
   latest,
   prev,
 }: {
-  latest: GoldSignal | null;
-  prev: GoldSignal | null;
+  latest: DeskSignal | null;
+  prev: DeskSignal | null;
 }) {
   const { t } = useLocale();
-  const { livePrice, clock, updatedAt } = useGoldDesk();
+  const { livePrice, changePct, clock, updatedAt, badge, dataSource, flashKey, wsConnected } =
+    useGoldDesk();
 
   const displayPrice = livePrice ?? latest?.spot_price ?? null;
   const biasStyle = latest ? BIAS_STYLE[latest.bias] : null;
@@ -40,12 +41,28 @@ export function GoldTickerStrip({
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-50" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
           </span>
-          LIVE
+          {wsConnected ? "WS LIVE" : "LIVE"}
         </span>
-        <span className="font-mono text-3xl font-semibold tabular-nums tracking-tight text-foreground transition-all duration-300 md:text-4xl">
+        <span
+          className={cn(
+            "font-mono text-3xl font-semibold tabular-nums tracking-tight text-foreground transition-colors duration-300 md:text-4xl",
+            flashKey > 0 && "text-accent",
+          )}
+          key={flashKey}
+        >
           {displayPrice != null ? `$${formatPrice(displayPrice)}` : "—"}
         </span>
-        {signalDelta != null ? (
+        {changePct != null ? (
+          <span
+            className={cn(
+              "font-mono text-sm font-medium tabular-nums",
+              changePct >= 0 ? "text-emerald-400" : "text-rose-400",
+            )}
+          >
+            {changePct >= 0 ? "+" : ""}
+            {changePct.toFixed(2)}%
+          </span>
+        ) : signalDelta != null ? (
           <span
             className={cn(
               "font-mono text-sm font-medium tabular-nums",
@@ -85,7 +102,7 @@ export function GoldTickerStrip({
             </span>
           </>
         ) : null}
-        <span className="font-mono text-[10px] text-muted/80">XAUUSD · GC=F</span>
+        <span className="font-mono text-[10px] text-muted/80">{badge} · {dataSource}</span>
       </div>
     </div>
   );

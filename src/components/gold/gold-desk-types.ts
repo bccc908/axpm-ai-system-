@@ -10,13 +10,15 @@ import {
   Waves,
   Zap,
 } from "lucide-react";
-import type { GoldSignal, GoldSignalBias } from "@/types/gold-signal";
+import type { DeskSignal } from "@/lib/market-signals/instruments";
 
 /** Primary desk views */
 export type DeskView = "chart" | "orderflow" | "heatmap";
 
 /** Heatmap sub-views (simulated liquidity layers) */
 export type HeatmapMode = "heatmap" | "footprint" | "absorption" | "imbalance" | "delta";
+
+export type GoldSignalBias = DeskSignal["bias"];
 
 export const BIAS_STYLE: Record<
   GoldSignalBias,
@@ -77,7 +79,7 @@ export function formatPrice(n: number | null | undefined) {
   return n.toFixed(2);
 }
 
-export function formatZone(zone: GoldSignal["entry_zone"]) {
+export function formatZone(zone: DeskSignal["entry_zone"]) {
   if (!zone) return "—";
   return `${zone.low.toFixed(2)} – ${zone.high.toFixed(2)}`;
 }
@@ -102,7 +104,7 @@ export function formatSignalTime(iso: string, locale: string) {
 }
 
 /** Simulated DOM ladder around spot (no L2 feed). */
-export function buildPriceLadder(signal: GoldSignal | null, spotOverride?: number | null): LadderRow[] {
+export function buildPriceLadder(signal: DeskSignal | null, spotOverride?: number | null): LadderRow[] {
   const spot = spotOverride ?? signal?.spot_price;
   if (spot == null) return [];
 

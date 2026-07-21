@@ -4,14 +4,16 @@ import { ChevronRight } from "lucide-react";
 import { useLocale } from "@/components/providers/locale-provider";
 import { BIAS_STYLE, formatSignalTime } from "@/components/gold/gold-desk-types";
 import { cn } from "@/lib/utils";
-import type { GoldSignal } from "@/types/gold-signal";
+import type { DeskSignal } from "@/lib/market-signals/instruments";
 
 export function GoldSignalHistory({
   signals,
   onSelect,
+  i18nNs = "goldSignals",
 }: {
-  signals: GoldSignal[];
-  onSelect: (signal: GoldSignal) => void;
+  signals: DeskSignal[];
+  onSelect: (signal: DeskSignal) => void;
+  i18nNs?: "goldSignals" | "btcSignals";
 }) {
   const { t, locale } = useLocale();
 
@@ -20,7 +22,7 @@ export function GoldSignalHistory({
   return (
     <div className="gold-desk-panel overflow-hidden">
       <div className="gold-desk-panel-header">
-        <span>{t("goldSignals.history")}</span>
+        <span>{t(`${i18nNs}.history`)}</span>
         <span className="font-mono normal-case tracking-normal">{signals.length - 1}</span>
       </div>
       <div className="divide-y divide-white/[0.04]">

@@ -7,6 +7,23 @@ export interface GoldOhlcBar {
   volume: number;
 }
 
+/** Patch the forming bar with a live quote (Lightweight Charts streaming pattern). */
+export function patchFormingBar(bars: GoldOhlcBar[], price: number | null): GoldOhlcBar[] {
+  if (!bars.length || price == null || !Number.isFinite(price)) return bars;
+  const last = bars[bars.length - 1];
+  const rounded = Math.round(price * 100) / 100;
+  if (last.close === rounded && last.high >= rounded && last.low <= rounded) return bars;
+  return [
+    ...bars.slice(0, -1),
+    {
+      ...last,
+      close: rounded,
+      high: Math.max(last.high, rounded),
+      low: Math.min(last.low, rounded),
+    },
+  ];
+}
+
 export type IndicatorPoint = { time: number; value: number };
 
 export function computeEma(bars: GoldOhlcBar[], period: number): IndicatorPoint[] {

@@ -15,7 +15,7 @@ import {
 } from "@/components/gold/gold-desk-types";
 import { computeRiskReward } from "@/lib/gold-signals/chart-math";
 import { cn } from "@/lib/utils";
-import type { GoldSignal } from "@/types/gold-signal";
+import type { DeskSignal } from "@/lib/market-signals/instruments";
 
 export function GoldSignalSidebar({
   latest,
@@ -26,11 +26,12 @@ export function GoldSignalSidebar({
   lastDailySent,
   telegramConfigured,
   dailyBusy,
+  i18nNs = "goldSignals",
   onNotesChange,
   onDailyToggle,
   onDailySendNow,
 }: {
-  latest: GoldSignal | null;
+  latest: DeskSignal | null;
   notes: string;
   message: string | null;
   generating: boolean;
@@ -38,6 +39,7 @@ export function GoldSignalSidebar({
   lastDailySent: string | null;
   telegramConfigured: boolean;
   dailyBusy: boolean;
+  i18nNs?: "goldSignals" | "btcSignals";
   onNotesChange: (v: string) => void;
   onDailyToggle: () => void;
   onDailySendNow: () => void;
@@ -52,7 +54,7 @@ export function GoldSignalSidebar({
         <>
           <div className="gold-desk-panel gold-trade-plan p-4">
             <div className="flex items-start justify-between gap-3">
-              <p className="gold-trade-plan-title">{t("goldSignals.tradeSetup")}</p>
+              <p className="gold-trade-plan-title">{t(`${i18nNs}.tradeSetup`)}</p>
               <span className="shrink-0 font-mono text-[11px] text-muted/90">
                 {formatSignalTime(latest.created_at, locale)}
               </span>
@@ -75,7 +77,7 @@ export function GoldSignalSidebar({
                   ) : null}
                   {rr ? (
                     <div className="flex items-center justify-between font-mono text-xs">
-                      <span className="text-muted">{t("goldSignals.riskReward")}</span>
+                      <span className="text-muted">{t(`${i18nNs}.riskReward`)}</span>
                       <span className="text-foreground">
                         1:{rr.rewards[0]?.toFixed(2)}
                         {rr.rewards[1] != null ? (
@@ -86,7 +88,7 @@ export function GoldSignalSidebar({
                     </div>
                   ) : null}
                   <div className="flex items-center justify-between font-mono text-xs">
-                    <span className="text-muted">{t("goldSignals.confidence")}</span>
+                    <span className="text-muted">{t(`${i18nNs}.confidence`)}</span>
                     <span className="text-foreground">{latest.confidence}%</span>
                   </div>
                 </div>
@@ -98,7 +100,7 @@ export function GoldSignalSidebar({
             <div className="gold-desk-panel p-4">
               <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-400/90">
                 <Target className="h-3 w-3" />
-                {t("goldSignals.triggers")}
+                {t(`${i18nNs}.triggers`)}
               </p>
               <ul className="mt-3 space-y-2">
                 {latest.orderflow_triggers.map((item, i) => (
@@ -116,7 +118,7 @@ export function GoldSignalSidebar({
 
           <div className="gold-desk-panel border-amber-500/15 p-4">
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-300/90">
-              {t("goldSignals.tapePlaybook")}
+              {t(`${i18nNs}.tapePlaybook`)}
             </p>
             <p className="mt-2 text-xs leading-relaxed text-muted whitespace-pre-wrap">
               {latest.bookmap_playbook}
@@ -128,7 +130,7 @@ export function GoldSignalSidebar({
               <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-400" />
               <div>
                 <p className="text-[9px] font-semibold uppercase tracking-wider text-rose-300/80">
-                  {t("goldSignals.invalidation")}
+                  {t(`${i18nNs}.invalidation`)}
                 </p>
                 <p className="mt-1 text-xs text-muted">{latest.invalidation}</p>
               </div>
@@ -138,11 +140,12 @@ export function GoldSignalSidebar({
       ) : (
         <div className="gold-desk-panel flex flex-col items-center justify-center p-8 text-center">
           <Layers className="mb-3 h-8 w-8 text-muted/40" />
-          <p className="text-sm text-muted">{t("goldSignals.empty")}</p>
+          <p className="text-sm text-muted">{t(`${i18nNs}.empty`)}</p>
         </div>
       )}
 
       <DailyAutomationCard
+        i18nNs={i18nNs}
         dailyEnabled={dailyEnabled}
         lastDailySent={lastDailySent}
         telegramConfigured={telegramConfigured}
@@ -153,13 +156,13 @@ export function GoldSignalSidebar({
 
       <div className="gold-desk-panel p-4">
         <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
-          {t("goldSignals.notes")}
+          {t(`${i18nNs}.notes`)}
         </label>
         <textarea
           className="input-premium mt-2 min-h-[80px] w-full resize-none rounded-xl px-3 py-2.5 font-mono text-xs"
           value={notes}
           onChange={(e) => onNotesChange(e.target.value)}
-          placeholder={t("goldSignals.notesPlaceholder")}
+          placeholder={t(`${i18nNs}.notesPlaceholder`)}
           disabled={generating}
         />
         {message ? (
@@ -169,25 +172,30 @@ export function GoldSignalSidebar({
         ) : null}
       </div>
 
-      <button
-        type="button"
-        onClick={() => setShowSetup((v) => !v)}
-        className="flex items-center gap-1 text-left text-[11px] text-muted transition-colors hover:text-accent"
-      >
-        <ChevronRight className={cn("h-3.5 w-3.5 transition-transform", showSetup && "rotate-90")} />
-        {t("goldSignals.atasTitle")}
-      </button>
-      {showSetup ? (
-        <div className="gold-desk-panel space-y-3 p-4 text-[11px] leading-relaxed text-muted">
-          <p>{t("goldSignals.atasTelegramHint")}</p>
-          <p className="border-t border-white/[0.06] pt-3">{t("goldSignals.atasDesc")}</p>
-        </div>
+      {i18nNs === "goldSignals" ? (
+        <>
+          <button
+            type="button"
+            onClick={() => setShowSetup((v) => !v)}
+            className="flex items-center gap-1 text-left text-[11px] text-muted transition-colors hover:text-accent"
+          >
+            <ChevronRight className={cn("h-3.5 w-3.5 transition-transform", showSetup && "rotate-90")} />
+            {t(`${i18nNs}.atasTitle`)}
+          </button>
+          {showSetup ? (
+            <div className="gold-desk-panel space-y-3 p-4 text-[11px] leading-relaxed text-muted">
+              <p>{t(`${i18nNs}.atasTelegramHint`)}</p>
+              <p className="border-t border-white/[0.06] pt-3">{t(`${i18nNs}.atasDesc`)}</p>
+            </div>
+          ) : null}
+        </>
       ) : null}
     </div>
   );
 }
 
 function DailyAutomationCard({
+  i18nNs,
   dailyEnabled,
   lastDailySent,
   telegramConfigured,
@@ -195,6 +203,7 @@ function DailyAutomationCard({
   onToggle,
   onSendNow,
 }: {
+  i18nNs: "goldSignals" | "btcSignals";
   dailyEnabled: boolean;
   lastDailySent: string | null;
   telegramConfigured: boolean;
@@ -209,9 +218,9 @@ function DailyAutomationCard({
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300/90">
-            {t("goldSignals.dailyTitle")}
+            {t(`${i18nNs}.dailyTitle`)}
           </p>
-          <p className="mt-1 text-[11px] leading-relaxed text-muted">{t("goldSignals.dailyDesc")}</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-muted">{t(`${i18nNs}.dailyDesc`)}</p>
         </div>
         <button
           type="button"
@@ -224,15 +233,15 @@ function DailyAutomationCard({
               : "border-white/10 bg-white/[0.03] text-muted",
           )}
         >
-          {dailyEnabled ? t("goldSignals.dailyEnabled") : t("goldSignals.dailyDisabled")}
+          {dailyEnabled ? t(`${i18nNs}.dailyEnabled`) : t(`${i18nNs}.dailyDisabled`)}
         </button>
       </div>
       {!telegramConfigured ? (
-        <p className="mt-2 text-[11px] text-amber-300/90">{t("goldSignals.dailyTelegramMissing")}</p>
+        <p className="mt-2 text-[11px] text-amber-300/90">{t(`${i18nNs}.dailyTelegramMissing`)}</p>
       ) : (
         <p className="mt-2 font-mono text-[10px] text-muted">
-          {t("goldSignals.dailyLastSent")}:{" "}
-          <span className="text-foreground">{lastDailySent ?? t("goldSignals.dailyNotSent")}</span>
+          {t(`${i18nNs}.dailyLastSent`)}:{" "}
+          <span className="text-foreground">{lastDailySent ?? t(`${i18nNs}.dailyNotSent`)}</span>
         </p>
       )}
       <button
@@ -242,22 +251,23 @@ function DailyAutomationCard({
         className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-sky-500/30 bg-sky-500/10 py-2 text-xs font-medium text-sky-200 hover:bg-sky-500/15 disabled:opacity-50"
       >
         {dailyBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Radio className="h-3.5 w-3.5" />}
-        {dailyBusy ? t("goldSignals.dailySending") : t("goldSignals.dailySendNow")}
+        {dailyBusy ? t(`${i18nNs}.dailySending`) : t(`${i18nNs}.dailySendNow`)}
       </button>
-      <p className="mt-2 text-[10px] text-muted/80">{t("goldSignals.dailyCronHint")}</p>
+      <p className="mt-2 text-[10px] text-muted/80">{t(`${i18nNs}.dailyCronHint`)}</p>
     </div>
   );
 }
 
-function TradePlanLevelRail({ signal }: { signal: GoldSignal }) {
+function TradePlanLevelRail({ signal }: { signal: DeskSignal }) {
   const levels: Array<{ label: string; price: number; tone: string }> = [];
 
   if (signal.stop_loss != null) {
     levels.push({ label: "STOP", price: signal.stop_loss, tone: "text-rose-400" });
   }
   if (signal.entry_zone) {
+    const flatThreshold = signal.symbol === "BTCUSD" ? 5 : 0.05;
     const entry =
-      Math.abs(signal.entry_zone.high - signal.entry_zone.low) < 0.05
+      Math.abs(signal.entry_zone.high - signal.entry_zone.low) < flatThreshold
         ? signal.entry_zone.high
         : (signal.entry_zone.low + signal.entry_zone.high) / 2;
     levels.push({ label: "ENTRY", price: entry, tone: "text-emerald-400" });

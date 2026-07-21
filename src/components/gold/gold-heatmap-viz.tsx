@@ -7,7 +7,7 @@ import { useGoldDesk } from "@/components/gold/gold-desk-context";
 import type { GoldOhlcBar } from "@/lib/gold-signals/chart-math";
 import { heatAlpha, heatRgb, mapCellHeatIntensity, VIZ } from "@/lib/gold-signals/viz-colors";
 import { cn } from "@/lib/utils";
-import type { GoldSignal, GoldSignalBias } from "@/types/gold-signal";
+import type { DeskSignal } from "@/lib/market-signals/instruments";
 
 const BG = VIZ.bg;
 
@@ -120,7 +120,7 @@ function buildSimBars(
   spot: number,
   cols: number,
   seed: string,
-  bias: GoldSignalBias,
+  bias: DeskSignal["bias"],
   chartW: number,
 ): DisplayBar[] {
   const bars: DisplayBar[] = [];
@@ -194,7 +194,7 @@ export function GoldHeatmapViz({
   mode = "heatmap",
   className,
 }: {
-  signal: GoldSignal | null;
+  signal: DeskSignal | null;
   mode?: string;
   className?: string;
 }) {

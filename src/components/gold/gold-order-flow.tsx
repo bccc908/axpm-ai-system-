@@ -15,7 +15,7 @@ import {
 } from "@/lib/gold-signals/order-flow";
 import { VIZ } from "@/lib/gold-signals/viz-colors";
 import { cn } from "@/lib/utils";
-import type { GoldSignal } from "@/types/gold-signal";
+import type { DeskSignal } from "@/lib/market-signals/instruments";
 
 const BG = VIZ.bg;
 
@@ -42,14 +42,14 @@ export function GoldOrderFlowViz({
   signal,
   className,
 }: {
-  signal: GoldSignal | null;
+  signal: DeskSignal | null;
   className?: string;
 }) {
   const { t, locale } = useLocale();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pulseRef = useRef(0);
   const rangeRef = useRef({ anchor: "", priceMin: 0, priceMax: 0 });
-  const { structureBars, loading, updatedAt, livePrice, structureLastBar, flashKey, clock } =
+  const { structureBars, loading, error, source, stale, updatedAt, livePrice, structureLastBar, flashKey, clock, reload, priceTick } =
     useGoldDesk();
 
   const entryLo = signal?.entry_zone?.low ?? null;
@@ -125,7 +125,7 @@ export function GoldOrderFlowViz({
     const { priceMin, priceMax } = stableRange;
     if (colTimes.length === 0) return;
 
-    const tick = 0.5;
+    const tick = priceTick;
     const rows = Math.ceil((priceMax - priceMin) / tick);
 
     const left = 44;
@@ -283,6 +283,24 @@ export function GoldOrderFlowViz({
     );
   }
 
+  if (!loading && structureBars.length < 4) {
+    return (
+      <div className={cn("flex h-full flex-col items-center justify-center gap-3 px-6 text-center", className)}>
+        <p className="text-sm text-muted">{t("goldSignals.orderFlowNoData")}</p>
+        {error ? (
+          <p className="max-w-md text-[11px] text-rose-300/80">{t("goldSignals.orderFlowError")}</p>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => reload()}
+          className="rounded border border-sky-500/40 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-200 hover:bg-sky-500/20"
+        >
+          {t("goldSignals.refresh")}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className={cn("flex h-full min-h-0 flex-col", className)}>
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[#1e2836] bg-[#0d1117] px-3 py-1.5">
@@ -307,7 +325,8 @@ export function GoldOrderFlowViz({
         ) : null}
         <Info className="h-3.5 w-3.5 shrink-0 text-amber-400/90" />
         <p className="min-w-[120px] flex-1 text-[10px] leading-snug text-amber-200/75">
-          {t("goldSignals.orderFlowDisclaimer")}
+          {stale ? t("goldSignals.orderFlowStaleDisclaimer") : t("goldSignals.orderFlowDisclaimer")}
+          {source ? ` · ${source}` : ""}
         </p>
         <span
           className={cn(
@@ -360,7 +379,7 @@ export function GoldOrderFlowViz({
   );
 }
 
-export function GoldOrderFlowByPrice({ signal }: { signal: GoldSignal | null }) {
+export function GoldOrderFlowByPrice({ signal }: { signal: DeskSignal | null }) {
   const { t } = useLocale();
   const { structureBars } = useGoldDesk();
 

@@ -204,8 +204,8 @@ export function footprintStableRange(
     ...(opts?.targets ?? []),
   ].filter((n): n is number => n != null && Number.isFinite(n));
 
-  let min = Math.min(...lows, ...extras);
-  let max = Math.max(...highs, ...extras);
+  const min = Math.min(...lows, ...extras);
+  const max = Math.max(...highs, ...extras);
   const pad = Math.max(3, (max - min) * (opts?.padRatio ?? 0.1));
   return { priceMin: min - pad, priceMax: max + pad };
 }

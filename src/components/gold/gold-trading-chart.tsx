@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   CandlestickSeries,
   ColorType,
@@ -11,15 +11,17 @@ import {
   type ISeriesApi,
   type UTCTimestamp,
 } from "lightweight-charts";
-import { Loader2 } from "lucide-react";
+import { Loader2, Maximize2, Radio, ZoomIn, ZoomOut } from "lucide-react";
 import { useLocale } from "@/components/providers/locale-provider";
-import { computeEma, computeMacd, computeRsi } from "@/lib/gold-signals/chart-math";
+import { useGoldDesk } from "@/components/gold/gold-desk-context";
+import { computeEma, computeMacd, computeRsi, patchFormingBar } from "@/lib/gold-signals/chart-math";
 import type { GoldOhlcBar } from "@/lib/gold-signals/chart-math";
 import { VIZ } from "@/lib/gold-signals/viz-colors";
+import type { DeskSignal } from "@/lib/market-signals/instruments";
 import { cn } from "@/lib/utils";
-import type { GoldSignal } from "@/types/gold-signal";
 
 export type ChartInterval = "1m" | "5m" | "15m" | "1h" | "4h";
+export type ChartRange = "1d" | "5d" | "1mo" | "3mo" | "6mo" | "1y" | "max";
 
 type BarPoint = {
   time: UTCTimestamp;
@@ -30,6 +32,17 @@ type BarPoint = {
 };
 
 const INTERVALS: ChartInterval[] = ["1m", "5m", "15m", "1h", "4h"];
+const RANGES: { id: ChartRange; label: string }[] = [
+  { id: "1d", label: "1D" },
+  { id: "5d", label: "5D" },
+  { id: "1mo", label: "1M" },
+  { id: "3mo", label: "3M" },
+  { id: "6mo", label: "6M" },
+  { id: "1y", label: "1Y" },
+  { id: "max", label: "ALL" },
+];
+
+const QUOTE_POLL_MS = 1_000;
 
 const CHART_BASE = {
   layout: {
@@ -44,16 +57,44 @@ const CHART_BASE = {
   rightPriceScale: { borderColor: "rgba(56, 120, 180, 0.15)" },
   timeScale: { borderColor: "rgba(56, 120, 180, 0.15)", timeVisible: true },
   crosshair: { mode: 1 as const },
+  handleScroll: {
+    mouseWheel: true,
+    pressedMouseMove: true,
+    horzTouchDrag: true,
+    vertTouchDrag: true,
+  },
+  handleScale: {
+    mouseWheel: true,
+    pinch: true,
+    axisPressedMouseMove: { time: true, price: true },
+    axisDoubleClickReset: { time: true, price: true },
+  },
 };
+
+function adjustLogicalZoom(charts: IChartApi[], factor: number) {
+  const main = charts[0];
+  if (!main) return;
+  const range = main.timeScale().getVisibleLogicalRange();
+  if (!range) return;
+  const span = range.to - range.from;
+  const center = (range.from + range.to) / 2;
+  const newSpan = Math.max(8, span * factor);
+  const next = { from: center - newSpan / 2, to: center + newSpan / 2 };
+  for (const chart of charts) {
+    chart.timeScale().setVisibleLogicalRange(next);
+  }
+}
 
 export function GoldTradingChart({
   signal,
   className,
 }: {
-  signal: GoldSignal | null;
+  signal: DeskSignal | null;
   className?: string;
 }) {
   const { t } = useLocale();
+  const { apiBase, dataSource: defaultSource, structureBars, source: deskSource, wsConnected } =
+    useGoldDesk();
   const mainRef = useRef<HTMLDivElement>(null);
   const rsiRef = useRef<HTMLDivElement>(null);
   const macdRef = useRef<HTMLDivElement>(null);
@@ -72,9 +113,12 @@ export function GoldTradingChart({
   const macdHistRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const priceLinesRef = useRef<ReturnType<ISeriesApi<"Candlestick">["createPriceLine"]>[]>([]);
   const syncingRef = useRef(false);
+  const fitOnNextDataRef = useRef(true);
   const lastBarsRef = useRef<GoldOhlcBar[]>([]);
+  const livePriceRef = useRef<number | null>(null);
 
   const [chartInterval, setChartInterval] = useState<ChartInterval>("5m");
+  const [chartRange, setChartRange] = useState<ChartRange>("5d");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastPrice, setLastPrice] = useState<number | null>(null);
@@ -85,6 +129,8 @@ export function GoldTradingChart({
   const [showRsi, setShowRsi] = useState(true);
   const [showMacd, setShowMacd] = useState(true);
   const [barCount, setBarCount] = useState(0);
+  const [dataSource, setDataSource] = useState(defaultSource);
+  const [isLive, setIsLive] = useState(false);
 
   const syncCharts = useCallback((source: IChartApi, targets: IChartApi[]) => {
     source.timeScale().subscribeVisibleLogicalRangeChange((range) => {
@@ -124,8 +170,94 @@ export function GoldTradingChart({
     signal.take_profit.forEach((p, i) => add(p, VIZ.gold, `TP${i + 1}`));
   }, [signal, showLevels]);
 
+  const allCharts = useCallback(
+    () =>
+      [mainChartRef.current, rsiChartRef.current, macdChartRef.current].filter(
+        (c): c is IChartApi => c != null,
+      ),
+    [],
+  );
+
+  const resetZoom = useCallback(() => {
+    fitOnNextDataRef.current = true;
+    for (const chart of allCharts()) {
+      chart.timeScale().fitContent();
+      chart.priceScale("right").applyOptions({ autoScale: true });
+    }
+    fitOnNextDataRef.current = false;
+  }, [allCharts]);
+
+  const zoomIn = useCallback(() => {
+    adjustLogicalZoom(allCharts(), 0.72);
+  }, [allCharts]);
+
+  const zoomOut = useCallback(() => {
+    adjustLogicalZoom(allCharts(), 1.38);
+  }, [allCharts]);
+
+  const scrollToRealtime = useCallback(() => {
+    for (const chart of allCharts()) {
+      chart.timeScale().scrollToRealTime();
+    }
+  }, [allCharts]);
+
+  const pushSeriesUpdate = useCallback((bars: GoldOhlcBar[]) => {
+    const last = bars.at(-1);
+    if (!last) return;
+
+    const t = last.time as UTCTimestamp;
+    candleRef.current?.update({
+      time: t,
+      open: last.open,
+      high: last.high,
+      low: last.low,
+      close: last.close,
+    });
+    volumeRef.current?.update({
+      time: t,
+      value: last.volume,
+      color: last.close >= last.open ? "rgba(0,255,136,0.72)" : "rgba(255,51,85,0.72)",
+    });
+
+    if (showEma) {
+      const ema9 = computeEma(bars, 9).at(-1);
+      const ema21 = computeEma(bars, 21).at(-1);
+      if (ema9) ema9Ref.current?.update({ time: ema9.time as UTCTimestamp, value: ema9.value });
+      if (ema21) ema21Ref.current?.update({ time: ema21.time as UTCTimestamp, value: ema21.value });
+    }
+
+    const rsi = computeRsi(bars, 14).at(-1);
+    if (rsi) {
+      rsiSeriesRef.current?.update({ time: rsi.time as UTCTimestamp, value: rsi.value });
+      setRsiLive(rsi.value);
+    }
+
+    const { macd, signal: macdSig, histogram } = computeMacd(bars);
+    const m = macd.at(-1);
+    const s = macdSig.at(-1);
+    const h = histogram.at(-1);
+    if (m) macdLineRef.current?.update({ time: m.time as UTCTimestamp, value: m.value });
+    if (s) macdSignalRef.current?.update({ time: s.time as UTCTimestamp, value: s.value });
+    if (h) {
+      macdHistRef.current?.update({
+        time: h.time as UTCTimestamp,
+        value: h.value,
+        color: h.value >= 0 ? "rgba(0,255,136,0.8)" : "rgba(255,51,85,0.8)",
+      });
+    }
+    if (m) setMacdLive(m.value);
+    setLastPrice(last.close);
+  }, [showEma]);
+
   const applyBarData = useCallback(
-    (bars: GoldOhlcBar[]) => {
+    (bars: GoldOhlcBar[], options?: { forceFit?: boolean; streaming?: boolean }) => {
+      if (options?.streaming) {
+        lastBarsRef.current = bars;
+        pushSeriesUpdate(bars);
+        applySignalLevels();
+        return;
+      }
+
       const candleData: BarPoint[] = bars.map((b) => ({
         time: b.time as UTCTimestamp,
         open: b.open,
@@ -179,12 +311,28 @@ export function GoldTradingChart({
 
       const last = bars[bars.length - 1];
       setLastPrice(last.close);
-      mainChartRef.current?.timeScale().fitContent();
-      rsiChartRef.current?.timeScale().fitContent();
-      macdChartRef.current?.timeScale().fitContent();
+      lastBarsRef.current = bars;
+      const shouldFit = options?.forceFit || fitOnNextDataRef.current;
+      if (shouldFit) {
+        mainChartRef.current?.timeScale().fitContent();
+        rsiChartRef.current?.timeScale().fitContent();
+        macdChartRef.current?.timeScale().fitContent();
+        fitOnNextDataRef.current = false;
+      }
       applySignalLevels();
     },
-    [showEma, applySignalLevels],
+    [showEma, applySignalLevels, pushSeriesUpdate],
+  );
+
+  const applyLiveQuote = useCallback(
+    (price: number) => {
+      if (!lastBarsRef.current.length) return;
+      const patched = patchFormingBar(lastBarsRef.current, price);
+      if (patched === lastBarsRef.current) return;
+      lastBarsRef.current = patched;
+      pushSeriesUpdate(patched);
+    },
+    [pushSeriesUpdate],
   );
 
   const loadBars = useCallback(
@@ -192,22 +340,101 @@ export function GoldTradingChart({
       if (!silent) setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/gold-signals/chart?interval=${chartInterval}`);
+        const res = await fetch(
+          `${apiBase}/chart?interval=${chartInterval}&range=${chartRange}&_=${Date.now()}`,
+          { cache: "no-store", credentials: "include" },
+        );
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "chart failed");
         const bars = (data.bars ?? []) as GoldOhlcBar[];
         setBarCount(bars.length);
         if (bars.length === 0) throw new Error("no bars");
+        setDataSource(data.source ?? defaultSource);
+
+        const prev = lastBarsRef.current;
+        const prevLast = prev.at(-1);
+        const nextLast = bars.at(-1);
         lastBarsRef.current = bars;
-        if (candleRef.current) applyBarData(bars);
+
+        if (candleRef.current) {
+          if (
+            silent &&
+            prev.length > 0 &&
+            prevLast &&
+            nextLast &&
+            prev.length === bars.length &&
+            prevLast.time === nextLast.time
+          ) {
+            applyBarData(bars, { streaming: true });
+          } else if (
+            silent &&
+            prev.length > 0 &&
+            nextLast &&
+            prevLast &&
+            nextLast.time > prevLast.time
+          ) {
+            applyBarData(bars, { streaming: true });
+            for (let i = prev.length; i < bars.length - 1; i++) {
+              const b = bars[i];
+              const t = b.time as UTCTimestamp;
+              candleRef.current.update({
+                time: t,
+                open: b.open,
+                high: b.high,
+                low: b.low,
+                close: b.close,
+              });
+            }
+            pushSeriesUpdate(bars);
+          } else {
+            applyBarData(bars);
+          }
+        }
+
+        if (nextLast) {
+          livePriceRef.current = nextLast.close;
+          setLastPrice(nextLast.close);
+        }
       } catch (e) {
-        setError(e instanceof Error ? e.message : "chart error");
+        if (structureBars.length > 0) {
+          const bars = structureBars as GoldOhlcBar[];
+          setBarCount(bars.length);
+          setDataSource(deskSource ?? "Binance WS");
+          setError(null);
+          lastBarsRef.current = bars;
+          applyBarData(bars);
+          const nextLast = bars.at(-1);
+          if (nextLast) {
+            livePriceRef.current = nextLast.close;
+            setLastPrice(nextLast.close);
+          }
+          setIsLive(wsConnected);
+        } else {
+          setError(e instanceof Error ? e.message : "chart error");
+        }
       } finally {
         if (!silent) setLoading(false);
       }
     },
-    [chartInterval, applyBarData],
+    [apiBase, chartInterval, chartRange, applyBarData, pushSeriesUpdate, defaultSource, structureBars, deskSource, wsConnected],
   );
+
+  const loadQuote = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiBase}/quote?_=${Date.now()}`, {
+        cache: "no-store",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (res.ok && typeof data.price === "number") {
+        livePriceRef.current = data.price;
+        setIsLive(true);
+        applyLiveQuote(data.price);
+      }
+    } catch {
+      setIsLive(false);
+    }
+  }, [apiBase, applyLiveQuote]);
 
   useEffect(() => {
     const mainEl = mainRef.current;
@@ -314,11 +541,40 @@ export function GoldTradingChart({
   }, [chartInterval, showRsi, showMacd, syncCharts]);
 
   useEffect(() => {
+    fitOnNextDataRef.current = true;
+  }, [chartInterval, chartRange]);
+
+  useEffect(() => {
     if (!mainChartRef.current) return;
     void loadBars(false);
-    const timer = window.setInterval(() => void loadBars(true), chartInterval === "1m" ? 30_000 : 60_000);
-    return () => clearInterval(timer);
-  }, [loadBars, chartInterval, showRsi, showMacd]);
+    void loadQuote();
+    const barPoll = window.setInterval(
+      () => void loadBars(true),
+      chartInterval === "1m" ? 15_000 : 30_000,
+    );
+    const quotePoll = window.setInterval(() => void loadQuote(), QUOTE_POLL_MS);
+    return () => {
+      clearInterval(barPoll);
+      clearInterval(quotePoll);
+    };
+  }, [loadBars, loadQuote, chartInterval, chartRange, showRsi, showMacd]);
+
+  useEffect(() => {
+    if (!wsConnected || structureBars.length === 0 || !candleRef.current) return;
+    if (chartInterval !== "1m" && chartInterval !== "5m") return;
+    const bars = structureBars as GoldOhlcBar[];
+    setBarCount(bars.length);
+    setDataSource(deskSource ?? "Binance WS");
+    setError(null);
+    setIsLive(true);
+    lastBarsRef.current = bars;
+    applyBarData(bars, { streaming: true });
+    const last = bars.at(-1);
+    if (last) {
+      livePriceRef.current = last.close;
+      setLastPrice(last.close);
+    }
+  }, [structureBars, wsConnected, deskSource, chartInterval, applyBarData]);
 
   useEffect(() => {
     applySignalLevels();
@@ -333,6 +589,23 @@ export function GoldTradingChart({
   return (
     <div className={cn("flex h-full flex-col bg-[#050810]", className)}>
       <div className="flex flex-wrap items-center gap-2 border-b border-sky-900/30 bg-gradient-to-r from-[#060a14] via-[#050810] to-[#060a14] px-3 py-2">
+        <div className="flex gap-0.5 rounded-lg border border-white/[0.06] bg-black/50 p-0.5">
+          {RANGES.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => setChartRange(r.id)}
+              className={cn(
+                "rounded-md px-2 py-1 font-mono text-[10px] font-semibold uppercase transition-colors",
+                chartRange === r.id
+                  ? "bg-sky-500/15 text-sky-300"
+                  : "text-muted hover:bg-white/[0.04] hover:text-foreground",
+              )}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
         <div className="flex gap-0.5 rounded-lg border border-white/[0.06] bg-black/50 p-0.5">
           {INTERVALS.map((iv) => (
             <button
@@ -351,6 +624,20 @@ export function GoldTradingChart({
           ))}
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-1.5">
+          <div className="flex items-center gap-0.5 rounded-lg border border-white/[0.06] bg-black/50 p-0.5">
+            <ZoomButton title={t("goldSignals.zoomIn")} onClick={zoomIn}>
+              <ZoomIn className="h-3.5 w-3.5" />
+            </ZoomButton>
+            <ZoomButton title={t("goldSignals.zoomOut")} onClick={zoomOut}>
+              <ZoomOut className="h-3.5 w-3.5" />
+            </ZoomButton>
+            <ZoomButton title={t("goldSignals.zoomReset")} onClick={resetZoom}>
+              <Maximize2 className="h-3.5 w-3.5" />
+            </ZoomButton>
+            <ZoomButton title={t("goldSignals.goRealtime")} onClick={scrollToRealtime}>
+              <Radio className="h-3.5 w-3.5" />
+            </ZoomButton>
+          </div>
           <ToolToggle active={showLevels} onClick={() => setShowLevels((v) => !v)} label={t("goldSignals.toolLevels")} />
           <ToolToggle active={showEma} onClick={() => setShowEma((v) => !v)} label="EMA" />
           <ToolToggle active={showRsi} onClick={() => setShowRsi((v) => !v)} label="RSI" />
@@ -361,6 +648,12 @@ export function GoldTradingChart({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-sky-900/20 bg-[#040810]/80 px-3 py-2 font-mono text-[10px]">
         {lastPrice != null ? (
           <span className="text-sm font-semibold tabular-nums text-foreground">${lastPrice.toFixed(2)}</span>
+        ) : null}
+        {isLive ? (
+          <span className="inline-flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-emerald-400">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+            {t("goldSignals.chartLive")}
+          </span>
         ) : null}
         {rsiLive != null ? (
           <span className={cn(rsiLive > 70 ? "text-[#ff4466]" : rsiLive < 30 ? "text-[#00ff88]" : "text-muted")}>
@@ -376,7 +669,9 @@ export function GoldTradingChart({
             </span>
           </span>
         ) : null}
-        <span className="text-muted">{barCount} bars · GC=F</span>
+        <span className="text-muted">
+          {barCount} bars · {dataSource} · {t("goldSignals.chartEngine")}
+        </span>
       </div>
 
       <div className="relative flex min-h-0 flex-1 flex-col">
@@ -395,6 +690,28 @@ export function GoldTradingChart({
         {showMacd ? <div ref={macdRef} className="min-h-[72px] flex-[2] border-t border-white/[0.06]" /> : null}
       </div>
     </div>
+  );
+}
+
+function ZoomButton({
+  title,
+  onClick,
+  children,
+}: {
+  title: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-label={title}
+      onClick={onClick}
+      className="rounded-md p-1.5 text-muted transition-colors hover:bg-white/[0.06] hover:text-foreground"
+    >
+      {children}
+    </button>
   );
 }
 

@@ -6,13 +6,13 @@ import { useGoldDesk } from "@/components/gold/gold-desk-context";
 import { GoldOrderFlowByPrice } from "@/components/gold/gold-order-flow";
 import { buildPriceLadder } from "@/components/gold/gold-desk-types";
 import { cn } from "@/lib/utils";
-import type { GoldSignal } from "@/types/gold-signal";
+import type { DeskSignal } from "@/lib/market-signals/instruments";
 
 export function GoldPriceLadder({
   signal,
   orderFlowMode,
 }: {
-  signal: GoldSignal | null;
+  signal: DeskSignal | null;
   orderFlowMode: boolean;
 }) {
   const { t } = useLocale();
