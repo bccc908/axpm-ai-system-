@@ -1,9 +1,9 @@
-/** Product display name — 信号旗 / Signal Flag */
+/** Product display name — Grok Trading */
 export const BRAND = {
-  zh: "信号旗",
-  en: "Signal Flag",
-  shortZh: "信号旗",
-  shortEn: "Signal",
+  zh: "Grok Trading",
+  en: "Grok Trading",
+  shortZh: "Grok",
+  shortEn: "Grok",
 } as const;
 
 export function brandName(locale: "zh" | "en") {

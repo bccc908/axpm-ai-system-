@@ -15,7 +15,7 @@ import {
 } from "@/components/gold/gold-desk-types";
 import { computeRiskReward } from "@/lib/gold-signals/chart-math";
 import { cn } from "@/lib/utils";
-import type { DeskSignal } from "@/lib/market-signals/instruments";
+import type { DeskSignal, SignalI18nNs } from "@/lib/market-signals/instruments";
 
 export function GoldSignalSidebar({
   latest,
@@ -39,7 +39,7 @@ export function GoldSignalSidebar({
   lastDailySent: string | null;
   telegramConfigured: boolean;
   dailyBusy: boolean;
-  i18nNs?: "goldSignals" | "btcSignals" | "ethSignals";
+  i18nNs?: SignalI18nNs;
   onNotesChange: (v: string) => void;
   onDailyToggle: () => void;
   onDailySendNow: () => void;
@@ -60,6 +60,25 @@ export function GoldSignalSidebar({
               </span>
             </div>
             <p className="gold-trade-plan-thesis">{latest.thesis}</p>
+            {latest.spread ? (
+              <div className="mt-3 grid grid-cols-3 gap-2 border-t border-white/[0.06] pt-3 font-mono text-[11px]">
+                <div>
+                  <p className="text-muted">XAUUSD</p>
+                  <p className="text-foreground">${latest.spread.xauusd.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-muted">XAUUSDT</p>
+                  <p className="text-foreground">${latest.spread.xauusdt.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-muted">{t("spreadSignals.spread")}</p>
+                  <p className={latest.spread.spread >= 0 ? "text-amber-300" : "text-sky-300"}>
+                    {latest.spread.spread >= 0 ? "+" : ""}
+                    {latest.spread.spread.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+            ) : null}
             <TradePlanLevelRail signal={latest} />
             {latest.take_profit.length > 0 || rr ? (
               <details className="mt-4 group">
@@ -203,7 +222,7 @@ function DailyAutomationCard({
   onToggle,
   onSendNow,
 }: {
-  i18nNs: "goldSignals" | "btcSignals" | "ethSignals";
+  i18nNs: SignalI18nNs;
   dailyEnabled: boolean;
   lastDailySent: string | null;
   telegramConfigured: boolean;

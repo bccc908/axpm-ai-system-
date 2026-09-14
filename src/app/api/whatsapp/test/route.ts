@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const message = "信号旗 test — WhatsApp is linked successfully.";
+  const message = "Grok Trading test — WhatsApp is linked successfully.";
   const result = await sendWhatsAppMessageDetailed(to, message);
 
   if (!result.ok) {

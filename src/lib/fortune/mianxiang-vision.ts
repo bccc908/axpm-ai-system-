@@ -343,7 +343,7 @@ async function callOpenRouterVision(input: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
         "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://talent.kaydenchiew.com",
-        "X-Title": "Signal Flag Fortune",
+        "X-Title": "Grok Trading Fortune",
       },
       body: JSON.stringify({
         model,

@@ -4,7 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { useLocale } from "@/components/providers/locale-provider";
 import { BIAS_STYLE, formatSignalTime } from "@/components/gold/gold-desk-types";
 import { cn } from "@/lib/utils";
-import type { DeskSignal } from "@/lib/market-signals/instruments";
+import type { DeskSignal, SignalI18nNs } from "@/lib/market-signals/instruments";
 
 export function GoldSignalHistory({
   signals,
@@ -13,7 +13,7 @@ export function GoldSignalHistory({
 }: {
   signals: DeskSignal[];
   onSelect: (signal: DeskSignal) => void;
-  i18nNs?: "goldSignals" | "btcSignals" | "ethSignals";
+  i18nNs?: SignalI18nNs;
 }) {
   const { t, locale } = useLocale();
 

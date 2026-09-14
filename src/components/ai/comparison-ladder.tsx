@@ -124,7 +124,7 @@ export function ComparisonLadder({
           {plan.columns.length} 平台 · {tierCount} 档位
         </span>
         <span className="font-medium tracking-wide text-slate-600">
-          信号旗 Market AI
+          Grok Trading Market AI
         </span>
       </div>
     </div>

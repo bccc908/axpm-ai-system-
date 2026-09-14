@@ -1,31 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Noto_Serif_SC } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const notoSerif = Noto_Serif_SC({
-  variable: "--font-noto-serif",
-  weight: ["400", "500", "600", "700"],
-  preload: false,
-});
-
 export const metadata: Metadata = {
-  title: "信号旗 · AI 运营系统",
-  description: "信号旗 — CRM、财务、收件箱与 AI 助手",
-  applicationName: "信号旗",
+  title: "Grok Trading",
+  description: "Grok Trading — CRM、财务、收件箱与 AI 助手",
+  applicationName: "Grok Trading",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "信号旗",
+    title: "Grok Trading",
   },
   formatDetection: {
     telephone: false,
@@ -49,7 +32,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${notoSerif.variable} antialiased`}
+        className="antialiased"
       >
         {children}
       </body>

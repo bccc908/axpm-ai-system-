@@ -81,7 +81,7 @@ async function runWorkflowAction(
       status: lead?.status ?? "",
       stage: deal?.stage_id ?? "",
     });
-    await sendTelegramMessage(`<b>信号旗 CRM</b>\n${text}`);
+    await sendTelegramMessage(`<b>Grok Trading CRM</b>\n${text}`);
   }
 }
 

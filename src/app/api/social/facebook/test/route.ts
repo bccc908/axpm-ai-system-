@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as { message?: string };
   const message =
     body.message?.trim() ||
-    "信号旗测试帖 — Facebook 已成功连接 ✅\nSignal Flag test post — Facebook connected.";
+    "Grok Trading 测试帖 — Facebook 已成功连接 ✅\nGrok Trading test post — Facebook connected.";
 
   const result = await publishToFacebook({ message });
   if (!result.ok) {

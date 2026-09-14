@@ -80,5 +80,5 @@ export function formatFollowUpReminder(params: {
   clientName: string;
   dueAt: string;
 }): string {
-  return `信号旗 Follow-Up Reminder\n\nClient: ${params.clientName}\nDue: ${params.dueAt}\n\nPlease complete your follow-up today.`;
+  return `Grok Trading Follow-Up Reminder\n\nClient: ${params.clientName}\nDue: ${params.dueAt}\n\nPlease complete your follow-up today.`;
 }

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { GoldOhlcBar } from "@/lib/gold-signals/chart-math";
 
-export type CryptoWsPair = "btcusdt" | "ethusdt";
+export type CryptoWsPair = "btcusdt" | "ethusdt" | "xauusdt";
 
 type CryptoWsMarket = {
   price: number | null;
@@ -17,6 +17,13 @@ type CryptoWsMarket = {
 
 function streamUrls(pair: CryptoWsPair) {
   const streams = `${pair}@trade/${pair}@kline_1m`;
+  if (pair === "xauusdt") {
+    return [
+      `wss://fstream.binance.com/stream?streams=${streams}`,
+      `wss://stream.binance.com:9443/stream?streams=${streams}`,
+      `wss://data-stream.binance.vision/stream?streams=${streams}`,
+    ];
+  }
   return [
     `wss://stream.binance.com:9443/stream?streams=${streams}`,
     `wss://data-stream.binance.vision/stream?streams=${streams}`,
@@ -27,9 +34,9 @@ function streamUrls(pair: CryptoWsPair) {
 export function seedCryptoBars(spot: number, count = 90, pair: CryptoWsPair = "btcusdt"): GoldOhlcBar[] {
   const now = Math.floor(Date.now() / 1000);
   const step = 60;
-  const amp = pair === "ethusdt" ? 4.5 : 45;
-  const amp2 = pair === "ethusdt" ? 3.5 : 35;
-  const wick = pair === "ethusdt" ? 2.5 : 25;
+  const amp = pair === "ethusdt" ? 4.5 : pair === "xauusdt" ? 2.4 : 45;
+  const amp2 = pair === "ethusdt" ? 3.5 : pair === "xauusdt" ? 1.8 : 35;
+  const wick = pair === "ethusdt" ? 2.5 : pair === "xauusdt" ? 1.2 : 25;
   const bars: GoldOhlcBar[] = [];
   for (let i = count - 1; i >= 0; i--) {
     const t = now - i * step;

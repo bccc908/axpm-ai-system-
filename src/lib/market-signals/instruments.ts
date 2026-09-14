@@ -1,6 +1,8 @@
-export type SignalInstrument = "gold" | "btc" | "eth";
+import type { OkBrainMap } from "@/lib/market-signals/ok-brain-map";
 
-export type SignalI18nNs = "goldSignals" | "btcSignals" | "ethSignals";
+export type SignalInstrument = "gold" | "xau" | "spread" | "btc" | "eth";
+
+export type SignalI18nNs = "goldSignals" | "xauSignals" | "spreadSignals" | "btcSignals" | "ethSignals";
 
 export type DeskSignal = {
   id: string;
@@ -21,6 +23,18 @@ export type DeskSignal = {
   invalidation: string;
   expires_at: string | null;
   notes?: string | null;
+  ok_brain_map?: OkBrainMap | null;
+  spread?: {
+    xauusd: number;
+    xauusdt: number;
+    spread: number;
+    spread_pct: number;
+    xauusd_change_pct: number | null;
+    xauusdt_change_pct: number | null;
+    leader: "xauusd" | "xauusdt" | "aligned";
+    xauusd_source: string;
+    xauusdt_source: string;
+  };
 };
 
 export const SIGNAL_INSTRUMENTS: Record<
@@ -35,7 +49,7 @@ export const SIGNAL_INSTRUMENTS: Record<
     dataSource: string;
     i18nNs: SignalI18nNs;
     tabKey: string;
-    wsPair: "btcusdt" | "ethusdt" | null;
+    wsPair: "btcusdt" | "ethusdt" | "xauusdt" | null;
   }
 > = {
   gold: {
@@ -49,6 +63,30 @@ export const SIGNAL_INSTRUMENTS: Record<
     i18nNs: "goldSignals",
     tabKey: "goldSignals.tabGold",
     wsPair: null,
+  },
+  xau: {
+    id: "xau",
+    symbol: "XAUUSDT",
+    yahooSymbol: "XAUUSDT",
+    apiBase: "/api/xau-signals",
+    priceTick: 0.1,
+    badge: "XAUUSDT",
+    dataSource: "XAUUSDT",
+    i18nNs: "xauSignals",
+    tabKey: "goldSignals.tabXau",
+    wsPair: "xauusdt",
+  },
+  spread: {
+    id: "spread",
+    symbol: "XAUUSD-XAUUSDT",
+    yahooSymbol: "XAUUSDT",
+    apiBase: "/api/gold-spread",
+    priceTick: 0.1,
+    badge: "USD vs USDT",
+    dataSource: "XAUUSD / XAUUSDT",
+    i18nNs: "spreadSignals",
+    tabKey: "goldSignals.tabSpread",
+    wsPair: "xauusdt",
   },
   btc: {
     id: "btc",

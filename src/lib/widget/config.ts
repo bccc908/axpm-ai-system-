@@ -41,11 +41,11 @@ export async function getPublicWidgetConfig(): Promise<PublicWidgetConfig> {
 
   return {
     enabled: envEnabled && settingsEnabled,
-    title: settings.widgetTitle?.trim() || "信号旗在线客服",
+    title: settings.widgetTitle?.trim() || "Grok Trading 在线客服",
     subtitle: settings.widgetSubtitle?.trim() || "Axel Private Market",
     welcomeMessage:
       settings.widgetWelcomeMessage?.trim() ||
-      "Hello! I am the Signal Flag assistant. Ask about accounts, IB programs, or how to get started.",
+      "Hello! I am the Grok Trading assistant. Ask about accounts, IB programs, or how to get started.",
     buttonLabel: settings.widgetButtonLabel?.trim() || "Chat with us",
     primaryColor: settings.widgetPrimaryColor?.trim() || "#3b82f6",
     apiBase,

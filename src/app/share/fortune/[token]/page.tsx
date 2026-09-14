@@ -30,7 +30,7 @@ export default async function PublicFortuneSharePage({
             href="/signup"
             className="mt-6 inline-flex rounded-xl btn-premium px-5 py-2.5 text-sm"
           >
-            {locale === "zh" ? "注册体验信号旗" : "Try Signal Flag"}
+            {locale === "zh" ? "注册体验Grok Trading" : "Try Grok Trading"}
           </Link>
         </div>
       </main>

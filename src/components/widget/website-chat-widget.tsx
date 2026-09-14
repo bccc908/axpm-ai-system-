@@ -54,7 +54,7 @@ function widgetCopy(zh: boolean) {
         disabled: "客服暂时不可用",
         sendFailed: "发送失败，请重试",
         unavailable: "客服加载失败",
-        poweredBy: "信号旗 AI",
+        poweredBy: "Grok Trading AI",
         humanHandling: "客服专员已接入，请稍候…",
         liveRefresh: "正在同步新消息…",
       }
@@ -67,7 +67,7 @@ function widgetCopy(zh: boolean) {
         disabled: "Chat is temporarily unavailable",
         sendFailed: "Send failed — please try again",
         unavailable: "Chat unavailable",
-        poweredBy: "信号旗 AI",
+        poweredBy: "Grok Trading AI",
         humanHandling: "A team member is handling your chat — replies appear here automatically",
         liveRefresh: "Checking for new messages…",
       };
@@ -262,7 +262,7 @@ export function WebsiteChatWidget({ embed }: { embed?: boolean }) {
     return (
       <div className="flex h-dvh flex-col bg-slate-950 text-white">
         <header className="border-b border-slate-800 px-4 py-3" style={{ borderColor: `${accent}33` }}>
-          <p className="font-semibold">{config?.title ?? "信号旗在线客服"}</p>
+          <p className="font-semibold">{config?.title ?? "Grok Trading在线客服"}</p>
           {config?.subtitle && <p className="text-xs text-slate-400">{config.subtitle}</p>}
         </header>
         {renderBody()}
@@ -279,7 +279,7 @@ export function WebsiteChatWidget({ embed }: { embed?: boolean }) {
             style={{ background: accent }}
           >
             <div>
-              <p className="font-semibold">{config?.title ?? "信号旗在线客服"}</p>
+              <p className="font-semibold">{config?.title ?? "Grok Trading在线客服"}</p>
               {config?.subtitle && <p className="text-xs text-white/85">{config.subtitle}</p>}
             </div>
             <button

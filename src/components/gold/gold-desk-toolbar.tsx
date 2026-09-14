@@ -9,6 +9,7 @@ import {
   type HeatmapMode,
 } from "@/components/gold/gold-desk-types";
 import { cn } from "@/lib/utils";
+import type { SignalI18nNs } from "@/lib/market-signals/instruments";
 
 export function GoldDeskToolbar({
   view,
@@ -25,7 +26,7 @@ export function GoldDeskToolbar({
   heatmapMode: HeatmapMode;
   loading: boolean;
   generating: boolean;
-  i18nNs?: "goldSignals" | "btcSignals" | "ethSignals";
+  i18nNs?: SignalI18nNs;
   onViewChange: (v: DeskView) => void;
   onHeatmapModeChange: (m: HeatmapMode) => void;
   onRefresh: () => void;

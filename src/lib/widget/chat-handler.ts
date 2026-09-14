@@ -160,7 +160,7 @@ export async function handlePublicWidgetChat(input: {
     client_name: client.name,
     channel: "web",
     direction: "outbound",
-    sender_label: "信号旗助手",
+    sender_label: "Grok Trading助手",
     content: reply,
     source: "web_widget",
     external_id: randomUUID(),
@@ -173,7 +173,7 @@ export async function handlePublicWidgetChat(input: {
     title: "AI reply sent",
     body: reply,
     channel: "web",
-    actor_name: "信号旗助手",
+    actor_name: "Grok Trading助手",
     metadata: { direction: "outbound", fallback: Boolean(result.fallback) },
   });
 

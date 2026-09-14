@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "信号旗 AI 运营系统",
-    short_name: "信号旗",
-    description: "CRM、财务、微信与 AI 助手 — Signal Flag Operations",
+    name: "Grok Trading",
+    short_name: "Grok Trading",
+    description: "CRM、财务、微信与 AI 助手 — Grok Trading",
     start_url: "/dashboard",
     scope: "/",
     display: "standalone",

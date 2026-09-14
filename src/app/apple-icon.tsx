@@ -16,7 +16,7 @@ export default function AppleIcon() {
           background: "linear-gradient(135deg, #1d4ed8 0%, #0a0f1a 100%)",
         }}
       >
-        <div style={{ fontSize: 96, fontWeight: 800, color: "white" }}>A</div>
+        <div style={{ fontSize: 96, fontWeight: 800, color: "white" }}>G</div>
       </div>
     ),
     { ...size },

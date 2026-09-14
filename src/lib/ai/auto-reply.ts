@@ -110,7 +110,7 @@ export async function maybeAutoReply(
       client_name: input.clientName,
       channel: "whatsapp",
       direction: "outbound",
-      sender_label: "信号旗自动回复",
+      sender_label: "Grok Trading自动回复",
       content: reply,
       source: "whatsapp",
     });
@@ -136,7 +136,7 @@ export async function maybeAutoReply(
     wechat_id: input.sendTarget,
     channel: "wechat",
     direction: "outbound",
-    sender_label: "信号旗自动回复",
+    sender_label: "Grok Trading自动回复",
     content: reply,
     source: "wechat_work",
     external_id: sendResult.msgid,

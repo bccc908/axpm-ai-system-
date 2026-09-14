@@ -29,6 +29,7 @@
     "gold:daily": "npx tsx scripts/gold-daily-ops.ts",
     "btc:daily": "npx tsx scripts/btc-daily-ops.ts",
     "eth:daily": "npx tsx scripts/eth-daily-ops.ts",
+    "xau:daily": "npx tsx scripts/xau-daily-ops.ts",
     "gold:setup": "bash scripts/setup-gold-atas.sh"
   },
   "dependencies": {

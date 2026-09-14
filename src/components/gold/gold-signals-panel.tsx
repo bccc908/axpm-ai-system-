@@ -19,7 +19,7 @@ import {
 } from "@/lib/market-signals/instruments";
 import { cn } from "@/lib/utils";
 
-const INSTRUMENTS: SignalInstrument[] = ["gold", "btc", "eth"];
+const INSTRUMENTS: SignalInstrument[] = ["gold", "xau", "spread", "btc", "eth"];
 
 function MarketSignalsDesk({ instrument }: { instrument: SignalInstrument }) {
   const { t, locale } = useLocale();

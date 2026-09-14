@@ -9,8 +9,8 @@ export type EmailContent = {
 function wrapHtml(title: string, body: string, locale: Locale) {
   const footer =
     locale === "zh"
-      ? "此邮件由信号旗 AI 运营系统自动发送"
-      : "Sent automatically by Signal Flag AI Operation System";
+      ? "此邮件由 Grok Trading 自动发送"
+      : "Sent automatically by Grok Trading";
   return `<!DOCTYPE html>
 <html lang="${locale}">
 <head><meta charset="utf-8"><title>${title}</title></head>

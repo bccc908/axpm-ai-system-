@@ -24,6 +24,15 @@ export function useGoldLiveBars(
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [quoteAt, setQuoteAt] = useState<string | null>(null);
   const [changePct, setChangePct] = useState<number | null>(null);
+  const [spreadLive, setSpreadLive] = useState<{
+    xauusd: number;
+    xauusdt: number;
+    spread: number;
+    spread_pct: number;
+    xauusd_change_pct: number | null;
+    xauusdt_change_pct: number | null;
+    leader: "xauusd" | "xauusdt" | "aligned";
+  } | null>(null);
   const [clock, setClock] = useState(0);
   const [flashKey, setFlashKey] = useState(0);
   const prevBarSigRef = useRef("");
@@ -91,6 +100,26 @@ export function useGoldLiveBars(
         if (typeof data.change_pct === "number" && Number.isFinite(data.change_pct)) {
           setChangePct(data.change_pct);
         }
+        if (
+          typeof data.xauusd === "number" &&
+          typeof data.xauusdt === "number" &&
+          typeof data.spread === "number"
+        ) {
+          setSpreadLive({
+            xauusd: data.xauusd,
+            xauusdt: data.xauusdt,
+            spread: data.spread,
+            spread_pct: typeof data.spread_pct === "number" ? data.spread_pct : 0,
+            xauusd_change_pct:
+              typeof data.xauusd_change_pct === "number" ? data.xauusd_change_pct : null,
+            xauusdt_change_pct:
+              typeof data.xauusdt_change_pct === "number" ? data.xauusdt_change_pct : null,
+            leader:
+              data.leader === "xauusd" || data.leader === "xauusdt" || data.leader === "aligned"
+                ? data.leader
+                : "aligned",
+          });
+        }
       }
     } catch {
       /* ignore transient quote errors */
@@ -130,6 +159,7 @@ export function useGoldLiveBars(
     structureLastBar,
     livePrice,
     changePct,
+    spreadLive,
     flashKey,
     clock,
     reload: () => {
