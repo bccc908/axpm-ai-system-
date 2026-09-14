@@ -16,6 +16,7 @@ import {
   Share2,
   Sparkles,
   Wallet,
+  Coins,
   TrendingUp,
   Zap,
   type LucideIcon,
@@ -45,6 +46,7 @@ const navSections: NavSection[] = [
       { href: "/dashboard/todos", labelKey: "nav.todos", icon: CheckSquare },
       { href: "/dashboard/my-assistant", labelKey: "nav.myAssistant", icon: NotebookPen },
       { href: "/dashboard/finance", labelKey: "nav.finance", icon: Wallet },
+      { href: "/dashboard/usdt", labelKey: "nav.usdt", icon: Coins },
     ],
   },
   {
