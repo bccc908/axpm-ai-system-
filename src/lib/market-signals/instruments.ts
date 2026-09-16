@@ -1,8 +1,14 @@
 import type { OkBrainMap } from "@/lib/market-signals/ok-brain-map";
 
-export type SignalInstrument = "gold" | "xau" | "spread" | "btc" | "eth";
+export type SignalInstrument = "gold" | "xau" | "spread" | "btc" | "eth" | "hl";
 
-export type SignalI18nNs = "goldSignals" | "xauSignals" | "spreadSignals" | "btcSignals" | "ethSignals";
+export type SignalI18nNs =
+  | "goldSignals"
+  | "xauSignals"
+  | "spreadSignals"
+  | "btcSignals"
+  | "ethSignals"
+  | "hlSignals";
 
 export type DeskSignal = {
   id: string;
@@ -111,5 +117,17 @@ export const SIGNAL_INSTRUMENTS: Record<
     i18nNs: "ethSignals",
     tabKey: "goldSignals.tabEth",
     wsPair: "ethusdt",
+  },
+  hl: {
+    id: "hl",
+    symbol: "BTC-PERP",
+    yahooSymbol: "BTC-PERP",
+    apiBase: "/api/hl-signals",
+    priceTick: 1,
+    badge: "HL BTC",
+    dataSource: "Hyperliquid",
+    i18nNs: "hlSignals",
+    tabKey: "goldSignals.tabHl",
+    wsPair: null,
   },
 };

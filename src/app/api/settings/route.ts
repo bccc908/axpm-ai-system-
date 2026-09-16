@@ -172,6 +172,12 @@ const schema = z.object({
   widgetButtonLabel: z.string().nullable().optional(),
   crmWidgetAutoAssign: z.boolean().optional(),
   crmAssignmentIndex: z.number().int().min(0).optional(),
+  hyperliquidAddress: z
+    .string()
+    .trim()
+    .refine((v) => v === "" || /^0x[a-fA-F0-9]{40}$/.test(v), "invalid address")
+    .nullable()
+    .optional(),
 });
 
 export async function PATCH(request: Request) {

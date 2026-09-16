@@ -50,6 +50,8 @@ export type AppSettings = {
   crmWorkflows?: import("@/types/crm-workflows").CrmWorkflow[];
   /** Send Telegram when CRM workflow rules fire (default true) */
   crmWorkflowNotifyTelegram?: boolean;
+  /** Read-only Hyperliquid wallet (0x…) */
+  hyperliquidAddress?: string | null;
 };
 
 export async function readAppSettings(): Promise<AppSettings> {

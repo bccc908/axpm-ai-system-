@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Bitcoin, Hexagon, TrendingUp } from "lucide-react";
+import { Bitcoin, Hexagon, TrendingUp, Waves } from "lucide-react";
 import { useLocale } from "@/components/providers/locale-provider";
 import { GoldDeskProvider } from "@/components/gold/gold-desk-context";
 import { GoldDeskMainView } from "@/components/gold/gold-desk-main-view";
@@ -11,6 +11,7 @@ import { GoldPriceLadder } from "@/components/gold/gold-price-ladder";
 import { GoldSignalHistory } from "@/components/gold/gold-signal-history";
 import { GoldSignalSidebar } from "@/components/gold/gold-signal-sidebar";
 import { GoldTickerStrip } from "@/components/gold/gold-ticker-strip";
+import { HyperliquidAccountCard } from "@/components/gold/hyperliquid-account-card";
 import { PageHeader } from "@/components/ui/page-header";
 import {
   SIGNAL_INSTRUMENTS,
@@ -19,7 +20,7 @@ import {
 } from "@/lib/market-signals/instruments";
 import { cn } from "@/lib/utils";
 
-const INSTRUMENTS: SignalInstrument[] = ["gold", "xau", "spread", "btc", "eth"];
+const INSTRUMENTS: SignalInstrument[] = ["gold", "xau", "spread", "btc", "eth", "hl"];
 
 function MarketSignalsDesk({ instrument }: { instrument: SignalInstrument }) {
   const { t, locale } = useLocale();
@@ -42,12 +43,20 @@ function MarketSignalsDesk({ instrument }: { instrument: SignalInstrument }) {
     setLoading(true);
     try {
       const res = await fetch(`${config.apiBase}?limit=12`, { credentials: "include" });
-      const data = await res.json();
-      if (res.ok) setSignals(data.signals ?? []);
+      const data = (await res.json().catch(() => null)) as
+        | { signals?: DeskSignal[]; error?: string }
+        | null;
+      if (res.ok) {
+        setSignals(data?.signals ?? []);
+        return;
+      }
+      setMessage(data?.error || t(`${i18nNs}.loadFailed`));
+    } catch {
+      setMessage(t(`${i18nNs}.loadFailed`));
     } finally {
       setLoading(false);
     }
-  }, [config.apiBase]);
+  }, [config.apiBase, i18nNs, t]);
 
   const loadAutomation = useCallback(async () => {
     try {
@@ -76,15 +85,22 @@ function MarketSignalsDesk({ instrument }: { instrument: SignalInstrument }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ daily_telegram_enabled: !dailyEnabled }),
       });
-      const data = await res.json();
-      if (res.ok) {
+      const data = (await res.json().catch(() => null)) as {
+        automation?: { daily_telegram_enabled: boolean };
+        error?: string;
+      } | null;
+      if (res.ok && data?.automation) {
         setDailyEnabled(data.automation.daily_telegram_enabled);
         setMessage(
           data.automation.daily_telegram_enabled
             ? t(`${i18nNs}.dailyEnabled`)
             : t(`${i18nNs}.dailyDisabled`),
         );
+      } else {
+        setMessage(data?.error ?? t(`${i18nNs}.generateFailed`));
       }
+    } catch {
+      setMessage(t(`${i18nNs}.generateFailed`));
     } finally {
       setDailyBusy(false);
     }
@@ -170,6 +186,8 @@ function MarketSignalsDesk({ instrument }: { instrument: SignalInstrument }) {
             <Bitcoin className="h-4 w-4 text-accent" />
           ) : instrument === "eth" ? (
             <Hexagon className="h-4 w-4 text-accent" />
+          ) : instrument === "hl" ? (
+            <Waves className="h-4 w-4 text-accent" />
           ) : (
             <TrendingUp className="h-4 w-4 text-accent" />
           )
@@ -178,6 +196,7 @@ function MarketSignalsDesk({ instrument }: { instrument: SignalInstrument }) {
       />
 
       <GoldTickerStrip latest={latest} prev={prev} />
+      {instrument === "hl" ? <HyperliquidAccountCard /> : null}
 
       <GoldDeskToolbar
         view={view}
