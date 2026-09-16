@@ -11,6 +11,7 @@ import {
   searchWeb,
 } from "@/lib/ai/web-search";
 import { enforceMinRiskReward, profitPolicyPromptLines } from "@/lib/market-signals/profit-policy";
+import { okBrainMapPromptLines, resolveOkBrainMap } from "@/lib/market-signals/ok-brain-map";
 
 const signalSchema = z.object({
   bias: z.enum(["long", "short", "neutral", "wait"]),
@@ -90,19 +91,21 @@ function buildSystemPrompt(locale: "en" | "zh") {
 - 必须包含 invalidation（失效价位/条件）
 - 非投资建议，risk_notes 写清仓位与波动风险
 ${profitPolicyPromptLines("zh")}
+${okBrainMapPromptLines("zh")}
 
 严格 JSON，字段：
 bias(long|short|neutral|wait), strength, confidence(0-100), timeframe,
 entry_zone{low,high}|null, stop_loss, take_profit[], thesis, bookmap_playbook,
-orderflow_triggers[], risk_notes, invalidation, expires_hours`;
+orderflow_triggers[], risk_notes, invalidation, expires_hours, ok_brain_map`;
   }
 
   return `You are a professional ETHUSD intraday analyst specializing in order flow, DOM, and key levels.
 
-Return strict JSON with: bias, strength, confidence, timeframe, entry_zone, stop_loss, take_profit, thesis, bookmap_playbook, orderflow_triggers, risk_notes, invalidation, expires_hours.
+Return strict JSON with: bias, strength, confidence, timeframe, entry_zone, stop_loss, take_profit, thesis, bookmap_playbook, orderflow_triggers, risk_notes, invalidation, expires_hours, ok_brain_map.
 
 bookmap_playbook must describe order-flow reading and entry triggers. Not financial advice.
-${profitPolicyPromptLines("en")}`;
+${profitPolicyPromptLines("en")}
+${okBrainMapPromptLines("en")}`;
 }
 
 async function maybeMacroContext(locale: "en" | "zh") {
@@ -172,8 +175,10 @@ Generate a professional ethereum trading signal.`;
   }
 
   let parsed: z.infer<typeof signalSchema>;
+  let rawOkBrainMap: unknown;
   try {
     const raw = parseJsonLoose(ai.content);
+    rawOkBrainMap = raw.ok_brain_map;
     const normalized = {
       bias: normalizeBias(raw.bias ?? raw.direction),
       strength: normalizeStrength(raw.strength),
@@ -224,6 +229,18 @@ Generate a professional ethereum trading signal.`;
   const expiresHours = parsed.expires_hours ?? 8;
   const expiresAt = new Date(Date.now() + expiresHours * 3600_000).toISOString();
 
+  const okBrainMap = resolveOkBrainMap(rawOkBrainMap, {
+    locale: params.locale,
+    symbol: "ETHUSD",
+    bias: parsed.bias,
+    timeframe: parsed.timeframe,
+    thesis: parsed.thesis,
+    bookmap_playbook: parsed.bookmap_playbook,
+    orderflow_triggers: parsed.orderflow_triggers,
+    invalidation: parsed.invalidation,
+    expires_hours: expiresHours,
+  });
+
   const signal = await appendEthSignal({
     symbol: "ETHUSD",
     spot_price: quote?.price ?? null,
@@ -243,6 +260,7 @@ Generate a professional ethereum trading signal.`;
     invalidation: parsed.invalidation,
     expires_at: expiresAt,
     notes: params.notes?.trim() || null,
+    ok_brain_map: okBrainMap,
   });
 
   return { ok: true as const, signal, quote };

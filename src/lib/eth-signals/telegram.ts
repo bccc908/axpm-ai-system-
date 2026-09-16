@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sendTelegramMessage } from "@/lib/integrations/telegram";
+import { formatOkBrainMap } from "@/lib/market-signals/ok-brain-map";
 import type { EthSignal } from "@/types/eth-signal";
 
 function biasLabel(bias: EthSignal["bias"]) {
@@ -38,6 +39,9 @@ export function formatEthSignalTelegram(
     "",
     "<b>订单流读法</b>",
     signal.bookmap_playbook.slice(0, 500),
+    signal.ok_brain_map
+      ? ["", "<b>0K脑图</b>", formatOkBrainMap(signal.ok_brain_map, "zh")].join("\n")
+      : "",
     "",
     "<i>研究用途，非投资建议</i>",
   ]

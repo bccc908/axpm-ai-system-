@@ -1,6 +1,12 @@
 @import "tailwindcss";
 
 :root {
+  --font-geist-sans: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC",
+    "Hiragino Sans GB", "Noto Sans SC", "Segoe UI", sans-serif;
+  --font-geist-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", monospace;
+  --font-noto-serif: "Songti SC", "Noto Serif SC", "STSong", "Times New Roman",
+    serif;
   --background: #050508;
   --foreground: #f4f4f5;
   --card: rgba(16, 14, 22, 0.65);

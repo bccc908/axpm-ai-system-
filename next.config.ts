@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
     "mammoth",
     "undici",
     "sharp",
+    "@napi-rs/canvas",
     "@ffmpeg-installer/ffmpeg",
     "edge-tts-universal",
   ],

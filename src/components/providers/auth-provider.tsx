@@ -47,7 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const canHref = useCallback(
     (href: string) => {
-      const authModule = NAV_MODULE[href];
+      const path = href.split("?")[0];
+      const authModule = NAV_MODULE[href] ?? NAV_MODULE[path];
       if (!authModule) return true;
       return can(authModule);
     },

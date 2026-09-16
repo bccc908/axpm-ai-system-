@@ -11,6 +11,7 @@ import {
   searchWeb,
 } from "@/lib/ai/web-search";
 import { enforceMinRiskReward, profitPolicyPromptLines } from "@/lib/market-signals/profit-policy";
+import { okBrainMapPromptLines, resolveOkBrainMap } from "@/lib/market-signals/ok-brain-map";
 
 const signalSchema = z.object({
   bias: z.enum(["long", "short", "neutral", "wait"]),
@@ -90,19 +91,21 @@ function buildSystemPrompt(locale: "en" | "zh") {
 - 必须包含 invalidation（失效价位/条件）
 - 非投资建议，risk_notes 写清仓位与波动风险
 ${profitPolicyPromptLines("zh")}
+${okBrainMapPromptLines("zh")}
 
 严格 JSON，字段：
 bias(long|short|neutral|wait), strength, confidence(0-100), timeframe,
 entry_zone{low,high}|null, stop_loss, take_profit[], thesis, bookmap_playbook,
-orderflow_triggers[], risk_notes, invalidation, expires_hours`;
+orderflow_triggers[], risk_notes, invalidation, expires_hours, ok_brain_map`;
   }
 
   return `You are a professional XAUUSD intraday analyst specializing in ATAS cluster charts, footprint, Delta, and DOM.
 
-Return strict JSON with: bias, strength, confidence, timeframe, entry_zone, stop_loss, take_profit, thesis, bookmap_playbook, orderflow_triggers, risk_notes, invalidation, expires_hours.
+Return strict JSON with: bias, strength, confidence, timeframe, entry_zone, stop_loss, take_profit, thesis, bookmap_playbook, orderflow_triggers, risk_notes, invalidation, expires_hours, ok_brain_map.
 
 bookmap_playbook must describe ATAS cluster/footprint reading and entry triggers. Not financial advice.
-${profitPolicyPromptLines("en")}`;
+${profitPolicyPromptLines("en")}
+${okBrainMapPromptLines("en")}`;
 }
 
 async function maybeMacroContext(locale: "en" | "zh") {
@@ -170,8 +173,10 @@ Generate a professional gold trading signal for Bookmap order-flow trading.`;
   }
 
   let parsed: z.infer<typeof signalSchema>;
+  let rawOkBrainMap: unknown;
   try {
     const raw = parseJsonLoose(ai.content);
+    rawOkBrainMap = raw.ok_brain_map;
     const normalized = {
       bias: normalizeBias(raw.bias ?? raw.direction),
       strength: normalizeStrength(raw.strength),
@@ -222,6 +227,18 @@ Generate a professional gold trading signal for Bookmap order-flow trading.`;
   const expiresHours = parsed.expires_hours ?? 8;
   const expiresAt = new Date(Date.now() + expiresHours * 3600_000).toISOString();
 
+  const okBrainMap = resolveOkBrainMap(rawOkBrainMap, {
+    locale: params.locale,
+    symbol: "XAUUSD",
+    bias: parsed.bias,
+    timeframe: parsed.timeframe,
+    thesis: parsed.thesis,
+    bookmap_playbook: parsed.bookmap_playbook,
+    orderflow_triggers: parsed.orderflow_triggers,
+    invalidation: parsed.invalidation,
+    expires_hours: expiresHours,
+  });
+
   const signal = await appendGoldSignal({
     symbol: "XAUUSD",
     spot_price: quote?.price ?? null,
@@ -241,6 +258,7 @@ Generate a professional gold trading signal for Bookmap order-flow trading.`;
     invalidation: parsed.invalidation,
     expires_at: expiresAt,
     notes: params.notes?.trim() || null,
+    ok_brain_map: okBrainMap,
   });
 
   return { ok: true as const, signal, quote };

@@ -1,3 +1,5 @@
+import type { OkBrainMap } from "@/lib/market-signals/ok-brain-map";
+
 export type BtcSignalBias = "long" | "short" | "neutral" | "wait";
 
 export type BtcSignalStrength = "weak" | "moderate" | "strong";
@@ -26,6 +28,7 @@ export interface BtcSignal {
   invalidation: string;
   expires_at: string | null;
   notes?: string | null;
+  ok_brain_map?: OkBrainMap | null;
 }
 
 export interface BtcSignalStore {

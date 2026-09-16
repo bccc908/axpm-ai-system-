@@ -75,31 +75,35 @@ async function fetchBinanceKlines(
     "https://data-api.binance.vision/api/v3/klines",
   ];
 
-  for (const url of hosts) {
-    try {
-      const res = await fetch(
-        `${url}?symbol=XAUUSDT&interval=${BINANCE_INTERVAL[interval]}&limit=${limit}`,
-        { headers: { Accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(10_000) },
-      );
-      if (!res.ok) continue;
-      const rows = (await res.json()) as Array<[number, string, string, string, string, string, ...unknown[]]>;
-      if (!Array.isArray(rows) || rows.length === 0) continue;
-      const bars = parseBars(
-        rows.map((row) => ({
-          time: Math.floor(row[0] / 1000),
-          open: Number(row[1]),
-          high: Number(row[2]),
-          low: Number(row[3]),
-          close: Number(row[4]),
-          volume: Number(row[5]),
-        })),
-      );
-      if (bars.length > 0) return bars;
-    } catch {
-      /* next host */
-    }
+  try {
+    return await Promise.any(
+      hosts.map(async (url) => {
+        const res = await fetch(
+          `${url}?symbol=XAUUSDT&interval=${BINANCE_INTERVAL[interval]}&limit=${limit}`,
+          { headers: { Accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(8_000) },
+        );
+        if (!res.ok) throw new Error("bad status");
+        const rows = (await res.json()) as Array<
+          [number, string, string, string, string, string, ...unknown[]]
+        >;
+        if (!Array.isArray(rows) || rows.length === 0) throw new Error("empty");
+        const bars = parseBars(
+          rows.map((row) => ({
+            time: Math.floor(row[0] / 1000),
+            open: Number(row[1]),
+            high: Number(row[2]),
+            low: Number(row[3]),
+            close: Number(row[4]),
+            volume: Number(row[5]),
+          })),
+        );
+        if (bars.length === 0) throw new Error("empty");
+        return bars;
+      }),
+    );
+  } catch {
+    return null;
   }
-  return null;
 }
 
 async function fetchOkxKlines(
@@ -166,21 +170,29 @@ async function fetchBybitKlines(
   }
 }
 
-/** Real XAUUSDT klines — tries Binance, OKX, Bybit. */
+/** Real XAUUSDT klines — tries Binance, OKX, Bybit in parallel. */
 export async function fetchExchangeOhlc(
   interval: GoldChartInterval,
   range: GoldChartRange,
 ): Promise<{ bars: GoldOhlcBar[]; source: string } | null> {
-  const binance = await fetchBinanceKlines(interval, range);
-  if (binance?.length) return { bars: binance, source: "Binance XAUUSDT" };
-
-  const okx = await fetchOkxKlines(interval, range);
-  if (okx?.length) return { bars: okx, source: "OKX XAU-USDT" };
-
-  const bybit = await fetchBybitKlines(interval, range);
-  if (bybit?.length) return { bars: bybit, source: "Bybit XAUUSDT" };
-
-  return null;
+  try {
+    return await Promise.any([
+      fetchBinanceKlines(interval, range).then((bars) => {
+        if (!bars?.length) throw new Error("empty");
+        return { bars, source: "Binance XAUUSDT" };
+      }),
+      fetchOkxKlines(interval, range).then((bars) => {
+        if (!bars?.length) throw new Error("empty");
+        return { bars, source: "OKX XAU-USDT" };
+      }),
+      fetchBybitKlines(interval, range).then((bars) => {
+        if (!bars?.length) throw new Error("empty");
+        return { bars, source: "Bybit XAUUSDT" };
+      }),
+    ]);
+  } catch {
+    return null;
+  }
 }
 
 /** Spot price from exchange tickers. */
@@ -284,9 +296,15 @@ export async function fetchExchangeSpot(): Promise<{
     },
   ];
 
-  for (const fn of sources) {
-    const hit = await fn();
-    if (hit) return hit;
+  try {
+    return await Promise.any(
+      sources.map(async (fn) => {
+        const hit = await fn();
+        if (!hit) throw new Error("miss");
+        return hit;
+      }),
+    );
+  } catch {
+    return null;
   }
-  return null;
 }

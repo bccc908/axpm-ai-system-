@@ -11,6 +11,7 @@ export async function fetchSpotFallbackBars(count = 120): Promise<{
     const res = await fetch("https://api.goldprice.dev/v1/prices?symbol=XAU-USD-SPOT", {
       headers: { Accept: "application/json" },
       cache: "no-store",
+      signal: AbortSignal.timeout(5_000),
     });
     if (!res.ok) return null;
 

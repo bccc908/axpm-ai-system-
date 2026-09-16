@@ -5,7 +5,7 @@ import { z } from "zod";
 import { getEmailConfig } from "@/lib/integrations/email";
 import { getTelegramConfig } from "@/lib/integrations/telegram";
 import { getWeChatWorkConfig } from "@/lib/integrations/wechat-work";
-import { getGoogleDriveConfig } from "@/lib/integrations/google-drive";
+import { getGoogleDriveConfigAsync } from "@/lib/integrations/google-drive";
 import { getSocialIntegrationStatus } from "@/lib/social/publish";
 import {
   getOpenClawGatewayURL,
@@ -59,6 +59,7 @@ export async function GET() {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const widgetConfig = await getPublicWidgetConfig();
   const widgetStats = await countWebWidgetMessages();
+  const googleDrive = await getGoogleDriveConfigAsync();
 
   return NextResponse.json({
     settings,
@@ -110,7 +111,7 @@ export async function GET() {
         xiaohongshu: social.xiaohongshu.configured,
         douyin: social.douyin.configured,
       },
-      googleDrive: getGoogleDriveConfig(),
+      googleDrive,
       marketAi: {
         unstructured: isUnstructuredConfigured(),
         gamma: isGammaConfigured(),

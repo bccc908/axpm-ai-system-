@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import path from "path";
-import { scanReceiptImage } from "@/lib/ai/receipt-scan";
+import { scanReceipt } from "@/lib/ai/receipt-scan";
 import { uploadReceiptToGoogleDrive } from "@/lib/integrations/google-drive";
 import {
   createReceipt,
@@ -11,11 +11,19 @@ import {
   RECEIPTS_DIR,
 } from "@/lib/finance/store";
 import { normalizeCurrency } from "@/lib/finance/helpers";
+import {
+  isAllowedReceiptMime,
+  normalizeReceiptMime,
+  receiptExtension,
+} from "@/lib/finance/receipt-files";
 import fs from "fs/promises";
 
 export async function GET() {
   const receipts = await listReceipts();
-  return NextResponse.json({ receipts });
+  return NextResponse.json(
+    { receipts },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }
 
 export async function POST(request: Request) {
@@ -28,31 +36,48 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
     }
 
-    const allowed = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
-    const mimeType = file.type || "image/jpeg";
-    if (!allowed.includes(mimeType) && !mimeType.startsWith("image/")) {
-      return NextResponse.json({ error: "Only image files are supported" }, { status: 400 });
+    const mimeType = normalizeReceiptMime(file.type || "image/jpeg", file.name);
+    if (!isAllowedReceiptMime(mimeType, file.name)) {
+      return NextResponse.json(
+        { error: "Only images and PDF files are supported" },
+        { status: 400 },
+      );
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const ext = mimeType.includes("png") ? "png" : mimeType.includes("webp") ? "webp" : "jpg";
+    const ext = receiptExtension(mimeType, file.name);
     const filename = `${randomUUID()}.${ext}`;
 
     await ensureReceiptsDir();
     await fs.writeFile(path.join(RECEIPTS_DIR, filename), buffer);
 
-    const base64 = buffer.toString("base64");
-    const scan = await scanReceiptImage(base64, mimeType);
-    const scanData = scan.ok
-      ? scan.data
-      : {
-          merchant: null,
-          amount: null,
-          currency: null,
-          category: null,
-          receipt_date: null,
-          notes: "Scan failed",
-        };
+    let scanData: {
+      merchant: string | null;
+      amount: number | null;
+      currency: string | null;
+      category: string | null;
+      receipt_date: string | null;
+      notes: string | null;
+    };
+    let scanError: string | null = null;
+    let visionProvider: string | null = null;
+    try {
+      const scan = await scanReceipt(buffer, mimeType, file.name);
+      scanData = scan.data;
+      scanError = scan.scanError ?? null;
+      visionProvider = scan.visionProvider ?? null;
+    } catch (error) {
+      console.error("[Finance Receipts] scan error:", error);
+      scanData = {
+        merchant: null,
+        amount: null,
+        currency: null,
+        category: null,
+        receipt_date: null,
+        notes: "Scan failed — edit amount manually",
+      };
+      scanError = error instanceof Error ? error.message : "Scan failed";
+    }
 
     let google_drive_file_id: string | null = null;
     let google_drive_url: string | null = null;
@@ -98,6 +123,8 @@ export async function POST(request: Request) {
       {
         receipt,
         scan: scanData,
+        scanError,
+        visionProvider: visionProvider,
         driveUploaded: Boolean(google_drive_file_id),
         driveError: driveUpload.ok ? null : driveUpload.error,
         transactionCreated: Boolean(transaction_id),

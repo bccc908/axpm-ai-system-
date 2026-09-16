@@ -16,6 +16,7 @@ import {
 import { computeRiskReward } from "@/lib/gold-signals/chart-math";
 import { cn } from "@/lib/utils";
 import type { DeskSignal, SignalI18nNs } from "@/lib/market-signals/instruments";
+import { OkBrainMapCard } from "@/components/gold/ok-brain-map-card";
 
 export function GoldSignalSidebar({
   latest,
@@ -114,6 +115,10 @@ export function GoldSignalSidebar({
               </details>
             ) : null}
           </div>
+
+          {latest.ok_brain_map ? (
+            <OkBrainMapCard map={latest.ok_brain_map} i18nNs={i18nNs} />
+          ) : null}
 
           {latest.orderflow_triggers.length > 0 ? (
             <div className="gold-desk-panel p-4">

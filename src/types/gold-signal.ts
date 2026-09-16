@@ -1,3 +1,5 @@
+import type { OkBrainMap } from "@/lib/market-signals/ok-brain-map";
+
 export type GoldSignalBias = "long" | "short" | "neutral" | "wait";
 
 export type GoldSignalStrength = "weak" | "moderate" | "strong";
@@ -26,6 +28,7 @@ export interface GoldSignal {
   invalidation: string;
   expires_at: string | null;
   notes?: string | null;
+  ok_brain_map?: OkBrainMap | null;
 }
 
 export interface GoldSignalStore {

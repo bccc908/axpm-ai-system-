@@ -40,7 +40,7 @@ type SettingsData = {
     wechatWork: { configured: boolean; canSend: boolean };
     social: { facebook: boolean; instagram: boolean; wechatOa: boolean; tiktok: boolean; xiaohongshu?: boolean; douyin?: boolean };
     openclaw?: { configured: boolean; gatewayUrl: string; provider: string };
-    googleDrive: { configured: boolean; folderIdSet: boolean };
+    googleDrive: { configured: boolean; folderIdSet: boolean; excelConfigured?: boolean; excelFolderIdSet?: boolean };
     marketAi?: { unstructured: boolean; gamma: boolean; dalle: boolean; webSearch?: boolean };
   };
   cronDigestUrl: string;
@@ -301,6 +301,7 @@ export function SettingsDashboard() {
           <div className="flex justify-between"><span>小红书 Xiaohongshu</span><Status ok={Boolean(data.integrations.social.xiaohongshu)} /></div>
           <div className="flex justify-between"><span>抖音 Douyin</span><Status ok={Boolean(data.integrations.social.douyin)} /></div>
           <div className="flex justify-between"><span>Google Drive (Receipts)</span><Status ok={data.integrations.googleDrive.configured} /></div>
+          <div className="flex justify-between"><span>Google Drive (跟单分成)</span><Status ok={Boolean(data.integrations.googleDrive.excelConfigured)} /></div>
           <div className="flex justify-between"><span>Supabase</span><Status ok={data.integrations.supabase.configured} /></div>
           {!data.integrations.supabase.configured && (
             <p className="text-xs text-muted">{t("settings.supabaseMigrationHint")}</p>

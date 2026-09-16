@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import type { Route } from "next";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   Bot,
   Brain,
+  Camera,
   CreditCard,
   CheckSquare,
+  FolderOpen,
   Kanban,
   LayoutDashboard,
   LogOut,
@@ -47,6 +49,8 @@ const navSections: NavSection[] = [
       { href: "/dashboard/my-assistant", labelKey: "nav.myAssistant", icon: NotebookPen },
       { href: "/dashboard/finance", labelKey: "nav.finance", icon: Wallet },
       { href: "/dashboard/usdt", labelKey: "nav.usdt", icon: Coins },
+      { href: "/dashboard/finance?tab=receipts", labelKey: "nav.receipts", icon: Camera },
+      { href: "/dashboard/google-drive", labelKey: "nav.googleDrive", icon: FolderOpen },
     ],
   },
   {
@@ -82,11 +86,13 @@ const navSections: NavSection[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { t, locale } = useLocale();
   const { user, canHref, logout } = useAuth();
 
   function isActive(href: string) {
-    if (href.startsWith("/dashboard/crm")) {
+    const [path, query] = href.split("?");
+    if (path.startsWith("/dashboard/crm")) {
       return (
         pathname.startsWith("/dashboard/crm") ||
         pathname.startsWith("/dashboard/clients") ||
@@ -97,13 +103,20 @@ export function Sidebar() {
         pathname.startsWith("/dashboard/ai-assistant")
       );
     }
-    if (href.startsWith("/dashboard/conversations")) {
+    if (path.startsWith("/dashboard/conversations")) {
       return (
         pathname.startsWith("/dashboard/conversations") ||
         pathname.startsWith("/dashboard/ai-assistant")
       );
     }
-    return pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
+    if (path === "/dashboard/finance") {
+      const tab = searchParams.get("tab");
+      const expectedTab = query ? new URLSearchParams(query).get("tab") : null;
+      if (!pathname.startsWith("/dashboard/finance")) return false;
+      if (expectedTab) return tab === expectedTab;
+      return tab !== "receipts";
+    }
+    return pathname === path || (path !== "/dashboard" && pathname.startsWith(path));
   }
 
   return (

@@ -4,17 +4,23 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Camera,
   CheckCircle2,
+  Download,
   ExternalLink,
   ImagePlus,
+  FileText,
   Loader2,
+  Pencil,
   ScanLine,
   Trash2,
   Upload,
 } from "lucide-react";
 import { useLocale } from "@/components/providers/locale-provider";
+import { ReceiptEditDialog } from "@/components/finance/receipt-edit-dialog";
+import { ReceiptPreview } from "@/components/finance/receipt-preview";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
 import { formatDateLocalized } from "@/lib/i18n";
+import { buildReceiptDownloadName } from "@/lib/finance/receipt-files";
 import { formatCurrency } from "@/lib/utils";
 import type { FinanceReceipt } from "@/types/finance";
 
@@ -33,6 +39,11 @@ export function ReceiptCapturePanel({ onChange }: { onChange: () => void }) {
   const [scanReady, setScanReady] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
   const [lastResult, setLastResult] = useState<string | null>(null);
+  const [lastResultError, setLastResultError] = useState(false);
+  const [editingReceipt, setEditingReceipt] = useState<FinanceReceipt | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [confirmNewUpload, setConfirmNewUpload] = useState(false);
+  const [editSaveError, setEditSaveError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -42,17 +53,35 @@ export function ReceiptCapturePanel({ onChange }: { onChange: () => void }) {
     setLoading(true);
     try {
       const [recRes, statusRes] = await Promise.all([
-        fetch("/api/finance/receipts"),
-        fetch("/api/finance/receipts/status"),
+        fetch(`/api/finance/receipts?t=${Date.now()}`, { cache: "no-store" }),
+        fetch("/api/finance/receipts/status", { cache: "no-store" }),
       ]);
       const [recData, statusData] = await Promise.all([recRes.json(), statusRes.json()]);
       setReceipts(recData.receipts ?? []);
       setDriveReady(Boolean(statusData.driveConfigured));
-      setScanReady(Boolean(statusData.llmConfigured ?? statusData.openaiConfigured));
+      setScanReady(Boolean(statusData.visionConfigured ?? statusData.llmConfigured));
     } finally {
       setLoading(false);
     }
   }, []);
+
+  async function openReceiptEdit(receipt: FinanceReceipt) {
+    setEditSaveError(null);
+    setConfirmNewUpload(false);
+    try {
+      const res = await fetch(`/api/finance/receipts/${receipt.id}/info`, {
+        cache: "no-store",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setEditingReceipt(data.receipt ?? receipt);
+        return;
+      }
+    } catch {
+      // fall back to list item
+    }
+    setEditingReceipt(receipt);
+  }
 
   useEffect(() => {
     load();
@@ -103,6 +132,7 @@ export function ReceiptCapturePanel({ onChange }: { onChange: () => void }) {
   async function uploadFile(file: File) {
     setUploading(true);
     setLastResult(null);
+    setLastResultError(false);
     try {
       const form = new FormData();
       form.append("file", file);
@@ -113,6 +143,7 @@ export function ReceiptCapturePanel({ onChange }: { onChange: () => void }) {
 
       if (!res.ok) {
         setLastResult(data.error ?? t("finance.receiptFailed"));
+        setLastResultError(true);
         return;
       }
 
@@ -121,9 +152,16 @@ export function ReceiptCapturePanel({ onChange }: { onChange: () => void }) {
       if (data.scan?.amount) {
         parts.push(formatCurrency(data.scan.amount, data.scan.currency ?? "MYR"));
       }
+      if (data.scanError) parts.push(t("finance.receiptScanManual"));
       if (data.driveUploaded) parts.push(t("finance.driveUploaded"));
       if (data.transactionCreated) parts.push(t("finance.expenseCreated"));
       setLastResult(parts.join(" · "));
+      setLastResultError(false);
+
+      if (data.receipt) {
+        setEditingReceipt(data.receipt);
+        setConfirmNewUpload(true);
+      }
 
       load();
       onChange();
@@ -148,9 +186,91 @@ export function ReceiptCapturePanel({ onChange }: { onChange: () => void }) {
     onChange();
   }
 
+  async function triggerReceiptDownload(
+    receipt: FinanceReceipt,
+    kind: "original" | "summary",
+  ) {
+    const url =
+      kind === "summary"
+        ? `/api/finance/receipts/${receipt.id}/summary`
+        : `/api/finance/receipts/${receipt.id}?download=1`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) {
+      setLastResult(t("finance.receiptDownloadFailed"));
+      setLastResultError(true);
+      return;
+    }
+    const blob = await res.blob();
+    const cd = res.headers.get("Content-Disposition") ?? "";
+    const utfMatch = cd.match(/filename\*=UTF-8''([^;]+)/i);
+    const plainMatch = cd.match(/filename="([^"]+)"/i);
+    const fallback =
+      kind === "summary"
+        ? buildReceiptDownloadName(receipt).replace(/\.pdf$/i, "_summary.pdf")
+        : buildReceiptDownloadName(receipt);
+    const filename = utfMatch
+      ? decodeURIComponent(utfMatch[1])
+      : (plainMatch?.[1] ?? fallback);
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(objectUrl);
+  }
+
   async function deleteReceipt(id: string) {
     await fetch(`/api/finance/receipts/${id}`, { method: "DELETE" });
     load();
+  }
+
+  async function saveReceiptEdit(patch: {
+    merchant: string;
+    amount: number | null;
+    currency: string;
+    category: string;
+    receipt_date: string;
+    notes: string;
+  }) {
+    if (!editingReceipt) return;
+    setSavingEdit(true);
+    setLastResult(null);
+    setLastResultError(false);
+    setEditSaveError(null);
+    try {
+      const res = await fetch(`/api/finance/receipts/${editingReceipt.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+        cache: "no-store",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const msg =
+          typeof data.error === "string"
+            ? data.error
+            : t("finance.receiptUpdateFailed");
+        setEditSaveError(msg);
+        setLastResult(msg);
+        setLastResultError(true);
+        return;
+      }
+      const saved = data.receipt as FinanceReceipt | undefined;
+      if (saved) {
+        setReceipts((prev) =>
+          prev.map((r) => (r.id === saved.id ? saved : r)),
+        );
+      }
+      setLastResult(t("finance.receiptUpdated"));
+      setEditingReceipt(null);
+      setConfirmNewUpload(false);
+      load();
+      onChange();
+    } finally {
+      setSavingEdit(false);
+    }
   }
 
   return (
@@ -221,14 +341,18 @@ export function ReceiptCapturePanel({ onChange }: { onChange: () => void }) {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,application/pdf,.pdf"
             capture="environment"
             className="hidden"
             onChange={handleFileChange}
           />
 
           {lastResult && (
-            <p className="flex items-center gap-2 text-sm text-success">
+            <p
+              className={`flex items-center gap-2 text-sm ${
+                lastResultError ? "text-danger" : "text-success"
+              }`}
+            >
               <CheckCircle2 className="h-4 w-4 shrink-0" />
               {lastResult}
             </p>
@@ -246,11 +370,11 @@ export function ReceiptCapturePanel({ onChange }: { onChange: () => void }) {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {receipts.map((r) => (
               <div key={r.id} className="overflow-hidden rounded-lg border border-card-border bg-background/50">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`/api/finance/receipts/${r.id}`}
+                <ReceiptPreview
+                  receiptId={r.id}
+                  mimeType={r.mime_type}
                   alt={r.merchant ?? "Receipt"}
-                  className="h-36 w-full object-cover bg-card"
+                  className="h-36 w-full bg-card"
                 />
                 <div className="space-y-2 p-3">
                   <p className="font-medium text-foreground">{r.merchant ?? t("finance.unknownMerchant")}</p>
@@ -272,6 +396,30 @@ export function ReceiptCapturePanel({ onChange }: { onChange: () => void }) {
                     )}
                   </div>
                   <div className="flex gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => triggerReceiptDownload(r, "summary")}
+                      className={btnGhost}
+                      title={t("finance.downloadSummaryReceipt")}
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => triggerReceiptDownload(r, "original")}
+                      className={btnGhost}
+                      title={t("finance.downloadReceipt")}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openReceiptEdit(r)}
+                      className={btnGhost}
+                      title={t("finance.editReceipt")}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
                     {!r.transaction_id && r.amount && (
                       <button type="button" onClick={() => createExpense(r)} className={btnGhost}>
                         {t("finance.createExpense")}
@@ -287,6 +435,21 @@ export function ReceiptCapturePanel({ onChange }: { onChange: () => void }) {
           </div>
         )}
       </Card>
+
+      <ReceiptEditDialog
+        receipt={editingReceipt}
+        open={editingReceipt != null}
+        saving={savingEdit}
+        isNewUpload={confirmNewUpload}
+        onClose={() => {
+          setEditingReceipt(null);
+          setConfirmNewUpload(false);
+          setEditSaveError(null);
+        }}
+        onSave={saveReceiptEdit}
+        saveError={editSaveError}
+        onReceiptReplaced={(updated) => setEditingReceipt(updated)}
+      />
     </div>
   );
 }

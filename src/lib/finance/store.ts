@@ -152,6 +152,27 @@ export async function deleteTransaction(id: string) {
   return true;
 }
 
+export async function updateTransaction(
+  id: string,
+  patch: Partial<Omit<FinanceTransaction, "id" | "created_at">>,
+) {
+  const data = await readFinanceData();
+  const index = data.transactions.findIndex((t) => t.id === id);
+  if (index === -1) return null;
+
+  const current = data.transactions[index];
+  const transaction: FinanceTransaction = {
+    ...current,
+    ...patch,
+    currency: patch.currency != null ? normalizeCurrency(patch.currency) : current.currency,
+    id: current.id,
+    created_at: current.created_at,
+  };
+  data.transactions[index] = transaction;
+  await writeFinanceData(data);
+  return transaction;
+}
+
 export async function listPaymentReminders() {
   const data = await readFinanceData();
   return data.paymentReminders.sort((a, b) => a.due_day - b.due_day);

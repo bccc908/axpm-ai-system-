@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -73,14 +74,14 @@ function categoryKey(value: string) {
   return value.replace(/ /g, "_");
 }
 
-function tabFromUrl(): Tab {
-  if (typeof window === "undefined") return "transactions";
-  const q = new URLSearchParams(window.location.search).get("tab");
+function tabFromQuery(q: string | null): Tab {
   return (q && TAB_FROM_QUERY[q]) || "transactions";
 }
 
 export function FinanceDashboard() {
   const { t } = useLocale();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [tab, setTab] = useState<Tab>("transactions");
   const [overview, setOverview] = useState<FinanceOverview | null>(null);
   const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
@@ -132,8 +133,20 @@ export function FinanceDashboard() {
   }
 
   useEffect(() => {
-    setTab(tabFromUrl());
-  }, []);
+    setTab(tabFromQuery(searchParams.get("tab")));
+  }, [searchParams]);
+
+  function selectTab(id: Tab) {
+    setTab(id);
+    const params = new URLSearchParams(searchParams.toString());
+    if (id === "transactions") {
+      params.delete("tab");
+    } else {
+      params.set("tab", id);
+    }
+    const query = params.toString();
+    router.replace(query ? `/dashboard/finance?${query}` : "/dashboard/finance", { scroll: false });
+  }
 
   async function sendFinanceReminder() {
     setSendingNotify(true);
@@ -223,11 +236,11 @@ export function FinanceDashboard() {
           <p className="font-semibold text-foreground">{t("finance.quickStartTitle")}</p>
           <p className="mt-1 text-sm text-muted">{t("finance.quickStartDesc")}</p>
           <div className="mt-4 flex flex-wrap gap-3">
-            <button type="button" onClick={() => setTab("transactions")} className={btnPrimary}>
+            <button type="button" onClick={() => selectTab("transactions")} className={btnPrimary}>
               <Plus className="h-4 w-4" />
               {t("finance.quickAddExpense")}
             </button>
-            <button type="button" onClick={() => setTab("debts")} className={btnGhost}>
+            <button type="button" onClick={() => selectTab("debts")} className={btnGhost}>
               <Landmark className="h-4 w-4" />
               {t("finance.quickAddDebt")}
             </button>
@@ -260,7 +273,7 @@ export function FinanceDashboard() {
           <button
             key={id}
             type="button"
-            onClick={() => setTab(id)}
+            onClick={() => selectTab(id)}
             className={`flex min-w-[4.5rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-md px-2 py-2 text-xs font-medium transition-colors sm:min-w-0 sm:flex-1 sm:flex-row sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm ${
               tab === id ? "bg-accent/15 text-accent" : "text-muted hover:text-foreground"
             }`}
