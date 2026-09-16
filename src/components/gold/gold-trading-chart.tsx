@@ -42,8 +42,6 @@ const RANGES: { id: ChartRange; label: string }[] = [
   { id: "max", label: "ALL" },
 ];
 
-const QUOTE_POLL_MS = 1_000;
-
 const CHART_BASE = {
   layout: {
     background: { type: ColorType.Solid, color: "#050810" },
@@ -93,8 +91,14 @@ export function GoldTradingChart({
   className?: string;
 }) {
   const { t } = useLocale();
-  const { apiBase, dataSource: defaultSource, structureBars, source: deskSource, wsConnected } =
-    useGoldDesk();
+  const {
+    apiBase,
+    dataSource: defaultSource,
+    structureBars,
+    source: deskSource,
+    wsConnected,
+    livePrice,
+  } = useGoldDesk();
   const mainRef = useRef<HTMLDivElement>(null);
   const rsiRef = useRef<HTMLDivElement>(null);
   const macdRef = useRef<HTMLDivElement>(null);
@@ -116,6 +120,7 @@ export function GoldTradingChart({
   const fitOnNextDataRef = useRef(true);
   const lastBarsRef = useRef<GoldOhlcBar[]>([]);
   const livePriceRef = useRef<number | null>(null);
+  const barsInflightRef = useRef(false);
 
   const [chartInterval, setChartInterval] = useState<ChartInterval>("5m");
   const [chartRange, setChartRange] = useState<ChartRange>("5d");
@@ -337,6 +342,8 @@ export function GoldTradingChart({
 
   const loadBars = useCallback(
     async (silent = false) => {
+      if (barsInflightRef.current) return;
+      barsInflightRef.current = true;
       if (!silent) setLoading(true);
       setError(null);
       try {
@@ -413,28 +420,12 @@ export function GoldTradingChart({
           setError(e instanceof Error ? e.message : "chart error");
         }
       } finally {
+        barsInflightRef.current = false;
         if (!silent) setLoading(false);
       }
     },
     [apiBase, chartInterval, chartRange, applyBarData, pushSeriesUpdate, defaultSource, structureBars, deskSource, wsConnected],
   );
-
-  const loadQuote = useCallback(async () => {
-    try {
-      const res = await fetch(`${apiBase}/quote?_=${Date.now()}`, {
-        cache: "no-store",
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (res.ok && typeof data.price === "number") {
-        livePriceRef.current = data.price;
-        setIsLive(true);
-        applyLiveQuote(data.price);
-      }
-    } catch {
-      setIsLive(false);
-    }
-  }, [apiBase, applyLiveQuote]);
 
   useEffect(() => {
     const mainEl = mainRef.current;
@@ -546,18 +537,22 @@ export function GoldTradingChart({
 
   useEffect(() => {
     if (!mainChartRef.current) return;
-    void loadBars(false);
-    void loadQuote();
-    const barPoll = window.setInterval(
-      () => void loadBars(true),
-      chartInterval === "1m" ? 15_000 : 30_000,
-    );
-    const quotePoll = window.setInterval(() => void loadQuote(), QUOTE_POLL_MS);
-    return () => {
-      clearInterval(barPoll);
-      clearInterval(quotePoll);
-    };
-  }, [loadBars, loadQuote, chartInterval, chartRange, showRsi, showMacd]);
+    const useDesk1m = chartInterval === "1m" && structureBars.length > 0;
+    if (!useDesk1m) void loadBars(false);
+    const barPoll = window.setInterval(() => {
+      if (chartInterval === "1m" && structureBars.length > 0) return;
+      void loadBars(true);
+    }, chartInterval === "1m" ? 15_000 : 30_000);
+    return () => clearInterval(barPoll);
+  }, [loadBars, chartInterval, chartRange, showRsi, showMacd, structureBars.length]);
+
+  useEffect(() => {
+    if (livePrice == null) return;
+    livePriceRef.current = livePrice;
+    setIsLive(true);
+    applyLiveQuote(livePrice);
+    setLastPrice(livePrice);
+  }, [livePrice, applyLiveQuote]);
 
   useEffect(() => {
     if (!wsConnected || structureBars.length === 0 || !candleRef.current) return;

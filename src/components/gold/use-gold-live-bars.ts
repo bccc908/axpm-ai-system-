@@ -4,11 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { patchFormingBar, type GoldOhlcBar } from "@/lib/gold-signals/chart-math";
 
 const BAR_POLL_MS: Record<string, number> = {
-  "1m": 10_000,
+  "1m": 15_000,
   "5m": 30_000,
 };
 
-const QUOTE_POLL_MS = 1_000;
+const QUOTE_POLL_MS = 2_500;
 
 export function useGoldLiveBars(
   apiBase: string,
@@ -38,9 +38,12 @@ export function useGoldLiveBars(
   const prevBarSigRef = useRef("");
   const prevPriceRef = useRef<number | null>(null);
   const hadBarsRef = useRef(false);
+  const barsInflightRef = useRef(false);
+  const quoteInflightRef = useRef(false);
 
   const loadBars = useCallback(async () => {
-    if (!enabled) return;
+    if (!enabled || barsInflightRef.current) return;
+    barsInflightRef.current = true;
     if (!hadBarsRef.current) setLoading(true);
     try {
       const res = await fetch(`${apiBase}/chart?interval=${interval}&_=${Date.now()}`, {
@@ -77,12 +80,14 @@ export function useGoldLiveBars(
       setError("network");
       if (!hadBarsRef.current) setBars([]);
     } finally {
+      barsInflightRef.current = false;
       setLoading(false);
     }
   }, [apiBase, enabled, interval]);
 
   const loadQuote = useCallback(async () => {
-    if (!enabled) return;
+    if (!enabled || quoteInflightRef.current) return;
+    quoteInflightRef.current = true;
     try {
       const res = await fetch(`${apiBase}/quote?_=${Date.now()}`, {
         cache: "no-store",
@@ -123,6 +128,8 @@ export function useGoldLiveBars(
       }
     } catch {
       /* ignore transient quote errors */
+    } finally {
+      quoteInflightRef.current = false;
     }
   }, [apiBase, enabled]);
 

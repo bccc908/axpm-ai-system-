@@ -26,6 +26,8 @@ const DEFAULT_RANGE: Record<GoldChartInterval, GoldChartRange> = {
 };
 
 const CACHE_MAX_AGE_MS = 30 * 60_000;
+const FRESH_MS = 20_000;
+const chartRefresh = new Map<string, Promise<void>>();
 
 /** Yahoo caps intraday history — clamp range so requests succeed. */
 export function resolveChartRange(
@@ -53,6 +55,8 @@ type ChartPayload = {
   library: string;
   stale?: boolean;
 };
+
+const chartInflight = new Map<string, Promise<ChartPayload>>();
 
 function parseYahooChart(data: unknown): GoldOhlcBar[] {
   const result = (data as { chart?: { result?: Array<{
@@ -104,34 +108,38 @@ async function fetchYahooOhlc(
   const session = await getYahooSession();
   const hosts = ["query1.finance.yahoo.com", "query2.finance.yahoo.com"];
 
-  for (const host of hosts) {
-    const base = `https://${host}/v8/finance/chart/GC=F?interval=${yahooInterval}&range=${yahooRange}`;
-    const url = session ? `${base}&crumb=${encodeURIComponent(session.crumb)}` : base;
-    const headers = session
-      ? yahooChartHeaders(session)
-      : { "User-Agent": BROWSER_UA, Accept: "application/json,text/plain,*/*" };
+  try {
+    return await Promise.any(
+      hosts.map(async (host) => {
+        const base = `https://${host}/v8/finance/chart/GC=F?interval=${yahooInterval}&range=${yahooRange}`;
+        const url = session ? `${base}&crumb=${encodeURIComponent(session.crumb)}` : base;
+        const headers = session
+          ? yahooChartHeaders(session)
+          : { "User-Agent": BROWSER_UA, Accept: "application/json,text/plain,*/*" };
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 12_000);
-    try {
-      const res = await fetch(url, {
-        headers,
-        signal: controller.signal,
-        cache: interval === "1m" ? "no-store" : undefined,
-        next: interval === "1m" ? undefined : { revalidate: 60 },
-      });
-      if (!res.ok) continue;
-      const text = await res.text();
-      if (text.trimStart().startsWith("<!")) continue;
-      const bars = parseYahooChart(JSON.parse(text));
-      if (bars.length > 0) return bars;
-    } catch {
-      // try next host
-    } finally {
-      clearTimeout(timer);
-    }
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 8_000);
+        try {
+          const res = await fetch(url, {
+            headers,
+            signal: controller.signal,
+            cache: interval === "1m" ? "no-store" : undefined,
+            next: interval === "1m" ? undefined : { revalidate: 60 },
+          });
+          if (!res.ok) throw new Error("bad status");
+          const text = await res.text();
+          if (text.trimStart().startsWith("<!")) throw new Error("html");
+          const bars = parseYahooChart(JSON.parse(text));
+          if (bars.length === 0) throw new Error("empty");
+          return bars;
+        } finally {
+          clearTimeout(timer);
+        }
+      }),
+    );
+  } catch {
+    return null;
   }
-  return null;
 }
 
 async function resolveFallbackBars(interval: GoldChartInterval): Promise<ChartPayload | null> {
@@ -169,13 +177,55 @@ export async function fetchGoldOhlc(
   interval: GoldChartInterval = "5m",
   range?: GoldChartRange,
 ): Promise<ChartPayload> {
+  const key = `${interval}:${range ?? ""}`;
+  const existing = chartInflight.get(key);
+  if (existing) return existing;
+  const pending = loadGoldOhlc(interval, range).finally(() => {
+    chartInflight.delete(key);
+  });
+  chartInflight.set(key, pending);
+  return pending;
+}
+
+async function loadGoldOhlc(
+  interval: GoldChartInterval,
+  range?: GoldChartRange,
+): Promise<ChartPayload> {
   const yahooRange = resolveChartRange(interval, range);
+  const key = `${interval}:${range ?? ""}`;
   const meta = {
     symbol: "XAUUSD" as const,
     interval,
     range: yahooRange,
     library: "lightweight-charts",
   };
+
+  const cached = await readBarsCache(interval);
+  const age = cacheAgeMs(cached);
+  if (cached?.bars.length && age != null && age < FRESH_MS) {
+    return { bars: cached.bars, source: cached.source, ...meta };
+  }
+
+  if (cached?.bars.length && age != null && age < CACHE_MAX_AGE_MS) {
+    const refreshKey = `refresh:${key}`;
+    if (!chartRefresh.has(refreshKey)) {
+      const pending = (async () => {
+        const yahooBars = await fetchYahooOhlc(interval, yahooRange);
+        if (!yahooBars?.length) return;
+        const bars = interval === "4h" ? aggregateBars(yahooBars, 4 * 3600) : yahooBars;
+        await writeBarsCache(interval, bars, "GC=F");
+      })().finally(() => {
+        chartRefresh.delete(refreshKey);
+      });
+      chartRefresh.set(refreshKey, pending);
+    }
+    return {
+      bars: cached.bars,
+      source: `${cached.source} (cached)`,
+      stale: true,
+      ...meta,
+    };
+  }
 
   const yahooBars = await fetchYahooOhlc(interval, yahooRange);
   if (yahooBars?.length) {

@@ -8,11 +8,35 @@ export interface GoldSpotQuote {
   source: string;
 }
 
+const QUOTE_TTL_MS = 2_000;
+const QUOTE_STALE_MS = 60_000;
+let quoteInflight: Promise<GoldSpotQuote | null> | null = null;
+let quoteCache: { quote: GoldSpotQuote; at: number } | null = null;
+
+function refreshGoldSpotQuote(): Promise<GoldSpotQuote | null> {
+  if (quoteInflight) return quoteInflight;
+  quoteInflight = (async () => {
+    try {
+      const yahoo = await fetchYahooSpot();
+      const quote = yahoo ?? (await fetchGoldPriceDevSpot());
+      if (quote) quoteCache = { quote, at: Date.now() };
+      return quote ?? quoteCache?.quote ?? null;
+    } finally {
+      quoteInflight = null;
+    }
+  })();
+  return quoteInflight;
+}
+
 /** Best-effort spot from COMEX GC=F (Yahoo) — no API key. */
 export async function fetchGoldSpotQuote(): Promise<GoldSpotQuote | null> {
-  const yahoo = await fetchYahooSpot();
-  if (yahoo) return yahoo;
-  return fetchGoldPriceDevSpot();
+  const now = Date.now();
+  if (quoteCache && now - quoteCache.at < QUOTE_TTL_MS) return quoteCache.quote;
+  if (quoteCache && now - quoteCache.at < QUOTE_STALE_MS) {
+    void refreshGoldSpotQuote();
+    return quoteCache.quote;
+  }
+  return refreshGoldSpotQuote();
 }
 
 async function fetchYahooSpot(): Promise<GoldSpotQuote | null> {
@@ -63,6 +87,7 @@ async function fetchGoldPriceDevSpot(): Promise<GoldSpotQuote | null> {
     const res = await fetch("https://api.goldprice.dev/v1/prices?symbol=XAU-USD-SPOT", {
       headers: { Accept: "application/json" },
       cache: "no-store",
+      signal: AbortSignal.timeout(5_000),
     });
     if (!res.ok) return null;
     const data = (await res.json()) as {
