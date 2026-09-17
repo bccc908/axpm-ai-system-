@@ -42,7 +42,7 @@ export function gateBtcTrade(input: GateInput, mark: number, now = Date.now()): 
     }
   }
   if (!Number.isFinite(mark) || mark <= 0) {
-    return { ok: false, reason: "no live BTC mark", dead: false };
+    return { ok: false, reason: "no live mark", dead: false };
   }
   if (input.entry_low == null || input.entry_high == null) {
     return { ok: false, reason: "no entry zone · refuse chase", dead: true };
@@ -52,7 +52,7 @@ export function gateBtcTrade(input: GateInput, mark: number, now = Date.now()): 
   if (mark < lo || mark > hi) {
     return {
       ok: false,
-      reason: `mark ${Math.round(mark)} outside ${Math.round(lo)}–${Math.round(hi)}`,
+      reason: `mark ${mark.toFixed(mark >= 1000 ? 0 : 1)} outside ${lo.toFixed(mark >= 1000 ? 0 : 1)}–${hi.toFixed(mark >= 1000 ? 0 : 1)}`,
       dead: false,
     };
   }

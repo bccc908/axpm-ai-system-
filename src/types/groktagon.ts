@@ -15,7 +15,7 @@ export type GroktagonTicketStatus = "pending" | "approved" | "held";
 
 export type GroktagonTicket = {
   id: string;
-  source: "gold" | "btc" | "hl";
+  source: "gold" | "btc" | "hl" | "eth";
   symbol: string;
   bias: string;
   confidence: number;
@@ -72,7 +72,7 @@ export type GroktagonState = {
   equity: number[];
   logs: GroktagonLog[];
   events: Array<{ id: string; title: string; region: string }>;
-  quote: { btc: number | null; gold: number | null; btc_chg: number | null };
+  quote: { btc: number | null; gold: number | null; eth: number | null; btc_chg: number | null; eth_chg: number | null };
   bars: Array<{ time: number; open: number; high: number; low: number; close: number }>;
   agents: GroktagonAgent[];
   tickets: GroktagonTicket[];
@@ -82,10 +82,23 @@ export type GroktagonState = {
     armed: boolean;
     agent: string | null;
     max_btc: number;
+    max_eth: number;
     setup: {
       side: "long" | "short" | null;
       reason: string;
       confidence: number | null;
+    };
+    eth_setup: {
+      side: "long" | "short" | null;
+      reason: string;
+      confidence: number | null;
+    };
+    autopilot: {
+      enabled: boolean;
+      prompt: string;
+      last_result: string | null;
+      last_run_at: string | null;
+      last_fired: boolean;
     };
   };
   as_of: string;

@@ -7,7 +7,15 @@ import { fetchHlAccount } from "@/lib/hyperliquid/account";
 import { getHyperliquidAddress } from "@/lib/hyperliquid/settings";
 import { bracketPrices, gateBtcTrade } from "@/lib/groktagon/trade-gate";
 
+export type KettCoin = "BTC" | "ETH";
+
+export const KETT_MAX_USD = 12;
 export const KETT_MAX_BTC = 0.00015;
+export const KETT_MAX_ETH = 0.005;
+
+function maxSz(coin: KettCoin) {
+  return coin === "ETH" ? KETT_MAX_ETH : KETT_MAX_BTC;
+}
 
 function agentKey(): `0x${string}` | null {
   const raw = process.env.HYPERLIQUID_AGENT_PRIVATE_KEY?.trim() ?? "";
@@ -31,26 +39,31 @@ export function kettAgentAddress(): string | null {
   }
 }
 
-async function btcAsset(): Promise<{ id: number; szDecimals: number; mark: number }> {
+async function perpAsset(coin: KettCoin): Promise<{ id: number; szDecimals: number; mark: number }> {
   const [meta, mids] = await Promise.all([
     hlInfo<{ universe?: Array<{ name?: string; szDecimals?: number }> }>({ type: "meta" }),
     hlInfo<Record<string, string>>({ type: "allMids" }),
   ]);
   const universe = meta.universe ?? [];
-  const id = universe.findIndex((c) => c.name === "BTC");
-  if (id < 0) throw new Error("BTC asset missing");
-  const mark = Number(mids.BTC);
-  if (!Number.isFinite(mark) || mark <= 0) throw new Error("BTC mark missing");
-  return { id, szDecimals: universe[id]?.szDecimals ?? 5, mark };
+  const id = universe.findIndex((c) => c.name === coin);
+  if (id < 0) throw new Error(`${coin} asset missing`);
+  const mark = Number(mids[coin]);
+  if (!Number.isFinite(mark) || mark <= 0) throw new Error(`${coin} mark missing`);
+  return { id, szDecimals: universe[id]?.szDecimals ?? (coin === "ETH" ? 4 : 5), mark };
 }
 
-function slipPx(mark: number, buy: boolean) {
-  const px = buy ? mark * 1.01 : mark * 0.99;
-  return String(Math.round(px));
+function formatPx(px: number, coin: KettCoin) {
+  if (coin === "BTC") return String(Math.round(px));
+  return (Math.round(px * 10) / 10).toFixed(1);
 }
 
-function sizeStr(sz: number, decimals: number) {
-  return Math.min(KETT_MAX_BTC, Math.max(0.00001, sz)).toFixed(Math.min(5, decimals));
+function slipPx(mark: number, buy: boolean, coin: KettCoin) {
+  return formatPx(buy ? mark * 1.01 : mark * 0.99, coin);
+}
+
+function sizeStr(sz: number, decimals: number, cap: number) {
+  const minSz = 10 ** -Math.min(5, decimals);
+  return Math.min(cap, Math.max(minSz, sz)).toFixed(Math.min(5, decimals));
 }
 
 function client() {
@@ -60,22 +73,24 @@ function client() {
   return new ExchangeClient({ transport, wallet: privateKeyToAccount(key) });
 }
 
-export async function kettCloseBtc(): Promise<{ ok: true; detail: string } | { ok: false; error: string }> {
+export async function kettClose(
+  coin: KettCoin,
+): Promise<{ ok: true; detail: string } | { ok: false; error: string }> {
   const address = await getHyperliquidAddress();
   if (!address) return { ok: false, error: "master wallet not linked" };
   const account = await fetchHlAccount(address);
-  const pos = account.positions.find((p) => p.coin === "BTC");
-  if (!pos) return { ok: false, error: "no BTC position" };
-  const { id, szDecimals, mark } = await btcAsset();
+  const pos = account.positions.find((p) => p.coin === coin);
+  if (!pos) return { ok: false, error: `no ${coin} position` };
+  const { id, szDecimals, mark } = await perpAsset(coin);
   const buy = pos.side === "short";
-  const sz = sizeStr(Math.abs(pos.size), szDecimals);
+  const sz = sizeStr(Math.abs(pos.size), szDecimals, maxSz(coin));
   const exchange = client();
   await exchange.order({
     orders: [
       {
         a: id,
         b: buy,
-        p: slipPx(mark, buy),
+        p: slipPx(mark, buy, coin),
         s: sz,
         r: true,
         t: { limit: { tif: "Ioc" } },
@@ -83,8 +98,11 @@ export async function kettCloseBtc(): Promise<{ ok: true; detail: string } | { o
     ],
     grouping: "na",
   });
-  return { ok: true, detail: `closed BTC ${pos.side} ${sz}` };
+  return { ok: true, detail: `closed ${coin} ${pos.side} ${sz}` };
 }
+
+export const kettCloseBtc = () => kettClose("BTC");
+export const kettCloseEth = () => kettClose("ETH");
 
 export type KettOpenLevels = {
   source?: string;
@@ -97,7 +115,8 @@ export type KettOpenLevels = {
   take_profit?: number | null;
 };
 
-export async function kettOpenBtc(
+export async function kettOpen(
+  coin: KettCoin,
   side: "long" | "short",
   levels?: KettOpenLevels,
 ): Promise<{ ok: true; detail: string } | { ok: false; error: string }> {
@@ -105,13 +124,14 @@ export async function kettOpenBtc(
   const address = await getHyperliquidAddress();
   if (!address) return { ok: false, error: "master wallet not linked" };
   const account = await fetchHlAccount(address);
-  if (account.positions.some((p) => p.coin === "BTC")) {
-    return { ok: false, error: "BTC already open · close first" };
+  if (account.positions.length) {
+    const open = account.positions.map((p) => p.coin).join(",");
+    return { ok: false, error: `${open} already open · close first` };
   }
-  const { id, szDecimals, mark } = await btcAsset();
+  const { id, szDecimals, mark } = await perpAsset(coin);
   const gated = gateBtcTrade(
     {
-      source: levels.source ?? "hl",
+      source: levels.source ?? (coin === "ETH" ? "eth" : "hl"),
       bias: side,
       confidence: levels.confidence ?? 0,
       created_at: levels.created_at ?? new Date(0).toISOString(),
@@ -124,15 +144,18 @@ export async function kettOpenBtc(
   );
   if (!gated.ok) return { ok: false, error: gated.reason };
   const buy = side === "long";
-  const sz = sizeStr(KETT_MAX_BTC, szDecimals);
-  const { sl, tp } = bracketPrices(mark, side, levels.stop_loss ?? null, levels.take_profit ?? null);
+  const cap = Math.min(maxSz(coin), KETT_MAX_USD / mark);
+  const sz = sizeStr(cap, szDecimals, maxSz(coin));
+  const raw = bracketPrices(mark, side, levels.stop_loss ?? null, levels.take_profit ?? null);
+  const sl = formatPx(Number(raw.sl), coin);
+  const tp = formatPx(Number(raw.tp), coin);
   const exchange = client();
   await exchange.order({
     orders: [
       {
         a: id,
         b: buy,
-        p: slipPx(mark, buy),
+        p: slipPx(mark, buy, coin),
         s: sz,
         r: false,
         t: { limit: { tif: "Ioc" } },
@@ -140,7 +163,7 @@ export async function kettOpenBtc(
       {
         a: id,
         b: !buy,
-        p: slipPx(Number(tp), !buy),
+        p: slipPx(Number(tp), !buy, coin),
         s: sz,
         r: true,
         t: { trigger: { isMarket: true, triggerPx: tp, tpsl: "tp" } },
@@ -148,7 +171,7 @@ export async function kettOpenBtc(
       {
         a: id,
         b: !buy,
-        p: slipPx(Number(sl), !buy),
+        p: slipPx(Number(sl), !buy, coin),
         s: sz,
         r: true,
         t: { trigger: { isMarket: true, triggerPx: sl, tpsl: "sl" } },
@@ -156,5 +179,13 @@ export async function kettOpenBtc(
     ],
     grouping: "normalTpsl",
   });
-  return { ok: true, detail: `opened BTC ${side} ${sz} sl ${sl} tp ${tp}` };
+  return { ok: true, detail: `opened ${coin} ${side} ${sz} sl ${sl} tp ${tp}` };
+}
+
+export function kettOpenBtc(side: "long" | "short", levels?: KettOpenLevels) {
+  return kettOpen("BTC", side, levels);
+}
+
+export function kettOpenEth(side: "long" | "short", levels?: KettOpenLevels) {
+  return kettOpen("ETH", side, levels);
 }

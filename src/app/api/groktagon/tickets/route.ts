@@ -4,7 +4,7 @@ import { getServerSession } from "@/lib/auth/api-session";
 import { roleCanAccessModule } from "@/lib/auth/permissions";
 import { decideGroktagonTicket } from "@/lib/groktagon/tickets";
 import { loadGroktagonState } from "@/lib/groktagon/state";
-import { kettArmed, kettOpenBtc } from "@/lib/hyperliquid/trading";
+import { kettArmed, kettOpen } from "@/lib/hyperliquid/trading";
 
 export const dynamic = "force-dynamic";
 
@@ -44,11 +44,11 @@ export async function POST(request: Request) {
   if (
     parsed.data.action === "approve" &&
     kettArmed() &&
-    (ticket.source === "btc" || ticket.source === "hl") &&
+    (ticket.source === "btc" || ticket.source === "hl" || ticket.source === "eth") &&
     (ticket.bias === "long" || ticket.bias === "short")
   ) {
     try {
-      const result = await kettOpenBtc(ticket.bias, {
+      const result = await kettOpen(ticket.source === "eth" ? "ETH" : "BTC", ticket.bias, {
         source: ticket.source,
         confidence: ticket.confidence,
         created_at: ticket.created_at,

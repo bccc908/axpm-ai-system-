@@ -100,12 +100,16 @@ export function GroktagonDesk() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const [booting, setBooting] = useState(true);
+  const [prompt, setPrompt] = useState("");
 
   const load = useCallback(async () => {
     try {
       const res = await fetch("/api/groktagon/state", { credentials: "include", cache: "no-store" });
       const data = (await res.json()) as GroktagonState;
-      if (res.ok) setState(data);
+      if (res.ok) {
+        setState(data);
+        setPrompt((cur) => cur || data.kett?.autopilot?.prompt || cur);
+      }
     } catch {
       /* ignore */
     } finally {
@@ -140,6 +144,29 @@ export function GroktagonDesk() {
       clearInterval(p);
     };
   }, [load]);
+
+  useEffect(() => {
+    if (!state?.kett.autopilot?.enabled) return;
+    const id = window.setInterval(() => {
+      void fetch("/api/groktagon/autopilot", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "tick" }),
+      })
+        .then(async (res) => {
+          const data = (await res.json()) as {
+            state?: GroktagonState;
+            fired?: boolean;
+            reason?: string;
+          };
+          if (data.state) setState(data.state);
+          if (data.reason && data.reason !== "cooldown") setFlash(data.reason);
+        })
+        .catch(() => undefined);
+    }, 12 * 60_000);
+    return () => window.clearInterval(id);
+  }, [state?.kett.autopilot?.enabled]);
 
   const selected = useMemo(
     () => state?.agents.find((a) => a.id === focusId) ?? null,
@@ -185,7 +212,10 @@ export function GroktagonDesk() {
     }
   }
 
-  async function fire(intent: "close_btc" | "open_btc", side?: "long" | "short") {
+  async function fire(
+    intent: "close_btc" | "open_btc" | "close_eth" | "open_eth",
+    side?: "long" | "short",
+  ) {
     setBusyId(intent);
     setFlash(null);
     try {
@@ -204,6 +234,47 @@ export function GroktagonDesk() {
       setFlash(data.detail ?? "order sent");
     } catch {
       setFlash("trade failed");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function sendAutopilot(action: "save" | "run", enabled?: boolean) {
+    setBusyId("prompt");
+    setFlash(null);
+    try {
+      const res = await fetch("/api/groktagon/autopilot", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action,
+          prompt,
+          enabled: enabled ?? true,
+        }),
+      });
+      const data = (await res.json()) as {
+        state?: GroktagonState;
+        error?: string;
+        reason?: string;
+        fired?: boolean;
+      };
+      if (data.state) setState(data.state);
+      if (!res.ok) {
+        setFlash(data.error ?? "autopilot failed");
+        return;
+      }
+      setFlash(
+        action === "run"
+          ? data.fired
+            ? `AUTO FIRE · ${data.reason}`
+            : `PROMPT SENT · ${data.reason ?? "no fire"}`
+          : enabled
+            ? "AUTO ARMED · KETT will scan every 12m while this page stays open"
+            : "AUTO OFF",
+      );
+    } catch {
+      setFlash("autopilot failed");
     } finally {
       setBusyId(null);
     }
@@ -254,9 +325,13 @@ export function GroktagonDesk() {
           ? "Loading desk…"
           : book?.source === "hyperliquid"
             ? kett?.armed
-              ? kett.setup?.side
-                ? `KETT armed · live ${kett.setup.side.toUpperCase()} setup. Approve only if the ticket is still in zone. Max 0.00015 BTC with stop and take-profit.`
-                : `KETT armed · no live zone (${kett.setup?.reason ?? "stale"}). Open buttons stay locked until a fresh BTC/HL signal is inside the entry.`
+              ? kett.autopilot?.enabled
+                ? `AUTO ON · KETT scans ETH first every 12m. Max 0.005 ETH / 0.00015 BTC with stop + take-profit. Last: ${kett.autopilot.last_result ?? "waiting first run"}.`
+                : kett.eth_setup?.side
+                ? `KETT armed · live ETH ${kett.eth_setup.side.toUpperCase()} setup. Approve the ETH ticket or Open ETH. Cap ${kett.max_eth} ETH.`
+                : kett.setup?.side
+                ? `KETT armed · live BTC ${kett.setup.side.toUpperCase()} setup. Send a prompt below to auto-trade ETH, or approve a ticket still in zone.`
+                : `KETT armed · no live ETH/BTC zone (${kett.eth_setup?.reason ?? kett.setup?.reason ?? "stale"}). Paste a prompt and Send to generate a fresh ETH plan.`
               : "Wallet is live. To let KETT send orders, add HYPERLIQUID_AGENT_PRIVATE_KEY to .env.local and restart the app. Never paste the key in chat."
             : pending.length
               ? `Now: ${pending.length} ticket${pending.length === 1 ? "" : "s"} in KETT QUEUE — Approve or Hold. Next: link a read-only Hyperliquid wallet.`
@@ -358,22 +433,74 @@ export function GroktagonDesk() {
       </Panel>
 
       <Panel
-        title="KETT QUEUE · HUMAN APPROVE"
+        title="KETT QUEUE · AUTO PROMPT"
         extra={
           <span className="text-zinc-600">
-            {pending.length} PENDING · {kett?.armed ? `ARMED ${kett.agent ? kett.agent.slice(0, 6) : ""}` : "NO KEY"}
+            {kett?.autopilot?.enabled ? "AUTO ON" : `${pending.length} PENDING`} ·{" "}
+            {kett?.armed ? `ARMED ${kett.agent ? kett.agent.slice(0, 6) : ""}` : "NO KEY"}
           </span>
         }
       >
         <div className="space-y-1.5">
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            rows={4}
+            placeholder="Send a prompt: how KETT should trade BTC for you."
+            className="w-full resize-y rounded-sm border border-white/15 bg-black/50 px-2 py-1.5 font-mono text-[11px] leading-4 text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-cyan-400/50"
+          />
+          <div className="flex flex-wrap gap-1">
+            <button
+              type="button"
+              disabled={busyId != null || !kett?.armed}
+              onClick={() => void sendAutopilot("run", true)}
+              className="rounded-sm border border-cyan-400/50 bg-cyan-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-40"
+            >
+              Send prompt · auto trade
+            </button>
+            <button
+              type="button"
+              disabled={busyId != null || !kett?.armed}
+              onClick={() => void sendAutopilot("save", !kett?.autopilot?.enabled)}
+              className="rounded-sm border border-white/15 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-zinc-300 hover:border-amber-400/50 hover:text-amber-200 disabled:opacity-40"
+            >
+              {kett?.autopilot?.enabled ? "Disarm auto" : "Arm auto"}
+            </button>
+          </div>
           {kett?.armed ? (
             <div className="space-y-1">
               <p className="font-mono text-[10px] text-zinc-500">
-                {kett.setup?.side
-                  ? `LIVE SETUP ${kett.setup.side.toUpperCase()} ${kett.setup.confidence ?? ""}%`
-                  : `NO FIRE · ${kett.setup?.reason ?? "waiting for a fresh in-zone signal"}`}
+                {kett.eth_setup?.side
+                  ? `LIVE ETH ${kett.eth_setup.side.toUpperCase()} ${kett.eth_setup.confidence ?? ""}%`
+                  : kett.setup?.side
+                    ? `LIVE BTC ${kett.setup.side.toUpperCase()} ${kett.setup.confidence ?? ""}%`
+                    : `NO FIRE · ETH ${kett.eth_setup?.reason ?? "waiting"} · BTC ${kett.setup?.reason ?? "waiting"}`}
               </p>
               <div className="flex flex-wrap gap-1">
+              <button
+                type="button"
+                disabled={busyId != null}
+                onClick={() => void fire("close_eth")}
+                className="rounded-sm border border-white/15 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-zinc-300 hover:border-rose-400/50 hover:text-rose-300 disabled:opacity-40"
+              >
+                Close ETH
+              </button>
+              <button
+                type="button"
+                disabled={busyId != null || kett.eth_setup?.side !== "short"}
+                onClick={() => void fire("open_eth", "short")}
+                className="rounded-sm border border-amber-400/40 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-amber-200 hover:bg-amber-500/10 disabled:opacity-40"
+              >
+                Open ETH short {kett.max_eth}
+              </button>
+              <button
+                type="button"
+                disabled={busyId != null || kett.eth_setup?.side !== "long"}
+                onClick={() => void fire("open_eth", "long")}
+                className="rounded-sm border border-emerald-400/40 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-40"
+              >
+                Open ETH long {kett.max_eth}
+              </button>
               <button
                 type="button"
                 disabled={busyId != null}
@@ -445,7 +572,8 @@ export function GroktagonDesk() {
         title="TRADING FLOOR"
         extra={
           <span className="text-zinc-500">
-            PATCH {state?.quote.btc != null ? `BTC ${money(state.quote.btc, 0)}` : "—"} · GOLD{" "}
+            PATCH {state?.quote.btc != null ? `BTC ${money(state.quote.btc, 0)}` : "—"} · ETH{" "}
+            {state?.quote.eth != null ? money(state.quote.eth, 1) : "—"} · GOLD{" "}
             {state?.quote.gold != null ? money(state.quote.gold, 2) : "—"}
           </span>
         }

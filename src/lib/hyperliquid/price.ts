@@ -3,7 +3,7 @@ import "server-only";
 import { HL_COIN, hlInfo } from "@/lib/hyperliquid/client";
 
 export interface HlSpotQuote {
-  symbol: "BTC-PERP";
+  symbol: "BTC-PERP" | "ETH-PERP";
   price: number;
   change_pct: number | null;
   funding: number | null;
@@ -74,4 +74,49 @@ async function fetchHlQuoteFresh(): Promise<HlSpotQuote | null> {
     as_of: new Date().toISOString(),
     source: "Hyperliquid",
   };
+}
+
+let ethQuoteInflight: Promise<HlSpotQuote | null> | null = null;
+let ethQuoteCache: { quote: HlSpotQuote; at: number } | null = null;
+
+export async function fetchHlEthQuote(): Promise<HlSpotQuote | null> {
+  const now = Date.now();
+  if (ethQuoteCache && now - ethQuoteCache.at < QUOTE_TTL_MS) return ethQuoteCache.quote;
+  if (ethQuoteCache && now - ethQuoteCache.at < QUOTE_STALE_MS) {
+    void refreshEthQuote();
+    return ethQuoteCache.quote;
+  }
+  return refreshEthQuote();
+}
+
+function refreshEthQuote(): Promise<HlSpotQuote | null> {
+  if (ethQuoteInflight) return ethQuoteInflight;
+  ethQuoteInflight = (async () => {
+    try {
+      const [meta, ctxs] = await hlInfo<MetaAndCtx>({ type: "metaAndAssetCtxs" });
+      const idx = meta.universe?.findIndex((u) => u.name === "ETH") ?? -1;
+      const ctx = idx >= 0 ? ctxs[idx] : undefined;
+      const price = Number(ctx?.markPx ?? ctx?.midPx);
+      if (!Number.isFinite(price) || price <= 0) return ethQuoteCache?.quote ?? null;
+      const prev = Number(ctx?.prevDayPx);
+      const change_pct =
+        Number.isFinite(prev) && prev > 0 ? Math.round(((price - prev) / prev) * 10000) / 100 : null;
+      const funding = Number(ctx?.funding);
+      const open_interest = Number(ctx?.openInterest);
+      const quote: HlSpotQuote = {
+        symbol: "ETH-PERP",
+        price: Math.round(price * 10) / 10,
+        change_pct,
+        funding: Number.isFinite(funding) ? funding : null,
+        open_interest: Number.isFinite(open_interest) ? open_interest : null,
+        as_of: new Date().toISOString(),
+        source: "Hyperliquid",
+      };
+      ethQuoteCache = { quote, at: Date.now() };
+      return quote;
+    } finally {
+      ethQuoteInflight = null;
+    }
+  })();
+  return ethQuoteInflight;
 }

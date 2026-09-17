@@ -2,14 +2,21 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSession } from "@/lib/auth/api-session";
 import { roleCanAccessModule } from "@/lib/auth/permissions";
-import { kettAgentAddress, kettArmed, kettCloseBtc, kettOpenBtc, KETT_MAX_BTC } from "@/lib/hyperliquid/trading";
+import {
+  kettAgentAddress,
+  kettArmed,
+  kettClose,
+  kettOpen,
+  KETT_MAX_BTC,
+  KETT_MAX_ETH,
+} from "@/lib/hyperliquid/trading";
 import { loadGroktagonState } from "@/lib/groktagon/state";
-import { resolveLiveBtcSetup } from "@/lib/groktagon/live-setup";
+import { resolveLiveBtcSetup, resolveLiveEthSetup } from "@/lib/groktagon/live-setup";
 
 export const dynamic = "force-dynamic";
 
 const Body = z.object({
-  intent: z.enum(["close_btc", "open_btc"]),
+  intent: z.enum(["close_btc", "open_btc", "close_eth", "open_eth"]),
   side: z.enum(["long", "short"]).optional(),
 });
 
@@ -23,6 +30,7 @@ export async function GET() {
     armed: kettArmed(),
     agent: kettAgentAddress(),
     max_btc: KETT_MAX_BTC,
+    max_eth: KETT_MAX_ETH,
   });
 }
 
@@ -40,25 +48,26 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "invalid trade" }, { status: 400 });
 
   try {
-    if (parsed.data.intent === "close_btc") {
-      const result = await kettCloseBtc();
+    if (parsed.data.intent === "close_btc" || parsed.data.intent === "close_eth") {
+      const result = await kettClose(parsed.data.intent === "close_eth" ? "ETH" : "BTC");
       const state = await loadGroktagonState();
       if (!result.ok) return NextResponse.json({ ...result, state }, { status: 409 });
       return NextResponse.json({ ...result, state, fired: true });
     }
 
-    const setup = await resolveLiveBtcSetup();
+    const coin = parsed.data.intent === "open_eth" ? "ETH" : "BTC";
+    const setup = coin === "ETH" ? await resolveLiveEthSetup() : await resolveLiveBtcSetup();
     if (!setup.ok) {
       return NextResponse.json({ ok: false, error: setup.reason }, { status: 409 });
     }
     const side = parsed.data.side ?? setup.side;
     if (side !== setup.side) {
       return NextResponse.json(
-        { ok: false, error: `live setup is ${setup.side} · not ${side}` },
+        { ok: false, error: `live ${coin} setup is ${setup.side} · not ${side}` },
         { status: 409 },
       );
     }
-    const result = await kettOpenBtc(setup.side, {
+    const result = await kettOpen(coin, setup.side, {
       source: setup.source,
       confidence: setup.confidence,
       created_at: setup.created_at,

@@ -1,18 +1,20 @@
 import "server-only";
 
 import { listBtcSignals } from "@/lib/btc-signals/store";
+import { listEthSignals } from "@/lib/eth-signals/store";
 import { listGoldSignals } from "@/lib/gold-signals/store";
 import { listHlSignals } from "@/lib/hl-signals/store";
 import { fetchGoldOhlc } from "@/lib/gold-signals/chart-data";
 import { fetchHlOhlc } from "@/lib/hyperliquid/chart-data";
 import { fetchHlAccount } from "@/lib/hyperliquid/account";
 import { hlInfo } from "@/lib/hyperliquid/client";
-import { fetchHlSpotQuote } from "@/lib/hyperliquid/price";
+import { fetchHlEthQuote, fetchHlSpotQuote } from "@/lib/hyperliquid/price";
 import { getHyperliquidAddress } from "@/lib/hyperliquid/settings";
 import { fetchGoldSpotQuote } from "@/lib/gold-signals/price";
 import { holdDeadTickets, listGroktagonTickets, syncPendingTickets } from "@/lib/groktagon/tickets";
-import { kettAgentAddress, kettArmed, KETT_MAX_BTC } from "@/lib/hyperliquid/trading";
+import { kettAgentAddress, kettArmed, KETT_MAX_BTC, KETT_MAX_ETH } from "@/lib/hyperliquid/trading";
 import { gateBtcTrade } from "@/lib/groktagon/trade-gate";
+import { getGroktagonAutopilot } from "@/lib/groktagon/autopilot";
 
 import type {
   GroktagonAgentId,
@@ -94,9 +96,13 @@ function asTickets(
     }));
 }
 
-function annotateTickets(tickets: GroktagonTicket[], mark: number | null): GroktagonTicket[] {
+function annotateTickets(
+  tickets: GroktagonTicket[],
+  marks: { btc: number | null; eth: number | null },
+): GroktagonTicket[] {
   return tickets.map((t) => {
     if (t.status !== "pending") return t;
+    const mark = t.source === "eth" ? marks.eth : marks.btc;
     const g = gateBtcTrade(t, mark ?? Number.NaN);
     return { ...t, block_reason: g.ok ? null : g.reason };
   });
@@ -104,14 +110,10 @@ function annotateTickets(tickets: GroktagonTicket[], mark: number | null): Grokt
 
 function liveSetupFrom(
   mark: number | null,
-  hl: SignalLite[],
-  btcRows: SignalLite[],
+  rows: Array<SignalLite & { source: "btc" | "hl" | "eth" }>,
+  emptyReason: string,
 ): { side: "long" | "short" | null; reason: string; confidence: number | null } {
-  if (mark == null) return { side: null, reason: "no live BTC mark", confidence: null };
-  const rows: Array<SignalLite & { source: "btc" | "hl" }> = [
-    ...hl.map((s) => ({ ...s, source: "hl" as const })),
-    ...btcRows.map((s) => ({ ...s, source: "btc" as const })),
-  ];
+  if (mark == null) return { side: null, reason: emptyReason.replace("signal", "mark"), confidence: null };
   for (const row of rows) {
     const input = {
       source: row.source,
@@ -133,7 +135,7 @@ function liveSetupFrom(
     }
   }
   const first = rows[0];
-  if (!first) return { side: null, reason: "no BTC/HL signal on book", confidence: null };
+  if (!first) return { side: null, reason: emptyReason, confidence: null };
   const g = gateBtcTrade(
     {
       source: first.source,
@@ -152,28 +154,34 @@ function liveSetupFrom(
 
 export async function loadGroktagonState(): Promise<GroktagonState> {
   const address = await getHyperliquidAddress();
-  const [gold, btc, chart, goldChart, goldSignals, btcSignals, hlSignals, account, fills, existingTickets] =
+  const [gold, btc, eth, chart, goldChart, goldSignals, btcSignals, ethSignals, hlSignals, account, fills, existingTickets, autopilot] =
     await Promise.all([
       fetchGoldSpotQuote().catch(() => null),
       fetchHlSpotQuote().catch(() => null),
+      fetchHlEthQuote().catch(() => null),
       fetchHlOhlc("5m", "5d").catch(() => null),
       fetchGoldOhlc("5m", "5d").catch(() => null),
       listGoldSignals(8).catch(() => []),
       listBtcSignals(8).catch(() => []),
+      listEthSignals(8).catch(() => []),
       listHlSignals(8).catch(() => []),
       address ? fetchHlAccount(address).catch(() => null) : Promise.resolve(null),
       address
         ? hlInfo<HlFill[]>({ type: "userFills", user: address }).catch(() => [])
         : Promise.resolve([]),
       listGroktagonTickets().catch(() => []),
+      getGroktagonAutopilot().catch(() => null),
     ]);
 
   const ticketsRaw = await syncPendingTickets([
+    ...asTickets(ethSignals, "eth", "HOLT"),
     ...asTickets(btcSignals, "btc", "HOLT"),
     ...asTickets(hlSignals, "hl", "TESS"),
   ]).catch(() => existingTickets);
-  const ticketsHeld = await holdDeadTickets(btc?.price ?? null).catch(() => ticketsRaw);
-  const tickets = annotateTickets(ticketsHeld, btc?.price ?? null);
+  const ticketsHeld = await holdDeadTickets({ btc: btc?.price ?? null, eth: eth?.price ?? null }).catch(
+    () => ticketsRaw,
+  );
+  const tickets = annotateTickets(ticketsHeld, { btc: btc?.price ?? null, eth: eth?.price ?? null });
 
   const rawBars = (chart?.bars?.length ? chart.bars : goldChart?.bars) ?? [];
   const bars = rawBars.slice(-80);
@@ -218,7 +226,7 @@ export async function loadGroktagonState(): Promise<GroktagonState> {
       at: f.time ? new Date(f.time).toISOString() : new Date().toISOString(),
     });
   }
-  const mixed = [...hlSignals, ...btcSignals, ...goldSignals].slice(0, 10);
+  const mixed = [...ethSignals, ...hlSignals, ...btcSignals, ...goldSignals].slice(0, 10);
   mixed.forEach((s, i) => {
     const agents: GroktagonAgentId[] = ["TESS", "ILSA", "BRAM", "KETT", "HOLT", "RIGO"];
     logs.push({
@@ -234,12 +242,25 @@ export async function loadGroktagonState(): Promise<GroktagonState> {
 
   const goldSig = goldSignals[0];
   const btcSig = btcSignals[0];
+  const ethSig = ethSignals[0];
   const hlSig = hlSignals[0];
   const waitish = mixed.some((s) => s.bias === "wait");
   const pending = tickets.filter((t) => t.status === "pending");
-  const executable = pending.filter((t) => !t.block_reason && (t.source === "btc" || t.source === "hl"));
+  const executable = pending.filter((t) => !t.block_reason && (t.source === "btc" || t.source === "hl" || t.source === "eth"));
   const pos = account?.positions[0];
-  const setup = liveSetupFrom(btc?.price ?? null, hlSignals, btcSignals);
+  const setup = liveSetupFrom(
+    btc?.price ?? null,
+    [
+      ...hlSignals.map((s) => ({ ...s, source: "hl" as const })),
+      ...btcSignals.map((s) => ({ ...s, source: "btc" as const })),
+    ],
+    "no BTC/HL signal on book",
+  );
+  const ethSetup = liveSetupFrom(
+    eth?.price ?? null,
+    ethSignals.map((s) => ({ ...s, source: "eth" as const })),
+    "no ETH signal on book",
+  );
 
   const agents: GroktagonState["agents"] = [
     {
@@ -254,11 +275,13 @@ export async function loadGroktagonState(): Promise<GroktagonState> {
     {
       id: "HOLT",
       role: "SOL SCANNER",
-      status: btc ? "LIVE" : "IDLE",
-      busy: Boolean(btc),
-      line: btc
-        ? `BTC ${Math.round(btc.price)}${hlSig ? ` · ${hlSig.bias.toUpperCase()} ${hlSig.confidence}%` : btcSig ? ` · ${btcSig.bias.toUpperCase()} ${btcSig.confidence}%` : ""}`
-        : "no BTC tape",
+      status: btc || eth ? "LIVE" : "IDLE",
+      busy: Boolean(btc || eth),
+      line: eth
+        ? `ETH ${eth.price.toFixed(1)}${ethSig ? ` · ${ethSig.bias.toUpperCase()} ${ethSig.confidence}%` : ""} · BTC ${btc ? Math.round(btc.price) : "—"}`
+        : btc
+          ? `BTC ${Math.round(btc.price)}${hlSig ? ` · ${hlSig.bias.toUpperCase()} ${hlSig.confidence}%` : btcSig ? ` · ${btcSig.bias.toUpperCase()} ${btcSig.confidence}%` : ""}`
+          : "no tape",
     },
     {
       id: "RIGO",
@@ -277,13 +300,24 @@ export async function loadGroktagonState(): Promise<GroktagonState> {
     {
       id: "KETT",
       role: "EXECUTION",
-      status: kettArmed() && setup.side ? "LIVE" : kettArmed() ? "WATCH" : "IDLE",
-      busy: Boolean(setup.side || executable.length),
-      line: setup.side
-        ? `setup ${setup.side.toUpperCase()} ${setup.confidence ?? ""}%`
-        : kettArmed()
-          ? `armed · ${setup.reason}`
-          : "idle · no auto fire",
+      status:
+        autopilot?.enabled && kettArmed()
+          ? "LIVE"
+          : kettArmed() && (setup.side || ethSetup.side)
+            ? "LIVE"
+            : kettArmed()
+              ? "WATCH"
+              : "IDLE",
+      busy: Boolean(autopilot?.enabled || setup.side || ethSetup.side || executable.length),
+      line: autopilot?.enabled
+        ? `AUTO · ${autopilot.last_result ?? "waiting next tick"}`
+        : ethSetup.side
+          ? `ETH ${ethSetup.side.toUpperCase()} ${ethSetup.confidence ?? ""}%`
+          : setup.side
+            ? `BTC ${setup.side.toUpperCase()} ${setup.confidence ?? ""}%`
+            : kettArmed()
+              ? `armed · ETH ${ethSetup.reason}`
+              : "idle · no auto fire",
     },
     {
       id: "TESS",
@@ -317,7 +351,9 @@ export async function loadGroktagonState(): Promise<GroktagonState> {
     quote: {
       btc: btc?.price ?? null,
       gold: gold?.price ?? null,
+      eth: eth?.price ?? null,
       btc_chg: btc?.change_pct ?? null,
+      eth_chg: eth?.change_pct ?? null,
     },
     bars: bars.map((b) => ({
       time: b.time,
@@ -347,7 +383,16 @@ export async function loadGroktagonState(): Promise<GroktagonState> {
       armed: kettArmed(),
       agent: kettAgentAddress(),
       max_btc: KETT_MAX_BTC,
+      max_eth: KETT_MAX_ETH,
       setup,
+      eth_setup: ethSetup,
+      autopilot: {
+        enabled: Boolean(autopilot?.enabled),
+        prompt: autopilot?.prompt ?? "",
+        last_result: autopilot?.last_result ?? null,
+        last_run_at: autopilot?.last_run_at ?? null,
+        last_fired: Boolean(autopilot?.last_fired),
+      },
     },
     as_of: new Date().toISOString(),
   };

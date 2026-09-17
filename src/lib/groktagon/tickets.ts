@@ -75,14 +75,15 @@ export async function syncPendingTickets(candidates: GroktagonTicket[]): Promise
   return store.tickets;
 }
 
-export async function holdDeadTickets(mark: number | null): Promise<GroktagonTicket[]> {
+export async function holdDeadTickets(marks: { btc: number | null; eth?: number | null }): Promise<GroktagonTicket[]> {
   const store = await readStore();
   let changed = false;
   const now = new Date().toISOString();
   for (const row of store.tickets) {
     if (row.status !== "pending") continue;
-    if (row.source !== "btc" && row.source !== "hl") continue;
-    const g = gateBtcTrade(row, mark ?? Number.NaN);
+    if (row.source !== "btc" && row.source !== "hl" && row.source !== "eth") continue;
+    const mark = row.source === "eth" ? (marks.eth ?? Number.NaN) : (marks.btc ?? Number.NaN);
+    const g = gateBtcTrade(row, mark);
     if (!g.ok && g.dead) {
       row.status = "held";
       row.decided_at = now;
