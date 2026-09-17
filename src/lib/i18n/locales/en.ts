@@ -111,6 +111,7 @@ export const en = {
     socialMedia: "Social Media",
     marketAi: "Market AI",
     goldSignals: "Gold Signals",
+    groktagon: "The Groktagon",
     account: "My plan",
     googleDrive: "Copy-trade splits",
   },

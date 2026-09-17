@@ -113,6 +113,7 @@ export const zh: TranslationDict = {
     socialMedia: "社交媒体",
     marketAi: "市场 AI",
     goldSignals: "黄金信号",
+    groktagon: "The Groktagon",
     account: "我的套餐",
     googleDrive: "跟单分成",
   },

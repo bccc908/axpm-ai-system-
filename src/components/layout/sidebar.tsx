@@ -10,6 +10,7 @@ import {
   CreditCard,
   CheckSquare,
   FolderOpen,
+  Hexagon,
   Kanban,
   LayoutDashboard,
   LogOut,
@@ -59,6 +60,7 @@ const navSections: NavSection[] = [
       { href: "/dashboard/fortune", labelKey: "nav.fortune", icon: Sparkles },
       { href: "/dashboard/market-ai", labelKey: "nav.marketAi", icon: Brain },
       { href: "/dashboard/gold-signals", labelKey: "nav.goldSignals", icon: TrendingUp },
+      { href: "/dashboard/groktagon", labelKey: "nav.groktagon", icon: Hexagon },
     ],
   },
   {

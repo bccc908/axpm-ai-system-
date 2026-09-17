@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Bitcoin, Hexagon, TrendingUp, Waves } from "lucide-react";
 import { useLocale } from "@/components/providers/locale-provider";
 import { GoldDeskProvider } from "@/components/gold/gold-desk-context";
@@ -248,7 +249,10 @@ function MarketSignalsDesk({ instrument }: { instrument: SignalInstrument }) {
 
 export function GoldSignalsPanel() {
   const { t } = useLocale();
-  const [instrument, setInstrument] = useState<SignalInstrument>("gold");
+  const search = useSearchParams();
+  const tab = search.get("tab");
+  const initial = INSTRUMENTS.find((id) => id === tab) ?? "gold";
+  const [instrument, setInstrument] = useState<SignalInstrument>(initial);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
