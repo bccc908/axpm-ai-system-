@@ -57,6 +57,41 @@ export type GroktagonAgent = {
   line: string;
 };
 
+export type GroktagonQuoteSetup = {
+  side: "long" | "short";
+  low: number;
+  high: number;
+  stop: number | null;
+  target: number | null;
+  when: string;
+};
+
+export type GroktagonQuotePlan = {
+  coin: "ETH";
+  fire: boolean;
+  action: "WAIT" | "long" | "short";
+  headline: string;
+  reason: string;
+  mark: number | null;
+  bid: number | null;
+  ask: number | null;
+  spread_bps: number | null;
+  bid_usd: number | null;
+  ask_usd: number | null;
+  best_price: string;
+  best_time: string;
+  window: "overlap" | "london" | "asia" | "thin";
+  window_label: string;
+  expires_at: string | null;
+  setups: GroktagonQuoteSetup[];
+  wait_setup: GroktagonQuoteSetup | null;
+  range_low: number | null;
+  range_high: number | null;
+  bias: string;
+  confidence: number | null;
+  thesis: string;
+};
+
 export type GroktagonState = {
   balance: number;
   pnl: number;
@@ -73,6 +108,7 @@ export type GroktagonState = {
   logs: GroktagonLog[];
   events: Array<{ id: string; title: string; region: string }>;
   quote: { btc: number | null; gold: number | null; eth: number | null; btc_chg: number | null; eth_chg: number | null };
+  plan: GroktagonQuotePlan | null;
   bars: Array<{ time: number; open: number; high: number; low: number; close: number }>;
   agents: GroktagonAgent[];
   tickets: GroktagonTicket[];

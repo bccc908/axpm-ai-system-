@@ -37,7 +37,8 @@ function isCronApi(pathname: string) {
     pathname.startsWith("/api/email/automation") ||
     pathname.startsWith("/api/finance/automation") ||
     pathname.startsWith("/api/social/publish") ||
-    pathname.startsWith("/api/fortune/daily")
+    pathname.startsWith("/api/fortune/daily") ||
+    pathname.startsWith("/api/groktagon/autopilot")
   );
 }
 

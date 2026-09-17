@@ -128,6 +128,13 @@ export async function kettOpen(
     const open = account.positions.map((p) => p.coin).join(",");
     return { ok: false, error: `${open} already open · close first` };
   }
+  const perpUsd = (account.withdrawable ?? 0) - (account.spot_usdc ?? 0);
+  if (perpUsd < 10) {
+    return {
+      ok: false,
+      error: `perp USDC ${perpUsd.toFixed(2)} too low · move spot to perp first`,
+    };
+  }
   const { id, szDecimals, mark } = await perpAsset(coin);
   const gated = gateBtcTrade(
     {

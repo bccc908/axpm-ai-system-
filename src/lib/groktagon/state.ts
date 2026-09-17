@@ -15,6 +15,8 @@ import { holdDeadTickets, listGroktagonTickets, syncPendingTickets } from "@/lib
 import { kettAgentAddress, kettArmed, KETT_MAX_BTC, KETT_MAX_ETH } from "@/lib/hyperliquid/trading";
 import { gateBtcTrade } from "@/lib/groktagon/trade-gate";
 import { getGroktagonAutopilot } from "@/lib/groktagon/autopilot";
+import { buildEthQuotePlan } from "@/lib/groktagon/best-quote";
+import { fetchEthDayRange, fetchHlBook } from "@/lib/hyperliquid/book";
 
 import type {
   GroktagonAgentId,
@@ -154,7 +156,7 @@ function liveSetupFrom(
 
 export async function loadGroktagonState(): Promise<GroktagonState> {
   const address = await getHyperliquidAddress();
-  const [gold, btc, eth, chart, goldChart, goldSignals, btcSignals, ethSignals, hlSignals, account, fills, existingTickets, autopilot] =
+  const [gold, btc, eth, chart, goldChart, goldSignals, btcSignals, ethSignals, hlSignals, account, fills, existingTickets, autopilot, ethBook, ethRange] =
     await Promise.all([
       fetchGoldSpotQuote().catch(() => null),
       fetchHlSpotQuote().catch(() => null),
@@ -171,6 +173,8 @@ export async function loadGroktagonState(): Promise<GroktagonState> {
         : Promise.resolve([]),
       listGroktagonTickets().catch(() => []),
       getGroktagonAutopilot().catch(() => null),
+      fetchHlBook("ETH").catch(() => null),
+      fetchEthDayRange().catch(() => null),
     ]);
 
   const ticketsRaw = await syncPendingTickets([
@@ -261,6 +265,25 @@ export async function loadGroktagonState(): Promise<GroktagonState> {
     ethSignals.map((s) => ({ ...s, source: "eth" as const })),
     "no ETH signal on book",
   );
+  const plan = buildEthQuotePlan({
+    book: ethBook,
+    mark: eth?.price ?? null,
+    signal: ethSig ?? null,
+    range: ethRange,
+    fireSide: ethSetup.side,
+    fireReason: ethSetup.reason,
+  });
+
+  if (plan) {
+    logs.unshift({
+      id: `holt-quote-${Math.round(plan.mark ?? 0)}`,
+      agent: "HOLT",
+      kind: plan.fire ? "SCAN" : "RISK",
+      pnl: null,
+      text: `${plan.headline} · ${plan.best_time}`,
+      at: new Date().toISOString(),
+    });
+  }
 
   const agents: GroktagonState["agents"] = [
     {
@@ -277,18 +300,26 @@ export async function loadGroktagonState(): Promise<GroktagonState> {
       role: "SOL SCANNER",
       status: btc || eth ? "LIVE" : "IDLE",
       busy: Boolean(btc || eth),
-      line: eth
-        ? `ETH ${eth.price.toFixed(1)}${ethSig ? ` · ${ethSig.bias.toUpperCase()} ${ethSig.confidence}%` : ""} · BTC ${btc ? Math.round(btc.price) : "—"}`
-        : btc
-          ? `BTC ${Math.round(btc.price)}${hlSig ? ` · ${hlSig.bias.toUpperCase()} ${hlSig.confidence}%` : btcSig ? ` · ${btcSig.bias.toUpperCase()} ${btcSig.confidence}%` : ""}`
-          : "no tape",
+      line: plan
+        ? plan.headline.slice(0, 52)
+        : eth
+          ? `ETH ${eth.price.toFixed(1)}${ethSig ? ` · ${ethSig.bias.toUpperCase()} ${ethSig.confidence}%` : ""} · BTC ${btc ? Math.round(btc.price) : "—"}`
+          : btc
+            ? `BTC ${Math.round(btc.price)}${hlSig ? ` · ${hlSig.bias.toUpperCase()} ${hlSig.confidence}%` : btcSig ? ` · ${btcSig.bias.toUpperCase()} ${btcSig.confidence}%` : ""}`
+            : "no tape",
     },
     {
       id: "RIGO",
       role: "SETTLEMENT / RISK",
       status: waitish || dayPnl < 0 ? "RISK" : "WATCH",
       busy: true,
-      line: waitish ? "wait bias on book" : dayPnl < 0 ? `uPnL ${dayPnl.toFixed(2)}` : "watching settlement",
+      line: plan && !plan.fire
+        ? plan.reason.slice(0, 48)
+        : waitish
+          ? "wait bias on book"
+          : dayPnl < 0
+            ? `uPnL ${dayPnl.toFixed(2)}`
+            : "watching settlement",
     },
     {
       id: "ILSA",
@@ -324,7 +355,9 @@ export async function loadGroktagonState(): Promise<GroktagonState> {
       role: "RESEARCH",
       status: mixed.length ? "LIVE" : "IDLE",
       busy: mixed.length > 0,
-      line: (mixed[0]?.thesis ?? "desk research").replace(/\s+/g, " ").slice(0, 42),
+      line: plan
+        ? `${plan.best_price} · ${plan.best_time}`.slice(0, 48)
+        : (mixed[0]?.thesis ?? "desk research").replace(/\s+/g, " ").slice(0, 42),
     },
   ];
 
@@ -355,6 +388,7 @@ export async function loadGroktagonState(): Promise<GroktagonState> {
       btc_chg: btc?.change_pct ?? null,
       eth_chg: eth?.change_pct ?? null,
     },
+    plan,
     bars: bars.map((b) => ({
       time: b.time,
       open: b.open,

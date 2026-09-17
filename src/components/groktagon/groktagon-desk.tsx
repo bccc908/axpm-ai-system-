@@ -175,6 +175,7 @@ export function GroktagonDesk() {
   const pending = (state?.tickets ?? []).filter((t) => t.status === "pending");
   const book = state?.book;
   const kett = state?.kett;
+  const plan = state?.plan ?? null;
   const step = book?.source === "hyperliquid" ? 5 : pending.length ? 4 : 3;
 
   async function decide(ticket: GroktagonTicket, action: "approve" | "hold") {
@@ -326,7 +327,7 @@ export function GroktagonDesk() {
           : book?.source === "hyperliquid"
             ? kett?.armed
               ? kett.autopilot?.enabled
-                ? `AUTO ON · KETT scans ETH first every 12m. Max 0.005 ETH / 0.00015 BTC with stop + take-profit. Last: ${kett.autopilot.last_result ?? "waiting first run"}.`
+                ? `AUTO ON · KETT scans ETH every 12m while this page stays open. Max 0.005 ETH / 0.00015 BTC with stop + take-profit. Last: ${kett.autopilot.last_result ?? "waiting first run"}.`
                 : kett.eth_setup?.side
                 ? `KETT armed · live ETH ${kett.eth_setup.side.toUpperCase()} setup. Approve the ETH ticket or Open ETH. Cap ${kett.max_eth} ETH.`
                 : kett.setup?.side
@@ -373,7 +374,7 @@ export function GroktagonDesk() {
             {book.positions[0]
               ? ` · ${book.positions[0].coin} ${book.positions[0].side.toUpperCase()} ${book.positions[0].size}`
               : book.withdrawable
-                ? ` · SPOT USDC $${money(book.withdrawable)}`
+                ? ` · FLAT · PERP USDC $${money(book.withdrawable)}`
                 : " · FLAT"}
           </>
         ) : (
@@ -385,6 +386,69 @@ export function GroktagonDesk() {
           </>
         )}
       </p>
+
+      <Panel
+        title="HOLT · BEST QUOTE / TIME"
+        extra={
+          <span className={plan?.fire ? "text-emerald-400" : "text-amber-300"}>
+            {plan ? `${plan.action.toUpperCase()} · ${plan.window.toUpperCase()}` : "SCAN"}
+          </span>
+        }
+      >
+        {plan ? (
+          <div className="space-y-2 font-mono">
+            <div className="grid gap-2 sm:grid-cols-4">
+              <QuoteCell label="BID" value={plan.bid != null ? money(plan.bid, 1) : "—"} hint={plan.bid_usd != null ? `$${money(plan.bid_usd, 0)}` : ""} />
+              <QuoteCell label="ASK" value={plan.ask != null ? money(plan.ask, 1) : "—"} hint={plan.ask_usd != null ? `$${money(plan.ask_usd, 0)}` : ""} />
+              <QuoteCell label="SPREAD" value={plan.spread_bps != null ? `${plan.spread_bps.toFixed(3)} bps` : "—"} hint={plan.mark != null ? `mark ${money(plan.mark, 1)}` : ""} />
+              <QuoteCell
+                label="24H RANGE"
+                value={
+                  plan.range_low != null && plan.range_high != null
+                    ? `${money(plan.range_low, 0)}–${money(plan.range_high, 0)}`
+                    : "—"
+                }
+                hint={plan.confidence != null ? `${plan.bias.toUpperCase()} ${plan.confidence}%` : ""}
+              />
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">
+              <div className="rounded-sm border border-cyan-400/20 bg-cyan-500/5 px-2 py-1.5">
+                <p className="text-[9px] uppercase tracking-widest text-cyan-500/80">Best price</p>
+                <p className="text-sm text-cyan-100">{plan.best_price}</p>
+              </div>
+              <div className="rounded-sm border border-amber-400/20 bg-amber-500/5 px-2 py-1.5">
+                <p className="text-[9px] uppercase tracking-widest text-amber-500/80">Best time</p>
+                <p className="text-sm text-amber-100">{plan.best_time}</p>
+              </div>
+            </div>
+            <p className="text-[10px] text-zinc-400">{plan.headline} · {plan.reason}</p>
+            {plan.thesis ? <p className="text-[10px] leading-4 text-zinc-500">{plan.thesis}</p> : null}
+            {plan.setups.length ? (
+              <div className="space-y-1">
+                {plan.setups.map((s, i) => (
+                  <p key={`${s.side}-${s.low}-${i}`} className="text-[10px] text-zinc-400">
+                    <span className={s.side === "long" ? "text-emerald-400" : "text-rose-400"}>
+                      {s.side.toUpperCase()}
+                    </span>{" "}
+                    {money(s.low, 0)}–{money(s.high, 0)}
+                    {s.stop != null ? ` · SL ${money(s.stop, 0)}` : ""}
+                    {s.target != null ? ` · TP ${money(s.target, 0)}` : ""}
+                    {" · "}
+                    {s.when}
+                  </p>
+                ))}
+              </div>
+            ) : null}
+            <p className="text-[9px] uppercase tracking-widest text-zinc-600">
+              {plan.window_label}
+              {plan.expires_at ? ` · plan expires ${clockStamp(plan.expires_at)} HKT` : ""}
+              {" · KETT does not chase mid"}
+            </p>
+          </div>
+        ) : (
+          <p className="font-mono text-[10px] text-zinc-600">HOLT scanning ETH book…</p>
+        )}
+      </Panel>
 
       <section className="grid gap-2 xl:grid-cols-[1.15fr_1fr]">
         <Panel title="BALANCE HISTORY">
@@ -583,10 +647,10 @@ export function GroktagonDesk() {
             bars={state?.bars ?? []}
             clock={clock}
             lastPrice={
-              state?.quote.btc != null
-                ? `BTC ${money(state.quote.btc, 0)}`
-                : state?.quote.gold != null
-                  ? `GOLD ${money(state.quote.gold, 2)}`
+              state?.quote.eth != null
+                ? `ETH ${money(state.quote.eth, 1)}`
+                : state?.quote.btc != null
+                  ? `BTC ${money(state.quote.btc, 0)}`
                   : "LIVE"
             }
             agents={state?.agents}
@@ -635,6 +699,16 @@ export function GroktagonDesk() {
         </p>
       </Panel>
       </div>
+    </div>
+  );
+}
+
+function QuoteCell({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="rounded-sm border border-white/10 bg-black/30 px-2 py-1.5">
+      <p className="font-mono text-[9px] uppercase tracking-widest text-zinc-600">{label}</p>
+      <p className="font-mono text-sm text-zinc-100">{value}</p>
+      {hint ? <p className="font-mono text-[9px] text-zinc-600">{hint}</p> : null}
     </div>
   );
 }
