@@ -196,8 +196,8 @@ export async function loadGroktagonState(): Promise<GroktagonState> {
   const equity =
     hlValue != null && markEquity.length
       ? markEquity.map((p) => Math.round((p / 10_000) * hlValue * 100) / 100)
-      : markEquity;
-  const balance = hlValue ?? equity.at(-1) ?? 0;
+      : [0];
+  const balance = hlValue ?? 0;
   const dayPnl =
     account?.positions.reduce((s, p) => s + (p.unrealized_pnl ?? 0), 0) ??
     (equity.length > 1 ? equity[equity.length - 1] - equity[0] : 0);
