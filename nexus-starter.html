@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>NEXUS — Starter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #070a12; color: #c9d4e6; font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; overflow: hidden; }
+  #app { display: grid; grid-template-columns: 200px 1fr 260px; height: 100vh; }
+  aside { background: #0b1020; border-color: #1a2440; }
+  #left { border-right: 1px solid #1a2440; padding: 18px 12px; }
+  #left h1 { color: #4ff0ff; font-size: 20px; letter-spacing: 4px; margin-bottom: 24px; }
+  #left a { display: block; padding: 10px 12px; margin-bottom: 4px; border-radius: 6px; color: #8a97b3; text-decoration: none; font-size: 13px; }
+  #left a:hover, #left a.active { background: #121b33; color: #4ff0ff; }
+  #scene { position: relative; }
+  #right { border-left: 1px solid #1a2440; padding: 18px 14px; }
+  #right h2 { font-size: 12px; color: #6b7896; letter-spacing: 2px; margin-bottom: 14px; }
+  .stat { background: #0f1629; border: 1px solid #1a2440; border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+  .stat .label { font-size: 11px; color: #6b7896; }
+  .stat .value { font-size: 24px; color: #e8f0ff; margin-top: 4px; }
+  .stat .value.cyan { color: #4ff0ff; } .stat .value.green { color: #5dff9e; }
+  #hint { position: absolute; bottom: 12px; left: 12px; font-size: 11px; color: #4a5672; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app">
+  <aside id="left">
+    <h1>NEXUS</h1>
+    <a href="#" class="active">Overview</a>
+    <a href="#">Agents</a>
+    <a href="#">Floors</a>
+    <a href="#">Tasks</a>
+    <a href="#">Logs</a>
+    <a href="#">Settings</a>
+  </aside>
+  <main id="scene"><div id="hint">Drag to rotate · Scroll to zoom · Right-drag to pan</div></main>
+  <aside id="right">
+    <h2>SYSTEM STATUS</h2>
+    <div class="stat"><div class="label">AGENTS</div><div class="value cyan" id="stat-agents">15</div></div>
+    <div class="stat"><div class="label">UPTIME</div><div class="value green" id="stat-uptime">87h</div></div>
+    <div class="stat"><div class="label">COST</div><div class="value" id="stat-cost">$1.08</div></div>
+  </aside>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+const STATUS_COLORS = { working: 0x4ff0ff, idle: 0x8a97b3, busy: 0xb07cff, error: 0xff4f6d };
+const AGENTS = Array.from({ length: 15 }, (_, i) => ({
+  id: `agent-${i + 1}`,
+  floor: i % 5,
+  x: [-4, -2.4, -0.8, 2.2, 3.8][Math.floor(i / 5) + (i % 3)] ?? 0,
+  z: i % 2 ? -0.35 : 2.4,
+  status: ['working', 'idle', 'busy', 'working'][i % 4],
+}));
+const STATS = { agents: 15, uptime: '87h', cost: '$1.08' };
+const container = document.getElementById('scene');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x070a12);
+const frustum = 22;
+const aspect = container.clientWidth / container.clientHeight;
+const camera = new THREE.OrthographicCamera(-frustum * aspect / 2, frustum * aspect / 2, frustum / 2, -frustum / 2, 0.1, 200);
+camera.position.set(20, 20, 20);
+camera.lookAt(0, 6, 0);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(container.clientWidth, container.clientHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+container.appendChild(renderer.domElement);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 6, 0);
+controls.enableDamping = true;
+controls.minZoom = 0.5; controls.maxZoom = 3;
+scene.add(new THREE.HemisphereLight(0x7f9cff, 0x0a0f1c, 0.55));
+scene.add(new THREE.AmbientLight(0x4a5a8a, 0.25));
+const sun = new THREE.DirectionalLight(0xfff1dd, 1.8);
+sun.position.set(14, 30, 18);
+sun.target.position.set(0, 6, 0);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 20, bottom: -8, near: 1, far: 80 });
+sun.shadow.bias = -0.0005;
+sun.shadow.normalBias = 0.02;
+sun.shadow.radius = 4;
+scene.add(sun, sun.target);
+const rim = new THREE.DirectionalLight(0x4ff0ff, 0.5);
+rim.position.set(-18, 12, -14);
+scene.add(rim);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshStandardMaterial({ color: 0x0a0e1a, roughness: 1 }));
+ground.rotation.x = -Math.PI / 2; ground.position.y = -0.11; ground.receiveShadow = true;
+scene.add(ground);
+const FLOORS = 5, FLOOR_H = 3, W = 10, D = 7;
+const slabMat = new THREE.MeshStandardMaterial({ color: 0x141c33 });
+const wallMat = new THREE.MeshStandardMaterial({ color: 0x1c2747, transparent: true, opacity: 0.85 });
+const edgeMat = new THREE.LineBasicMaterial({ color: 0x4ff0ff, transparent: true, opacity: 0.5 });
+const deskMat = new THREE.MeshStandardMaterial({ color: 0x2a3658 });
+function addBox(w, h, d, mat, x, y, z, parent) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, y, z); parent.add(m); return m;
+}
+const chairMat   = new THREE.MeshStandardMaterial({ color: 0x3a4670 });
+const monitorMat = new THREE.MeshStandardMaterial({ color: 0x0a0f1c });
+const screenMat  = new THREE.MeshStandardMaterial({ color: 0x4ff0ff, emissive: 0x4ff0ff, emissiveIntensity: 0.6 });
+const screenMat2 = new THREE.MeshStandardMaterial({ color: 0xb07cff, emissive: 0xb07cff, emissiveIntensity: 0.6 });
+const potMat     = new THREE.MeshStandardMaterial({ color: 0x5a4a3a });
+const leafMat    = new THREE.MeshStandardMaterial({ color: 0x2fae6a });
+const cabinetMat = new THREE.MeshStandardMaterial({ color: 0x232e4f });
+const sofaMat    = new THREE.MeshStandardMaterial({ color: 0x3b2f5e });
+const rackLedMat = new THREE.MeshStandardMaterial({ color: 0x5dff9e, emissive: 0x5dff9e, emissiveIntensity: 0.8 });
+const paperMat   = new THREE.MeshStandardMaterial({ color: 0xd8dde8 });
+const mugMat     = new THREE.MeshStandardMaterial({ color: 0xff8a4f });
+function addWorkstation(parent, x, z, rot = 0, screen = screenMat) {
+  const ws = new THREE.Group(); ws.position.set(x, 0, z); ws.rotation.y = rot; parent.add(ws);
+  addBox(1.3, 0.08, 0.65, deskMat, 0, 0.7, 0, ws);
+  for (const lx of [-0.58, 0.58]) addBox(0.06, 0.6, 0.55, deskMat, lx, 0.4, 0, ws);
+  addBox(0.6, 0.38, 0.04, monitorMat, 0, 1.0, -0.22, ws);
+  addBox(0.54, 0.32, 0.01, screen, 0, 1.0, -0.195, ws);
+  addBox(0.08, 0.12, 0.08, monitorMat, 0, 0.8, -0.22, ws);
+  addBox(0.45, 0.02, 0.15, monitorMat, 0, 0.75, 0.05, ws);
+  addBox(0.2, 0.01, 0.28, paperMat, 0.45, 0.75, 0.05, ws);
+  const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.09, 10), mugMat);
+  mug.position.set(-0.5, 0.79, 0.1); ws.add(mug);
+  addBox(0.45, 0.07, 0.45, chairMat, 0, 0.45, 0.55, ws);
+  addBox(0.45, 0.5, 0.07, chairMat, 0, 0.72, 0.78, ws);
+  addBox(0.06, 0.38, 0.06, chairMat, 0, 0.22, 0.55, ws);
+}
+function addPlant(parent, x, z, h = 0.6) {
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.14, 0.3, 10), potMat);
+  pot.position.set(x, 0.25, z); parent.add(pot);
+  const leaves = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), leafMat);
+  leaves.scale.set(1, h / 0.4, 1); leaves.position.set(x, 0.45 + h / 2, z); parent.add(leaves);
+}
+function addCabinet(parent, x, z) {
+  addBox(0.5, 1.1, 0.45, cabinetMat, x, 0.65, z, parent);
+  for (let i = 0; i < 3; i++) addBox(0.2, 0.03, 0.01, paperMat, x, 0.35 + i * 0.33, z + 0.23, parent);
+}
+function addServerRack(parent, x, z) {
+  addBox(0.6, 1.9, 0.6, monitorMat, x, 1.05, z, parent);
+  for (let i = 0; i < 6; i++) addBox(0.04, 0.04, 0.01, rackLedMat, x - 0.18 + (i % 2) * 0.1, 0.5 + i * 0.25, z + 0.31, parent);
+}
+function addMeetingTable(parent, x, z) {
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.08, 20), deskMat);
+  top.position.set(x, 0.7, z); parent.add(top);
+  addBox(0.12, 0.6, 0.12, deskMat, x, 0.4, z, parent);
+  for (let i = 0; i < 4; i++) {
+    const a = i * Math.PI / 2 + Math.PI / 4;
+    addBox(0.4, 0.07, 0.4, chairMat, x + Math.cos(a) * 1.15, 0.45, z + Math.sin(a) * 1.15, parent);
+  }
+}
+function addWhiteboard(parent, x, z) { addBox(1.6, 0.9, 0.04, paperMat, x, 1.6, z, parent); }
+function addSofa(parent, x, z) {
+  addBox(1.6, 0.35, 0.6, sofaMat, x, 0.3, z, parent);
+  addBox(1.6, 0.4, 0.15, sofaMat, x, 0.65, z - 0.25, parent);
+  addBox(0.7, 0.3, 0.4, deskMat, x, 0.25, z + 0.8, parent);
+}
+function furnishFloor(g, f) {
+  for (let i = 0; i < 3; i++) {
+    const x = -4 + i * 1.6;
+    addWorkstation(g, x, -1.6, 0, (i + f) % 2 ? screenMat : screenMat2);
+    addWorkstation(g, x, 0.9, Math.PI, (i + f) % 2 ? screenMat2 : screenMat);
+  }
+  addCabinet(g, -4.6, -3.0); addCabinet(g, -4.0, -3.0);
+  addPlant(g, -4.5, 2.9); addPlant(g, 0.5, -3.0, 0.9);
+  addWhiteboard(g, -1.5, -3.38);
+  if (f === 0)      { addSofa(g, 3, -2.2); addPlant(g, 4.4, -3.0, 1.0); addPlant(g, 1.6, 2.8); }
+  else if (f === 3) { for (let i = 0; i < 4; i++) addServerRack(g, 1.9 + i * 0.8, -2.8); addPlant(g, 4.4, 2.8); }
+  else if (f % 2)   { addMeetingTable(g, 3, -1.2); addWhiteboard(g, 3, -3.38); addPlant(g, 4.4, 2.8); }
+  else              { addWorkstation(g, 2.5, -1.6, 0); addWorkstation(g, 4.0, -1.6, 0, screenMat2); addSofa(g, 3.2, 1.6); }
+}
+const floorGroups = [];
+for (let f = 0; f < FLOORS; f++) {
+  const g = new THREE.Group();
+  g.position.y = f * FLOOR_H;
+  scene.add(g); floorGroups.push(g);
+  const slab = addBox(W, 0.2, D, slabMat, 0, 0, 0, g); slab.userData.noCast = true;
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(slab.geometry), edgeMat);
+  slab.add(edges);
+  addBox(W, FLOOR_H - 0.2, 0.15, wallMat, 0, FLOOR_H / 2, -D / 2, g).userData.noCast = true;
+  addBox(0.15, FLOOR_H - 0.2, D, wallMat, -W / 2, FLOOR_H / 2, 0, g).userData.noCast = true;
+  addBox(0.1, 1, D * 0.6, wallMat, 1, 0.6, -D * 0.2, g).userData.noCast = true;
+  furnishFloor(g, f);
+  const warm = new THREE.PointLight(0xffd9a8, 9, 8, 2);
+  warm.position.set(-2.4, FLOOR_H - 0.4, -0.3); g.add(warm);
+  const cool = new THREE.PointLight(f === 3 ? 0x5dff9e : 0x9a7cff, 4, 6, 2);
+  cool.position.set(3, FLOOR_H - 0.5, -1); g.add(cool);
+  addBox(1.4, 0.04, 0.2, new THREE.MeshBasicMaterial({ color: 0xffe6c4 }), -2.4, FLOOR_H - 0.25, -0.3, g);
+}
+scene.traverse(o => { if (o.isMesh && o !== ground) { o.castShadow = !o.userData.noCast; o.receiveShadow = true; } });
+const agentMeshes = new Map();
+for (const a of AGENTS) {
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(0.5, 0.7, 0.5),
+    new THREE.MeshStandardMaterial({ color: STATUS_COLORS[a.status], emissive: STATUS_COLORS[a.status], emissiveIntensity: 0.3 })
+  );
+  mesh.position.set(a.x, 0.45, a.z);
+  mesh.userData.phase = Math.random() * Math.PI * 2;
+  mesh.castShadow = true;
+  floorGroups[a.floor].add(mesh);
+  agentMeshes.set(a.id, mesh);
+}
+function updateAgentStatus(id, status) {
+  const m = agentMeshes.get(id); if (!m) return;
+  const c = STATUS_COLORS[status] ?? STATUS_COLORS.idle;
+  m.material.color.setHex(c); m.material.emissive.setHex(c);
+}
+function setStats(partial) {
+  Object.assign(STATS, partial);
+  document.getElementById('stat-agents').textContent = STATS.agents;
+  document.getElementById('stat-uptime').textContent = STATS.uptime;
+  document.getElementById('stat-cost').textContent = STATS.cost;
+}
+function connectLiveData() {}
+window.nexus = { updateAgentStatus, setStats, connectLiveData };
+setStats({});
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+  agentMeshes.forEach(m => { m.position.y = 0.45 + Math.sin(t * 2 + m.userData.phase) * 0.05; });
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+window.addEventListener('resize', () => {
+  const a = container.clientWidth / container.clientHeight;
+  camera.left = -frustum * a / 2; camera.right = frustum * a / 2;
+  camera.updateProjectionMatrix();
+  renderer.setSize(container.clientWidth, container.clientHeight);
+});
+</script>
+</body>
+</html>
