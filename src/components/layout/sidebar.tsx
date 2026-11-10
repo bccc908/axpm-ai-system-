@@ -12,6 +12,7 @@ import {
   FolderOpen,
   Hexagon,
   Kanban,
+  Building2,
   LayoutDashboard,
   LogOut,
   NotebookPen,
@@ -46,6 +47,7 @@ const navSections: NavSection[] = [
     labelKey: "nav.sectionOps",
     items: [
       { href: "/dashboard", labelKey: "nav.overview", icon: LayoutDashboard },
+      { href: "/dashboard/ops-floor", labelKey: "nav.opsFloor", icon: Building2 },
       { href: "/dashboard/todos", labelKey: "nav.todos", icon: CheckSquare },
       { href: "/dashboard/my-assistant", labelKey: "nav.myAssistant", icon: NotebookPen },
       { href: "/dashboard/finance", labelKey: "nav.finance", icon: Wallet },

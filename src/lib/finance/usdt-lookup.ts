@@ -174,11 +174,11 @@ function pickTrc20Amount(trc20: unknown, contract: string): string | null {
 
 function tronAddressParam(address: string): string | null {
   const alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-  let n = 0n;
+  let n = BigInt(0);
   for (const c of address) {
     const i = alphabet.indexOf(c);
     if (i < 0) return null;
-    n = n * 58n + BigInt(i);
+    n = n * BigInt(58) + BigInt(i);
   }
   let hex = n.toString(16);
   if (hex.length % 2) hex = `0${hex}`;

@@ -12,7 +12,6 @@ export async function GET() {
     return NextResponse.json({
       price: snap.xauusdt,
       change_pct: snap.xauusdt_change_pct,
-      as_of: snap.as_of,
       source: `${snap.xauusd_source} / ${snap.xauusdt_source}`,
       ...snap,
     });

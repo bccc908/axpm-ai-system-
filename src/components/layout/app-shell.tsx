@@ -33,6 +33,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { canHref } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const mobileNav = bottomNav.filter(({ href }) => canHref(href));
+  const immersive = pathname.startsWith("/dashboard/ops-floor");
 
   return (
     <div className="premium-canvas flex h-[100dvh] overflow-hidden">
@@ -83,9 +84,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <LanguageSwitcher className="text-xs" />
         </header>
 
-        <main className="flex-1 overflow-y-auto pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
-          <div className="mx-auto max-w-7xl p-4 md:p-6 lg:p-8">
-            <InstallAppBanner />
+        <main
+          className={cn(
+            "flex min-h-0 flex-1 flex-col",
+            immersive
+              ? "overflow-y-auto md:overflow-hidden"
+              : "overflow-y-auto pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0",
+          )}
+        >
+          <div
+            className={cn(
+              immersive
+                ? "flex min-h-full flex-1 flex-col md:h-full md:min-h-0"
+                : "mx-auto w-full max-w-7xl p-4 md:p-6 lg:p-8",
+            )}
+          >
+            {immersive ? null : <InstallAppBanner />}
             {children}
           </div>
         </main>
