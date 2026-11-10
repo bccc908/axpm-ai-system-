@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>NEXUS — Live Office</title>
+<title>AXPM — Live Office</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <!-- NEXUS_BUILD v2-walking-agents (marker used to verify deploys) -->
 <meta name="nexus-build" content="v2-walking-agents" />
@@ -69,7 +69,7 @@
 <div id="app">
   <!-- LEFT SIDEBAR: simple navigation + agent roster -->
   <aside id="left">
-    <h1>NEXUS</h1>
+    <h1>AXPM</h1>
     <a href="#" class="active">Overview</a>
     <a href="#">Agents</a>
     <a href="#">Floors</a>
@@ -112,7 +112,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-const NEXUS_BUILD = 'v2-walking-agents';
+const NEXUS_BUILD = 'v3-axpm-brand';
 // DEMO_MODE simulates status changes, errors and finished tasks so the office feels alive.
 // Set to false (or call connectLiveData) once real data drives the hooks below.
 const DEMO_MODE = true;
@@ -735,7 +735,7 @@ function connectLiveData() {}
 window.nexus = { updateAgentStatus, setStats, connectLiveData, setAgentTask, moveAgentToFloor, logActivity, getAgents, build: NEXUS_BUILD,
   setDemo: on => { demoEnabled = !!on; } }; // handy from the console
 setStats({});
-logActivity('NEXUS online · 15 agents across 5 floors', '#4ff0ff');
+logActivity('AXPM online · 15 agents across 5 floors', '#4ff0ff');
 logActivity(`${AGENTS[11].name} hit an error on “${AGENTS[11].task}”`, '#ff4f6d');
 
 /* ---------- Interaction: hover tooltip, click to follow, toolbar ---------- */
