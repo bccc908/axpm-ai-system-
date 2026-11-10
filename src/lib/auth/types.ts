@@ -16,7 +16,8 @@ export type AuthModule =
   | "market"
   | "team"
   | "settings"
-  | "account";
+  | "account"
+  | "ops";
 
 export interface AuthUser {
   id: string;

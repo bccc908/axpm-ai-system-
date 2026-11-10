@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { assertLocalApiAuth, LocalApiAuthError } from "@/lib/local/local-api-auth";
+import { recordBridgePoll } from "@/lib/ops-floor/bridge-poll";
 import { getLatestGoldSignal, toAtasAlert } from "@/lib/gold-signals/store";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,7 @@ export async function GET(request: Request) {
     throw e;
   }
 
+  recordBridgePoll("atas");
   const signal = await getLatestGoldSignal();
   if (!signal) {
     return NextResponse.json({ alert: null, message: "no signal yet" });
