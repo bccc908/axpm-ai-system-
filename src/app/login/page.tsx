@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, ShieldCheck } from "lucide-react";
+import { BrandLogo } from "@/components/layout/brand-logo";
 import { LocaleProvider, useLocale } from "@/components/providers/locale-provider";
 import type { AuthModule, UserRole } from "@/lib/auth/types";
 
@@ -75,27 +76,23 @@ function LoginForm() {
   }
 
   return (
-    <main className="premium-canvas flex min-h-screen items-center justify-center p-6">
-      <div className="glass-panel w-full max-w-md rounded-2xl p-8 md:p-10">
-        <div className="mb-8 flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-accent" />
-          <span className="badge-shimmer rounded-full border border-accent/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">
-            {t("app.brand")}
-          </span>
-        </div>
-        <h1 className="font-display text-3xl font-semibold text-gradient-gold">
+    <main className="premium-canvas flex min-h-screen flex-col">
+      <div className="flex flex-1 items-center justify-center p-6">
+      <div className="glass-panel w-full max-w-[400px] rounded-lg p-7 md:p-8">
+        <BrandLogo height={26} className="mb-6" />
+        <h1 className="text-[22px] font-semibold tracking-tight text-foreground">
           {setupRequired ? t("auth.setupTitle") : t("auth.loginTitle")}
         </h1>
-        <p className="mt-2 text-sm text-muted">
+        <p className="mt-1.5 text-sm text-muted">
           {setupRequired ? t("auth.setupDesc") : t("auth.loginDesc")}
         </p>
 
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+        <form className="mt-6 space-y-4 border-t border-card-border pt-6" onSubmit={handleSubmit}>
           {setupRequired ? (
             <div>
-              <label className="mb-1 block text-xs text-muted">{t("auth.name")}</label>
+              <label className="mb-1.5 block text-xs font-medium text-muted">{t("auth.name")}</label>
               <input
-                className="input-premium w-full rounded-xl px-3 py-2.5 text-sm"
+                className="input-premium w-full rounded-md px-3 py-2 text-sm"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Kayden"
@@ -104,10 +101,10 @@ function LoginForm() {
             </div>
           ) : null}
           <div>
-            <label className="mb-1 block text-xs text-muted">{t("auth.email")}</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted">{t("auth.email")}</label>
             <input
               type="email"
-              className="input-premium w-full rounded-xl px-3 py-2.5 text-sm"
+              className="input-premium w-full rounded-md px-3 py-2 text-sm"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -115,10 +112,10 @@ function LoginForm() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-muted">{t("auth.password")}</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted">{t("auth.password")}</label>
             <input
               type="password"
-              className="input-premium w-full rounded-xl px-3 py-2.5 text-sm"
+              className="input-premium w-full rounded-md px-3 py-2 text-sm"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               minLength={setupRequired ? 8 : 6}
@@ -126,11 +123,11 @@ function LoginForm() {
               autoComplete={setupRequired ? "new-password" : "current-password"}
             />
           </div>
-          {error ? <p className="text-sm text-red-500">{error}</p> : null}
+          {error ? <p className="text-sm text-danger">{error}</p> : null}
           <button
             type="submit"
             disabled={submitting}
-            className="btn-premium flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm disabled:opacity-50"
+            className="btn-premium flex w-full items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm disabled:opacity-50"
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {setupRequired ? t("auth.setupBtn") : t("auth.loginBtn")}
@@ -145,6 +142,12 @@ function LoginForm() {
             </a>
           </p>
         ) : null}
+
+        <p className="mt-6 flex items-center justify-center gap-1.5 border-t border-card-border pt-4 text-[11px] text-muted">
+          <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+          {t("auth.secureNote")}
+        </p>
+      </div>
       </div>
     </main>
   );

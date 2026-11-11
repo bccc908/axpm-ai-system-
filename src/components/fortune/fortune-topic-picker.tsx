@@ -37,7 +37,7 @@ export function FortuneTopicPicker({
       key: "theme",
       label: t("fortune.themeTopics"),
       topics: THEME_TOPICS,
-      activeClass: "bg-accent text-white shadow-sm",
+      activeClass: "bg-accent text-accent-foreground shadow-sm",
       hoverClass: "hover:border-accent/50 hover:text-foreground",
     },
     {
@@ -87,7 +87,7 @@ export function FortuneTopicPicker({
         <button
           type="button"
           onClick={() => onTopicChange("daily")}
-          className={`${chipClass(topic === "daily", "bg-accent text-white shadow-md", "", true)} text-left`}
+          className={`${chipClass(topic === "daily", "bg-accent text-accent-foreground shadow-md", "", true)} text-left`}
         >
           <span className="block font-semibold">
             {t("fortune.topics.daily")} · {getFortuneDateShort(locale)}

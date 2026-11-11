@@ -47,7 +47,7 @@ export function GoldSignalHistory({
         </span>
       </button>
       {open ? (
-        <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain divide-y divide-white/[0.04]">
+        <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain divide-y divide-card-border">
           {past.map((s) => {
             const style = BIAS_STYLE[s.bias];
             const expired =
@@ -59,7 +59,7 @@ export function GoldSignalHistory({
                 key={s.id}
                 type="button"
                 onClick={() => onSelect(s)}
-                className="flex w-full min-w-0 max-w-full items-center gap-2 overflow-hidden px-3 py-2 text-left transition-colors hover:bg-white/[0.03]"
+                className="flex w-full min-w-0 max-w-full items-center gap-2 overflow-hidden px-3 py-2 text-left transition-colors hover:bg-surface-2"
               >
                 <span
                   className={cn(

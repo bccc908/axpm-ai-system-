@@ -26,27 +26,27 @@ export const BIAS_STYLE: Record<
 > = {
   long: {
     icon: ArrowUpRight,
-    pill: "text-emerald-200 bg-emerald-500/15 border-emerald-400/35",
-    accent: "text-emerald-400",
-    rail: "border-emerald-500/40 text-emerald-400",
+    pill: "text-success bg-success/10 border-success/30",
+    accent: "text-success",
+    rail: "border-success/40 text-success",
   },
   short: {
     icon: ArrowDownRight,
-    pill: "text-rose-200 bg-rose-500/15 border-rose-400/35",
-    accent: "text-rose-400",
-    rail: "border-rose-500/40 text-rose-400",
+    pill: "text-danger bg-danger/10 border-danger/30",
+    accent: "text-danger",
+    rail: "border-danger/40 text-danger",
   },
   neutral: {
     icon: Minus,
-    pill: "text-amber-100 bg-amber-500/12 border-amber-400/30",
-    accent: "text-amber-300",
-    rail: "border-amber-500/35 text-amber-300",
+    pill: "text-foreground bg-surface-2 border-card-border",
+    accent: "text-muted",
+    rail: "border-border-strong text-muted",
   },
   wait: {
     icon: Activity,
-    pill: "text-sky-100 bg-sky-500/12 border-sky-400/30",
-    accent: "text-sky-300",
-    rail: "border-sky-500/35 text-sky-300",
+    pill: "text-accent bg-accent/10 border-accent/30",
+    accent: "text-accent",
+    rail: "border-accent/35 text-accent",
   },
 };
 

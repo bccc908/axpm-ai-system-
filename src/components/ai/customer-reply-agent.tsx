@@ -452,7 +452,7 @@ export function CustomerReplyAgent({
           type="button"
           onClick={handleGenerate}
           disabled={loading || !customerQuestion.trim()}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-accent-muted disabled:opacity-50 transition-colors sm:w-auto"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50 transition-colors sm:w-auto"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
           {loading ? t("ai.testGenerating") : t("ai.generateReply")}

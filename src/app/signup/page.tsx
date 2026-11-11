@@ -71,7 +71,7 @@ function SignupForm() {
         onClick={() => setLocale(code)}
         className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
           locale === code
-            ? "bg-accent text-white"
+            ? "bg-accent text-accent-foreground"
             : "border border-card-border text-muted hover:text-foreground"
         }`}
       >
@@ -138,7 +138,7 @@ function SignupForm() {
           <button
             type="submit"
             disabled={submitting}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-accent-muted disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50"
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {t("account.signupBtn")}

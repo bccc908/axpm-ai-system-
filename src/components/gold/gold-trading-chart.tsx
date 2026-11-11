@@ -44,16 +44,16 @@ const RANGES: { id: ChartRange; label: string }[] = [
 
 const CHART_BASE = {
   layout: {
-    background: { type: ColorType.Solid, color: "#050810" },
-    textColor: "#94a8bc",
-    fontFamily: "ui-monospace, monospace",
+    background: { type: ColorType.Solid, color: "#171c2a" },
+    textColor: "#8b95a5",
+    fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', sans-serif",
   },
   grid: {
-    vertLines: { color: "rgba(56, 120, 180, 0.08)" },
-    horzLines: { color: "rgba(56, 120, 180, 0.08)" },
+    vertLines: { color: "rgba(255, 255, 255, 0.04)" },
+    horzLines: { color: "rgba(255, 255, 255, 0.04)" },
   },
-  rightPriceScale: { borderColor: "rgba(56, 120, 180, 0.15)" },
-  timeScale: { borderColor: "rgba(56, 120, 180, 0.15)", timeVisible: true },
+  rightPriceScale: { borderColor: "#262d3d" },
+  timeScale: { borderColor: "#262d3d", timeVisible: true },
   crosshair: { mode: 1 as const },
   handleScroll: {
     mouseWheel: true,
@@ -221,7 +221,7 @@ export function GoldTradingChart({
     volumeRef.current?.update({
       time: t,
       value: last.volume,
-      color: last.close >= last.open ? "rgba(0,255,136,0.72)" : "rgba(255,51,85,0.72)",
+      color: last.close >= last.open ? "rgba(46,189,133,0.72)" : "rgba(239,83,80,0.72)",
     });
 
     if (showEma) {
@@ -247,7 +247,7 @@ export function GoldTradingChart({
       macdHistRef.current?.update({
         time: h.time as UTCTimestamp,
         value: h.value,
-        color: h.value >= 0 ? "rgba(0,255,136,0.8)" : "rgba(255,51,85,0.8)",
+        color: h.value >= 0 ? "rgba(46,189,133,0.8)" : "rgba(239,83,80,0.8)",
       });
     }
     if (m) setMacdLive(m.value);
@@ -276,7 +276,7 @@ export function GoldTradingChart({
         bars.map((b) => ({
           time: b.time as UTCTimestamp,
           value: b.volume,
-          color: b.close >= b.open ? "rgba(0,255,136,0.72)" : "rgba(255,51,85,0.72)",
+          color: b.close >= b.open ? "rgba(46,189,133,0.72)" : "rgba(239,83,80,0.72)",
         })),
       );
 
@@ -309,7 +309,7 @@ export function GoldTradingChart({
         histogram.map((p) => ({
           time: p.time as UTCTimestamp,
           value: p.value,
-          color: p.value >= 0 ? "rgba(0,255,136,0.8)" : "rgba(255,51,85,0.8)",
+          color: p.value >= 0 ? "rgba(46,189,133,0.8)" : "rgba(239,83,80,0.8)",
         })),
       );
       setMacdLive(macd.at(-1)?.value ?? null);
@@ -439,11 +439,11 @@ export function GoldTradingChart({
     });
 
     const candles = mainChart.addSeries(CandlestickSeries, {
-      upColor: "#00ff88",
-      downColor: "#ff3355",
+      upColor: "#2ebd85",
+      downColor: "#ef5350",
       borderVisible: false,
-      wickUpColor: "#00ff88",
-      wickDownColor: "#ff3355",
+      wickUpColor: "#2ebd85",
+      wickDownColor: "#ef5350",
     });
     const volume = mainChart.addSeries(HistogramSeries, {
       priceFormat: { type: "volume" },
@@ -472,8 +472,8 @@ export function GoldTradingChart({
         timeScale: { ...CHART_BASE.timeScale, visible: false },
       });
       const rsiLine = rsiChart.addSeries(LineSeries, { color: VIZ.purple, lineWidth: 2, title: "RSI" });
-      rsiLine.createPriceLine({ price: 70, color: "rgba(255,51,85,0.7)", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "70" });
-      rsiLine.createPriceLine({ price: 30, color: "rgba(0,255,136,0.7)", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "30" });
+      rsiLine.createPriceLine({ price: 70, color: "rgba(239,83,80,0.7)", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "70" });
+      rsiLine.createPriceLine({ price: 30, color: "rgba(46,189,133,0.7)", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "30" });
       rsiChartRef.current = rsiChart;
       rsiSeriesRef.current = rsiLine;
       charts.push(rsiChart);
@@ -582,8 +582,8 @@ export function GoldTradingChart({
   }, [showEma, applyBarData]);
 
   return (
-    <div className={cn("flex h-full flex-col bg-[#050810]", className)}>
-      <div className="flex flex-wrap items-center gap-2 border-b border-sky-900/30 bg-gradient-to-r from-[#060a14] via-[#050810] to-[#060a14] px-3 py-2">
+    <div className={cn("flex h-full flex-col bg-[#171c2a]", className)}>
+      <div className="flex flex-wrap items-center gap-2 border-b border-card-border bg-surface px-3 py-2">
         <div className="flex gap-0.5 rounded-lg border border-white/[0.06] bg-black/50 p-0.5">
           {RANGES.map((r) => (
             <button
@@ -610,7 +610,7 @@ export function GoldTradingChart({
               className={cn(
                 "rounded-md px-2.5 py-1 font-mono text-[10px] font-semibold uppercase transition-colors",
                 chartInterval === iv
-                  ? "bg-accent/20 text-accent shadow-[0_0_12px_-4px_var(--accent-glow)]"
+                  ? "bg-accent/20 text-accent"
                   : "text-muted hover:bg-white/[0.04] hover:text-foreground",
               )}
             >
@@ -640,23 +640,23 @@ export function GoldTradingChart({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-sky-900/20 bg-[#040810]/80 px-3 py-2 font-mono text-[10px]">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-card-border bg-[#171c2a]/80 px-3 py-2 font-mono text-[10px]">
         {lastPrice != null ? (
           <span className="text-sm font-semibold tabular-nums text-foreground">${lastPrice.toFixed(2)}</span>
         ) : null}
         {isLive ? (
-          <span className="inline-flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-emerald-400">
+          <span className="inline-flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-success">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
             {t("goldSignals.chartLive")}
           </span>
         ) : null}
         {rsiLive != null ? (
-          <span className={cn(rsiLive > 70 ? "text-[#ff4466]" : rsiLive < 30 ? "text-[#00ff88]" : "text-muted")}>
+          <span className={cn(rsiLive > 70 ? "text-[#ef5350]" : rsiLive < 30 ? "text-[#2ebd85]" : "text-muted")}>
             RSI <span className="font-semibold">{rsiLive.toFixed(1)}</span>
           </span>
         ) : null}
         {macdLive != null ? (
-          <span className={macdLive >= 0 ? "text-[#00ff88]" : "text-[#ff4466]"}>
+          <span className={macdLive >= 0 ? "text-[#2ebd85]" : "text-[#ef5350]"}>
             MACD{" "}
             <span className="font-semibold">
               {macdLive >= 0 ? "+" : ""}
@@ -676,7 +676,7 @@ export function GoldTradingChart({
           </div>
         ) : null}
         {error ? (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60 text-xs text-rose-300">
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60 text-xs text-danger">
             {error}
           </div>
         ) : null}

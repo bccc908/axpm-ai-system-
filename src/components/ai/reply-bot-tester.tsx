@@ -266,7 +266,7 @@ export function ReplyBotTester() {
               type="button"
               onClick={saveAgentPrompt}
               disabled={savingPrompt}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted disabled:opacity-50"
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50"
             >
               {savingPrompt ? t("ai.savingPrompt") : t("ai.saveAgentPrompt")}
             </button>
@@ -326,7 +326,7 @@ export function ReplyBotTester() {
                   className={`group relative max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
                     turn.role === "customer"
                       ? "rounded-bl-md bg-accent/10 text-foreground"
-                      : "rounded-br-md bg-accent text-white"
+                      : "rounded-br-md bg-accent text-accent-foreground"
                   }`}
                 >
                   <p className="mb-0.5 text-[10px] font-medium opacity-70">
@@ -380,7 +380,7 @@ export function ReplyBotTester() {
                 type="button"
                 onClick={() => void sendMessage()}
                 disabled={loading || !input.trim()}
-                className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-xl bg-accent text-white hover:bg-accent-muted disabled:opacity-50"
+                className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground hover:bg-accent-muted disabled:opacity-50"
                 aria-label={t("ai.testChatSend")}
               >
                 {loading ? (

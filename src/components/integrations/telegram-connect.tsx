@@ -152,7 +152,7 @@ export function TelegramConnect() {
                 href={`https://t.me/${status.bot.username}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted"
+                className="inline-flex rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted"
               >
                 Open @{status.bot.username} in Telegram
               </a>
@@ -269,7 +269,7 @@ export function TelegramConnect() {
                 type="button"
                 onClick={() => handleTest(manualChatId)}
                 disabled={testing || !manualChatId.trim() || !config?.hasToken}
-                className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted disabled:opacity-50"
+                className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50"
               >
                 {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 Send test
@@ -295,7 +295,7 @@ export function TelegramConnect() {
               type="button"
               onClick={() => handleTest()}
               disabled={testing || !config?.isReady}
-              className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted disabled:opacity-50 transition-colors"
+              className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50 transition-colors"
             >
               {testing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

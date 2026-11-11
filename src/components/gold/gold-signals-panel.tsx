@@ -193,7 +193,7 @@ function MarketSignalsDesk({ instrument }: { instrument: SignalInstrument }) {
             <TrendingUp className="h-4 w-4 text-accent" />
           )
         }
-        className="mb-0 shrink-0 [&_h1]:text-2xl md:[&_h1]:text-3xl [&_p]:mt-1 [&_.badge-shimmer]:py-0.5"
+        className="mb-0 shrink-0 border-b-0 pb-0 [&_h1]:text-xl md:[&_h1]:text-2xl [&_p]:mt-0.5"
       />
 
       <GoldTickerStrip latest={latest} prev={prev} />
@@ -264,17 +264,17 @@ export function GoldSignalsPanel() {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="flex shrink-0 flex-wrap gap-1.5 px-4 pt-3 md:px-6 lg:px-8">
+      <div className="flex shrink-0 flex-wrap gap-0 border-b border-card-border bg-surface px-4 md:px-6 lg:px-8">
         {INSTRUMENTS.map((id) => (
           <button
             key={id}
             type="button"
             onClick={() => setInstrument(id)}
             className={cn(
-              "rounded-lg border px-3 py-1.5 font-mono text-[11px] font-semibold tracking-wide transition-colors",
+              "-mb-px border-b-2 px-3.5 py-2.5 text-[13px] font-medium transition-colors",
               instrument === id
-                ? "border-accent/40 bg-accent/10 text-accent"
-                : "border-white/[0.08] bg-white/[0.03] text-muted hover:text-foreground",
+                ? "border-accent text-foreground"
+                : "border-transparent text-muted hover:text-foreground",
             )}
           >
             {t(SIGNAL_INSTRUMENTS[id].tabKey)}

@@ -395,7 +395,7 @@ export function ConversationalInbox() {
                         </span>
                       </div>
                       {session.unread_count > 0 && (
-                        <span className="shrink-0 rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold text-white">
+                        <span className="shrink-0 rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold text-accent-foreground">
                           {session.unread_count}
                         </span>
                       )}
@@ -570,7 +570,7 @@ export function ConversationalInbox() {
                   type="button"
                   disabled={sending || !reply.trim()}
                   onClick={() => void sendReply()}
-                  className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-accent-muted disabled:opacity-50"
+                  className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50"
                 >
                   {sending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

@@ -12,6 +12,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import { BrandLogo } from "@/components/layout/brand-logo";
 import { InstallAppBanner } from "@/components/layout/install-app-banner";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -55,9 +56,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             aria-label={t("common.cancel")}
             onClick={() => setMenuOpen(false)}
           />
-          <div className="absolute left-0 top-0 flex h-full w-[min(280px,85vw)] flex-col border-r border-white/[0.08] bg-[#08080c] shadow-2xl">
+          <div className="absolute left-0 top-0 flex h-full w-[min(280px,85vw)] flex-col border-r border-card-border bg-surface shadow-2xl">
             <div className="flex items-center justify-between border-b border-card-border px-4 py-3">
-              <span className="font-bold text-foreground">{t("app.brand")}</span>
+              <BrandLogo height={16} />
               <button type="button" onClick={() => setMenuOpen(false)} className="p-2 text-muted">
                 <X className="h-5 w-5" />
               </button>
@@ -73,7 +74,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile top bar */}
-        <header className="flex items-center justify-between border-b border-white/[0.06] bg-[#08080c]/80 px-4 py-3 backdrop-blur-xl md:hidden">
+        <header className="flex items-center justify-between border-b border-card-border bg-surface px-4 py-3 md:hidden">
           <button
             type="button"
             onClick={() => setMenuOpen(true)}
@@ -82,7 +83,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <p className="font-display text-sm font-semibold text-gradient-gold">{t("app.title")}</p>
+          <BrandLogo height={16} />
           <LanguageSwitcher className="text-xs" />
         </header>
 
@@ -109,7 +110,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
 
         {/* Mobile bottom navigation */}
-        <nav className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-white/[0.08] bg-[#08080c]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden">
+        <nav className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-card-border bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
           {mobileNav.map(({ href, labelKey, icon: Icon }) => {
             const active =
               pathname === href ||
