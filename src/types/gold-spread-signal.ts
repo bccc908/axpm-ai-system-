@@ -1,3 +1,4 @@
+import type { WithApproval } from "@/lib/signal-approval/types";
 export type GoldSpreadLeader = "xauusd" | "xauusdt" | "aligned";
 
 export type GoldSpreadSnapshot = {
@@ -13,7 +14,7 @@ export type GoldSpreadSnapshot = {
   as_of: string;
 };
 
-export type GoldSpreadSignal = {
+export type GoldSpreadSignal = WithApproval & {
   id: string;
   created_at: string;
   symbol: "XAUUSD-XAUUSDT";

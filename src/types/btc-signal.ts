@@ -1,3 +1,4 @@
+import type { WithApproval } from "@/lib/signal-approval/types";
 import type { OkBrainMap } from "@/lib/market-signals/ok-brain-map";
 
 export type BtcSignalBias = "long" | "short" | "neutral" | "wait";
@@ -9,7 +10,7 @@ export interface BtcPriceZone {
   high: number;
 }
 
-export interface BtcSignal {
+export interface BtcSignal extends WithApproval {
   id: string;
   created_at: string;
   symbol: "BTCUSD";

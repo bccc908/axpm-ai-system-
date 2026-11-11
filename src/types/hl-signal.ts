@@ -1,3 +1,4 @@
+import type { WithApproval } from "@/lib/signal-approval/types";
 import type { OkBrainMap } from "@/lib/market-signals/ok-brain-map";
 
 export type HlSignalBias = "long" | "short" | "neutral" | "wait";
@@ -8,7 +9,7 @@ export interface HlPriceZone {
   high: number;
 }
 
-export interface HlSignal {
+export interface HlSignal extends WithApproval {
   id: string;
   created_at: string;
   symbol: "BTC-PERP";

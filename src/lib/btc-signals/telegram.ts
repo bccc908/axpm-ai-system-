@@ -1,6 +1,6 @@
 import "server-only";
 
-import { sendTelegramMessage } from "@/lib/integrations/telegram";
+import { requestSignalApproval } from "@/lib/signal-approval";
 import { formatOkBrainMap } from "@/lib/market-signals/ok-brain-map";
 import type { BtcSignal } from "@/types/btc-signal";
 
@@ -49,6 +49,11 @@ export function formatBtcSignalTelegram(
     .join("\n");
 }
 
+/** Sends ONLY to the approver (Kayden) as "pending approval" with Approve / Reject buttons. */
 export async function sendBtcSignalTelegram(signal: BtcSignal, opts?: { daily?: boolean }) {
-  return sendTelegramMessage(formatBtcSignalTelegram(signal, opts));
+  return requestSignalApproval({
+    engine: "btc",
+    signalId: signal.id,
+    html: formatBtcSignalTelegram(signal, opts),
+  });
 }

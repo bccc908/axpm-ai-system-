@@ -1,6 +1,6 @@
 import "server-only";
 
-import { sendTelegramMessage } from "@/lib/integrations/telegram";
+import { requestSignalApproval } from "@/lib/signal-approval";
 import { formatOkBrainMap } from "@/lib/market-signals/ok-brain-map";
 import type { XauSignal } from "@/types/xau-signal";
 
@@ -49,6 +49,11 @@ export function formatXauSignalTelegram(
     .join("\n");
 }
 
+/** Sends ONLY to the approver (Kayden) as "pending approval" with Approve / Reject buttons. */
 export async function sendXauSignalTelegram(signal: XauSignal, opts?: { daily?: boolean }) {
-  return sendTelegramMessage(formatXauSignalTelegram(signal, opts));
+  return requestSignalApproval({
+    engine: "xau",
+    signalId: signal.id,
+    html: formatXauSignalTelegram(signal, opts),
+  });
 }
