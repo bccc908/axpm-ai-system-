@@ -7,6 +7,8 @@ import { getLlmProvider } from "@/lib/ai/llm-config";
 import { readAppSettings } from "@/lib/finance/settings";
 import { createActivity } from "@/lib/crm/pro-store";
 import { deliverAgentReply } from "@/lib/inbox/deliver-reply";
+import { storePendingReplyDraft } from "@/lib/support/draft-approval";
+import { rejectIfAiDraftText } from "@/lib/support/client-send-gate";
 import {
   getInboxSession,
   markSessionRead,
@@ -44,6 +46,19 @@ export async function POST(
     }
 
     const sender = parsed.data.sender_label?.trim() || "Agent";
+    const blocked = await rejectIfAiDraftText(parsed.data.content);
+    if (blocked.blocked) {
+      return NextResponse.json(
+        {
+          error: blocked.error,
+          sent: false,
+          draftId: blocked.draftId,
+          draftStatus: blocked.status,
+        },
+        { status: 403 },
+      );
+    }
+
     const delivered = await deliverAgentReply({
       session,
       content: parsed.data.content,
@@ -124,9 +139,33 @@ export async function GET(
       ? await generateDeepSeekCustomerReply(input)
       : await generateCustomerReply(input);
 
+  const notice =
+    "notice" in result && typeof result.notice === "string" ? result.notice : null;
+  const stored = await storePendingReplyDraft({
+    channel: session.channel,
+    clientName: session.client_name,
+    clientId: session.client_id,
+    customerQuestion: question,
+    conversationHistory: history || undefined,
+    replies: result.replies,
+    provider: result.fallback ? "fallback" : (result.provider ?? "ai"),
+    fallback: Boolean(result.fallback),
+    notice,
+    source: "inbox",
+  });
+
   return NextResponse.json({
     draft: result.replies[0]?.trim() ?? "",
     fallback: Boolean(result.fallback),
     detectedLanguage: result.detectedLanguage,
+    notice,
+    draftRecord: stored
+      ? {
+          id: stored.id,
+          status: stored.status,
+          notifiedTelegram: stored.notifiedTelegram,
+          telegramError: stored.telegramError,
+        }
+      : null,
   });
 }

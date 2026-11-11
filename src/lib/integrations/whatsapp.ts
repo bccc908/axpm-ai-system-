@@ -1,3 +1,5 @@
+import { rejectIfAiDraftText } from "@/lib/support/client-send-gate";
+
 export type WhatsAppSendResult =
   | { ok: true; messageId?: string }
   | { ok: false; error: string };
@@ -24,6 +26,11 @@ export async function sendWhatsAppMessageDetailed(
   to: string,
   message: string,
 ): Promise<WhatsAppSendResult> {
+  const blocked = await rejectIfAiDraftText(message);
+  if (blocked.blocked) {
+    return { ok: false, error: blocked.error };
+  }
+
   const { token, phoneNumberId, configured } = getWhatsAppConfig();
 
   if (!configured) {

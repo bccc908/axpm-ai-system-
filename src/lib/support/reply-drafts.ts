@@ -142,3 +142,14 @@ export async function decideReplyDraft(input: {
   await writeData(data);
   return { ok: true, draft };
 }
+
+export async function findDraftMatchingReply(content: string) {
+  const needle = content.trim();
+  if (!needle) return null;
+  const data = await readData();
+  return (
+    data.drafts.find(
+      (d) => d.draftReply === needle || d.alternatives.includes(needle),
+    ) ?? null
+  );
+}

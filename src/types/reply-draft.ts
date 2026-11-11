@@ -2,7 +2,7 @@ import type { Channel } from "@/types/database";
 
 export type ReplyDraftStatus = "pending_approval" | "approved" | "rejected";
 
-export type ReplyDraftSource = "reply_agent" | "auto_reply" | "web_widget";
+export type ReplyDraftSource = "reply_agent" | "auto_reply" | "web_widget" | "inbox";
 
 export interface ReplyDraft {
   id: string;

@@ -4,6 +4,7 @@ import { listClients } from "@/lib/crm/store";
 import { ensureClientFromContact } from "@/lib/crm/auto-client";
 import { recordWeChatWorkMessage } from "@/lib/conversations/store";
 import { notifyInboundMessageTelegram } from "@/lib/integrations/inbound-notify";
+import { rejectIfAiDraftText } from "@/lib/support/client-send-gate";
 
 const QYAPI = "https://qyapi.weixin.qq.com";
 
@@ -93,6 +94,11 @@ export async function sendWeChatWorkMessage(params: {
   content: string;
   sender_userid?: string;
 }): Promise<{ ok: true; msgid: string } | { ok: false; error: string }> {
+  const blocked = await rejectIfAiDraftText(params.content);
+  if (blocked.blocked) {
+    return { ok: false, error: blocked.error };
+  }
+
   const tokenResult = await getWeChatWorkAccessToken();
   if (!tokenResult.ok) return tokenResult;
 

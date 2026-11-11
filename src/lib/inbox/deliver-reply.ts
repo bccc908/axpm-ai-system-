@@ -6,6 +6,7 @@ import { sendWeChatWorkToClient } from "@/lib/integrations/wechat-work";
 import { sendWhatsAppMessage } from "@/lib/integrations/whatsapp";
 import type { ConversationMessage } from "@/types/conversation";
 import type { InboxSession } from "@/types/inbox";
+import { rejectIfAiDraftText } from "@/lib/support/client-send-gate";
 
 export type DeliverResult =
   | {
@@ -34,6 +35,11 @@ export async function deliverAgentReply(input: {
   const trimmed = content.trim();
   if (!trimmed) {
     return { ok: false, error: "Message is empty" };
+  }
+
+  const blocked = await rejectIfAiDraftText(trimmed);
+  if (blocked.blocked) {
+    return { ok: false, error: blocked.error };
   }
 
   if (session.channel === "wechat") {
