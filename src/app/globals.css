@@ -188,6 +188,8 @@ body {
 }
 
 .gold-desk-panel {
+  min-width: 0;
+  max-width: 100%;
   background: linear-gradient(
     165deg,
     rgba(10, 16, 28, 0.95) 0%,
@@ -353,6 +355,8 @@ body {
   font-size: 0.8125rem;
   line-height: 1.65;
   color: rgba(235, 242, 250, 0.92);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .gold-live-dot {

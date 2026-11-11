@@ -34,6 +34,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const mobileNav = bottomNav.filter(({ href }) => canHref(href));
   const immersive = pathname.startsWith("/dashboard/ops-floor");
+  const goldDesk = pathname.startsWith("/dashboard/gold-signals");
+  const fillHeight = immersive || goldDesk;
 
   return (
     <div className="premium-canvas flex h-[100dvh] overflow-hidden">
@@ -87,7 +89,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main
           className={cn(
             "flex min-h-0 flex-1 flex-col",
-            immersive
+            fillHeight
               ? "overflow-y-auto md:overflow-hidden"
               : "overflow-y-auto pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0",
           )}
@@ -96,10 +98,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             className={cn(
               immersive
                 ? "flex min-h-full flex-1 flex-col md:h-full md:min-h-0"
-                : "mx-auto w-full max-w-7xl p-4 md:p-6 lg:p-8",
+                : goldDesk
+                  ? "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+                  : "mx-auto w-full max-w-7xl p-4 md:p-6 lg:p-8",
             )}
           >
-            {immersive ? null : <InstallAppBanner />}
+            {fillHeight ? null : <InstallAppBanner />}
             {children}
           </div>
         </main>
