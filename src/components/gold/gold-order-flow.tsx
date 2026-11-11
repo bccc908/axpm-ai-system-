@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Info, Loader2 } from "lucide-react";
+import { Crosshair, Info, Loader2 } from "lucide-react";
 import { useLocale } from "@/components/providers/locale-provider";
 import { useGoldDesk } from "@/components/gold/gold-desk-context";
 import {
@@ -406,8 +406,10 @@ function useHideEmptyPrices(): [boolean, (v: boolean) => void] {
 
 export function GoldOrderFlowByPrice({ signal }: { signal: DeskSignal | null }) {
   const { t } = useLocale();
-  const { structureBars } = useGoldDesk();
+  const { structureBars, livePrice } = useGoldDesk();
   const [hideEmpty, setHideEmpty] = useHideEmptyPrices();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const centredRef = useRef(false);
   const entryLo = signal?.entry_zone?.low ?? null;
   const entryHi = signal?.entry_zone?.high ?? null;
 
@@ -422,10 +424,52 @@ export function GoldOrderFlowByPrice({ signal }: { signal: DeskSignal | null }) 
 
   const maxVol = Math.max(1, ...levels.map((r) => r.buyVol + r.sellVol));
 
+  // Row nearest the live price (falls back to the most recent bar close).
+  const refPrice = livePrice ?? structureBars.at(-1)?.close ?? null;
+  const currentRowPrice = useMemo(() => {
+    if (refPrice == null) return null;
+    let best: number | null = null;
+    for (const item of items) {
+      if (item.kind !== "row") continue;
+      if (best == null || Math.abs(item.row.price - refPrice) < Math.abs(best - refPrice)) best = item.row.price;
+    }
+    return best;
+  }, [items, refPrice]);
+
+  /** Scroll only the ladder container (never the page) so the current price sits in the middle. */
+  const centreOnPrice = useCallback(
+    (behavior: ScrollBehavior = "smooth") => {
+      const box = scrollRef.current;
+      if (!box || currentRowPrice == null) return false;
+      const row = box.querySelector<HTMLElement>(`[data-price="${currentRowPrice}"]`);
+      if (!row) return false;
+      const top = row.offsetTop - box.clientHeight / 2 + row.offsetHeight / 2;
+      box.scrollTo({ top: Math.max(0, top), behavior });
+      return true;
+    },
+    [currentRowPrice],
+  );
+
+  // Auto-centre once, on first load with data.
+  useEffect(() => {
+    if (centredRef.current) return;
+    if (centreOnPrice("auto")) centredRef.current = true;
+  }, [centreOnPrice]);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 items-center justify-end border-b border-card-border px-2 py-1">
-        <label className="inline-flex cursor-pointer select-none items-center gap-1.5 text-[10px] font-medium text-muted hover:text-foreground">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-1 border-b border-card-border px-2 py-1">
+        <button
+          type="button"
+          onClick={() => centreOnPrice()}
+          disabled={currentRowPrice == null}
+          data-testid="ladder-jump-to-price"
+          className="inline-flex items-center gap-1 whitespace-nowrap rounded border border-card-border bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-muted transition-colors hover:border-accent hover:text-foreground disabled:opacity-40"
+        >
+          <Crosshair className="h-3 w-3" />
+          {t("goldSignals.jumpToPrice")}
+        </button>
+        <label className="inline-flex cursor-pointer select-none items-center gap-1.5 whitespace-nowrap text-[10px] font-medium text-muted hover:text-foreground">
           <span>{t("goldSignals.hideEmptyPrices")}</span>
           <button
             type="button"
@@ -447,7 +491,11 @@ export function GoldOrderFlowByPrice({ signal }: { signal: DeskSignal | null }) 
           </button>
         </label>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto font-mono text-[10px]">
+      <div
+        ref={scrollRef}
+        data-testid="orderflow-ladder-scroll"
+        className="relative min-h-0 flex-1 overflow-y-auto font-mono text-[10px]"
+      >
         {items.length === 0 ? (
           <p className="p-6 text-center text-muted">—</p>
         ) : (
@@ -475,9 +523,11 @@ export function GoldOrderFlowByPrice({ signal }: { signal: DeskSignal | null }) 
               return (
                 <div
                   key={row.price}
+                  data-price={row.price}
                   className={cn(
-                    "border-b border-white/[0.03] px-2 py-1 text-muted/60",
+                    "border-b border-l-2 border-b-white/[0.03] border-l-transparent px-2 py-1 text-muted/60",
                     row.inEntryZone && "bg-amber-500/10",
+                    row.price === currentRowPrice && "border-l-accent bg-accent/10 text-foreground",
                   )}
                 >
                   <span className="tabular-nums">{row.price.toFixed(2)}</span>
@@ -489,9 +539,11 @@ export function GoldOrderFlowByPrice({ signal }: { signal: DeskSignal | null }) 
             return (
               <div
                 key={row.price}
+                data-price={row.price}
                 className={cn(
-                  "border-b border-white/[0.03] px-2 py-1.5 transition-colors duration-300",
+                  "border-b border-l-2 border-b-white/[0.03] border-l-transparent px-2 py-1.5 transition-colors duration-300",
                   row.inEntryZone && "bg-amber-500/10",
+                  row.price === currentRowPrice && "border-l-accent bg-accent/10",
                 )}
               >
                 <div className="flex items-center justify-between">
@@ -545,7 +597,7 @@ function BarFlowTape({
   const { t } = useLocale();
 
   return (
-    <div className="flex w-full shrink-0 flex-col border-t border-[#262d3d] bg-[#171c2a] lg:w-[220px] lg:border-l lg:border-t-0">
+    <div className="flex max-h-[45%] min-h-0 w-full shrink-0 flex-col border-t border-[#262d3d] bg-[#171c2a] lg:max-h-none lg:w-[220px] lg:border-l lg:border-t-0">
       <div className="border-b border-[#262d3d] px-3 py-2">
         <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-300/90">
           {t("goldSignals.orderFlowTape")}
@@ -558,7 +610,7 @@ function BarFlowTape({
         <span className="text-right">{t("goldSignals.price")}</span>
         <span className="text-right">{t("goldSignals.orderFlowVol")}</span>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto font-mono text-[10px]">
+      <div className="min-h-0 flex-1 overflow-y-auto font-mono text-[10px]" data-testid="orderflow-tape-scroll">
         {rows.length === 0 ? (
           <p className="p-4 text-center text-muted">—</p>
         ) : (

@@ -1143,6 +1143,7 @@ export const zh: TranslationDict = {
     orderFlowByPrice: "价位分布",
     orderFlowCluster: "累计 Δ",
     hideEmptyPrices: "隐藏空价位",
+    jumpToPrice: "回到现价",
     emptyPricesSkipped: "{count} 个空价位",
     dailyTitle: "每日自动信号",
     dailyDesc: "每天定时生成 XAUUSD 信号并推送到 Telegram（与运势每日推送同一 cron）。",

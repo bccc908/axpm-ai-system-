@@ -90,8 +90,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main
           className={cn(
             "flex min-h-0 flex-1 flex-col",
-            fillHeight
+            immersive
               ? "overflow-y-auto md:overflow-hidden"
+              : goldDesk
+                ? "overflow-y-auto pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0"
               : "overflow-y-auto pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0",
           )}
         >
@@ -100,7 +102,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               immersive
                 ? "flex min-h-full flex-1 flex-col md:h-full md:min-h-0"
                 : goldDesk
-                  ? "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+                  ? "flex min-w-0 flex-1 flex-col"
                   : "mx-auto w-full max-w-7xl p-4 md:p-6 lg:p-8",
             )}
           >
