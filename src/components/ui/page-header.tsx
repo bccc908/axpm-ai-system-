@@ -14,20 +14,20 @@ export function PageHeader({
   className?: string;
 }) {
   return (
-    <header className={cn("mb-8", className)}>
+    <header className={cn("mb-6 border-b border-card-border pb-5", className)}>
       {badge ? (
-        <div className="mb-3 flex items-center gap-2">
+        <div className="mb-2 flex items-center gap-2 text-muted">
           {icon}
-          <span className="badge-shimmer rounded-full border border-accent/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
             {badge}
           </span>
         </div>
       ) : null}
-      <h1 className="font-display text-3xl font-semibold tracking-tight text-gradient-gold md:text-4xl">
+      <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-[26px]">
         {title}
       </h1>
       {subtitle ? (
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted md:text-base">
+        <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted">
           {subtitle}
         </p>
       ) : null}

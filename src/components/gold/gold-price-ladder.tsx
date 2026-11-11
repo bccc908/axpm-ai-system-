@@ -33,8 +33,8 @@ export function GoldPriceLadder({
       {orderFlowMode ? (
         <>
           <div className="grid shrink-0 grid-cols-2 gap-2 border-b border-white/[0.04] px-2 py-1.5 font-mono text-[9px] uppercase tracking-wider text-muted">
-            <span className="text-sky-400">{t("goldSignals.orderFlowBuy")}</span>
-            <span className="text-right text-rose-400">{t("goldSignals.orderFlowSell")}</span>
+            <span className="text-success">{t("goldSignals.orderFlowBuy")}</span>
+            <span className="text-right text-danger">{t("goldSignals.orderFlowSell")}</span>
           </div>
           <GoldOrderFlowByPrice signal={signal} />
         </>
@@ -54,16 +54,16 @@ export function GoldPriceLadder({
                   key={row.price}
                   className={cn(
                     "grid grid-cols-[1fr_auto_1fr] items-center gap-0 border-b border-white/[0.03] py-0.5",
-                    row.isSpot && "bg-accent/8",
+                    row.isSpot && "bg-accent/10",
                     row.tag && "bg-white/[0.03]",
                   )}
                 >
                   <div className="relative flex h-6 items-center justify-end pr-1.5">
                     <div
-                      className="absolute inset-y-0.5 right-0 rounded-l bg-[#00b4ff]/55"
+                      className="absolute inset-y-0.5 right-0 rounded-l bg-[#26a69a]/20"
                       style={{ width: `${row.bidPct}%` }}
                     />
-                    <span className="relative z-10 tabular-nums font-medium text-[#66e0ff]">{row.bidSize}</span>
+                    <span className="relative z-10 tabular-nums font-medium text-[#4db6ac]">{row.bidSize}</span>
                   </div>
                   <div
                     className={cn(
@@ -79,10 +79,10 @@ export function GoldPriceLadder({
                   </div>
                   <div className="relative flex h-6 items-center pl-1.5">
                     <div
-                      className="absolute inset-y-0.5 left-0 rounded-r bg-[#ff3355]/55"
+                      className="absolute inset-y-0.5 left-0 rounded-r bg-[#ef5350]/20"
                       style={{ width: `${row.askPct}%` }}
                     />
-                    <span className="relative z-10 tabular-nums font-medium text-[#ff6677]">{row.askSize}</span>
+                    <span className="relative z-10 tabular-nums font-medium text-[#f2726f]">{row.askSize}</span>
                   </div>
                 </div>
               ))

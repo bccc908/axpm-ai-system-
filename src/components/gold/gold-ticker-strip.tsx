@@ -51,7 +51,7 @@ export function GoldTickerStrip({
               ${formatPrice(spread.xauusd)}
             </p>
             {spread.xauusd_change_pct != null ? (
-              <p className={cn("font-mono text-xs", spread.xauusd_change_pct >= 0 ? "text-emerald-400" : "text-rose-400")}>
+              <p className={cn("font-mono text-xs", spread.xauusd_change_pct >= 0 ? "text-success" : "text-danger")}>
                 {spread.xauusd_change_pct >= 0 ? "+" : ""}
                 {spread.xauusd_change_pct.toFixed(2)}%
               </p>
@@ -63,7 +63,7 @@ export function GoldTickerStrip({
               ${formatPrice(spread.xauusdt)}
             </p>
             {spread.xauusdt_change_pct != null ? (
-              <p className={cn("font-mono text-xs", spread.xauusdt_change_pct >= 0 ? "text-emerald-400" : "text-rose-400")}>
+              <p className={cn("font-mono text-xs", spread.xauusdt_change_pct >= 0 ? "text-success" : "text-danger")}>
                 {spread.xauusdt_change_pct >= 0 ? "+" : ""}
                 {spread.xauusdt_change_pct.toFixed(2)}%
               </p>
@@ -87,17 +87,16 @@ export function GoldTickerStrip({
         </div>
       ) : (
       <div className="flex items-center gap-3">
-        <span className="inline-flex items-center gap-2 rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2.5 py-1 font-mono text-[11px] font-bold tracking-wider text-emerald-300">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-50" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+        <span className="inline-flex items-center gap-1.5 rounded border border-card-border bg-surface-2 px-2 py-0.5 text-[11px] font-semibold tracking-wide text-success">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-success" />
           </span>
           {wsConnected ? "WS LIVE" : "LIVE"}
         </span>
         <span
           className={cn(
             "font-mono text-2xl font-semibold tabular-nums tracking-tight text-foreground transition-colors duration-300 md:text-3xl",
-            flashKey > 0 && "text-accent",
+            flashKey > 0 && "text-foreground",
           )}
           key={flashKey}
         >
@@ -107,7 +106,7 @@ export function GoldTickerStrip({
           <span
             className={cn(
               "font-mono text-sm font-medium tabular-nums",
-              changePct >= 0 ? "text-emerald-400" : "text-rose-400",
+              changePct >= 0 ? "text-success" : "text-danger",
             )}
           >
             {changePct >= 0 ? "+" : ""}
@@ -117,7 +116,7 @@ export function GoldTickerStrip({
           <span
             className={cn(
               "font-mono text-sm font-medium tabular-nums",
-              signalDelta >= 0 ? "text-emerald-400" : "text-rose-400",
+              signalDelta >= 0 ? "text-success" : "text-danger",
             )}
           >
             {signalDelta >= 0 ? "+" : ""}
@@ -146,7 +145,7 @@ export function GoldTickerStrip({
             </span>
             <span className="text-[11px] text-muted">
               {t("goldSignals.confidence")}{" "}
-              <span className="font-mono font-semibold text-accent">{latest.confidence}%</span>
+              <span className="font-mono font-semibold text-foreground">{latest.confidence}%</span>
             </span>
             <span className="hidden items-center gap-1 text-[11px] text-muted sm:inline-flex">
               <Clock className="h-3 w-3" />

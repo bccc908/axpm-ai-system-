@@ -10,6 +10,7 @@ export const zh: TranslationDict = {
     name: "姓名",
     password: "密码",
     loginBtn: "登录",
+    secureNote: "仅限授权员工访问",
     setupBtn: "创建并进入",
     logout: "退出登录",
     failed: "登录失败，请检查邮箱和密码",

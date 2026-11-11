@@ -10,6 +10,7 @@ export const en = {
     loginBtn: "Sign in",
     setupBtn: "Create & enter",
     logout: "Sign out",
+    secureNote: "Authorized staff access only",
     failed: "Sign in failed — check email and password",
     rolesHint: "Roles: Sales→CRM/Inbox · Finance→Finance · Personal→Fortune · Viewer→read-only",
     usersTitle: "Team accounts",

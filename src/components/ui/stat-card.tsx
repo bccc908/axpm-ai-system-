@@ -17,14 +17,10 @@ export function StatCard({
 }) {
   return (
     <Card className="relative overflow-hidden">
-      <div
-        className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-accent/10 blur-2xl"
-        aria-hidden
-      />
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wider text-muted">{label}</p>
-          <p className="mt-2 font-display text-3xl font-semibold tracking-tight text-foreground">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">{label}</p>
+          <p className="mt-1.5 text-2xl font-semibold tabular-nums tracking-tight text-foreground">
             {value}
           </p>
           {subtext ? (
@@ -40,8 +36,8 @@ export function StatCard({
             </p>
           ) : null}
         </div>
-        <div className="rounded-xl border border-accent/20 bg-accent/10 p-3 shadow-[0_0_24px_-8px_var(--accent-glow)]">
-          <Icon className="h-5 w-5 text-accent" strokeWidth={1.75} />
+        <div className="rounded-md border border-card-border bg-surface-2 p-2">
+          <Icon className="h-4 w-4 text-muted" strokeWidth={1.75} />
         </div>
       </div>
     </Card>

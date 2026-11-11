@@ -124,28 +124,32 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex h-full w-[17rem] flex-col border-r border-white/[0.06] bg-[#08080c]/90 backdrop-blur-xl">
-      <div className="relative border-b border-white/[0.06] px-5 py-6">
-        <div
-          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-transparent"
+    <aside className="flex h-full w-60 flex-col border-r border-card-border bg-surface">
+      <div className="flex h-14 items-center gap-3 border-b border-card-border px-4">
+        <span
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent text-[13px] font-bold tracking-tight text-white"
           aria-hidden
-        />
-        <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-accent">
-          {t("app.brand")}
-        </p>
-        <h1 className="font-display mt-1 text-lg font-semibold tracking-tight text-foreground">
-          {t("app.title")}
-        </h1>
+        >
+          AX
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold leading-5 text-foreground">
+            {t("app.brand")}
+          </p>
+          <p className="truncate text-[11px] leading-4 text-muted">
+            {t("app.title").replace(t("app.brand"), "").replace(/^[\s·\-–—|]+/, "") || t("app.title")}
+          </p>
+        </div>
       </div>
 
-      <nav className="flex-1 space-y-5 overflow-y-auto p-3">
+      <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-3">
         {navSections.map((section) => {
           const items = section.items.filter(({ href }) => canHref(href));
           if (items.length === 0) return null;
 
           return (
             <div key={section.labelKey}>
-              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted/80">
+              <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted/70">
                 {t(section.labelKey)}
               </p>
               <div className="space-y-0.5">
@@ -156,15 +160,15 @@ export function Sidebar() {
                       key={href}
                       href={href as Route}
                       className={cn(
-                        "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                        "group relative flex items-center gap-2.5 rounded-md px-3 py-[7px] text-[13px] font-medium transition-colors duration-150",
                         active
                           ? "nav-pill-active"
-                          : "text-muted hover:bg-white/[0.04] hover:text-foreground",
+                          : "text-muted hover:bg-surface-2 hover:text-foreground",
                       )}
                     >
                       {active ? (
                         <span
-                          className="sidebar-glow-line absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full"
+                          className="sidebar-glow-line absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-r"
                           aria-hidden
                         />
                       ) : null}
@@ -185,26 +189,31 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="space-y-3 border-t border-white/[0.06] p-4">
+      <div className="space-y-2 border-t border-card-border p-3">
         {user ? (
-          <div className="glass-panel rounded-xl px-3 py-3">
-            <p className="truncate text-sm font-medium text-foreground">{user.name}</p>
-            <p className="truncate text-xs text-muted">{user.email}</p>
-            <p className="mt-1 text-xs font-medium text-accent">
+          <div className="flex items-center gap-2.5 rounded-md border border-card-border bg-background px-2.5 py-2">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-3 text-xs font-semibold text-foreground">
+              {user.name.slice(0, 1).toUpperCase()}
+            </span>
+            <div className="min-w-0">
+            <p className="truncate text-[13px] font-medium leading-4 text-foreground">{user.name}</p>
+            <p className="truncate text-[11px] leading-4 text-muted">{user.email}</p>
+            <p className="text-[11px] font-medium text-muted">
               {ROLE_LABELS[user.role][locale === "zh" ? "zh" : "en"]}
             </p>
+            </div>
           </div>
         ) : null}
         <button
           type="button"
           onClick={() => void logout()}
-          className="flex w-full items-center gap-2 rounded-xl border border-white/[0.08] px-3 py-2.5 text-sm text-muted transition-colors hover:border-white/15 hover:bg-white/[0.04] hover:text-foreground"
+          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-[13px] text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
         >
           <LogOut className="h-4 w-4" />
           {t("auth.logout")}
         </button>
         <LanguageSwitcher />
-        <p className="text-center text-[10px] text-muted/70">{t("app.version")}</p>
+        <p className="px-3 text-[11px] text-muted/60">{t("app.version")}</p>
       </div>
     </aside>
   );
