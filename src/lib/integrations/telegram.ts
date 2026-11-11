@@ -26,7 +26,8 @@ type TelegramApiResponse<T> = {
   description?: string;
 };
 
-async function telegramRequest<T>(
+/** Low-level Bot API call. Signal code must not call this directly — use @/lib/signal-approval. */
+export async function telegramRequest<T>(
   method: string,
   body?: Record<string, unknown>,
 ): Promise<{ ok: true; result: T } | { ok: false; error: string }> {
