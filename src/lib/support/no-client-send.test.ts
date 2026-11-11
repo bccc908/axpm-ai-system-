@@ -72,4 +72,52 @@ describe("client send gate", () => {
     expect(src).not.toMatch(/\/api\/wechat-work\/send/);
     expect(src).toContain("/dashboard/conversations#reply-drafts");
   });
+
+  it("inbox GET queues a pending draft and POST blocks AI text before deliver", () => {
+    const src = readSrc("app/api/inbox/sessions/[id]/reply/route.ts");
+    expect(src).toContain("storePendingReplyDraft");
+    expect(src).toContain('source: "inbox"');
+    expect(src).toContain("rejectIfAiDraftText");
+    expect(src).toContain("draftRecord");
+  });
+
+  it("deliverAgentReply refuses stored AI draft text before any client send", () => {
+    const src = readSrc("lib/inbox/deliver-reply.ts");
+    expect(src).toContain("rejectIfAiDraftText");
+    const body = src.slice(src.indexOf("export async function deliverAgentReply"));
+    expect(body).toContain("await rejectIfAiDraftText");
+    expect(body.indexOf("await rejectIfAiDraftText")).toBeLessThan(
+      body.indexOf("sendWeChatWorkToClient"),
+    );
+    expect(body.indexOf("await rejectIfAiDraftText")).toBeLessThan(
+      body.indexOf("sendWhatsAppMessage"),
+    );
+  });
+
+  it("low-level WhatsApp and WeChat send helpers gate AI-originated draft text", () => {
+    const wa = readSrc("lib/integrations/whatsapp.ts");
+    const ww = readSrc("lib/integrations/wechat-work.ts");
+    expect(wa).toContain("rejectIfAiDraftText");
+    expect(ww).toContain("rejectIfAiDraftText");
+    expect(wa.indexOf("rejectIfAiDraftText")).toBeLessThan(wa.indexOf("graph.facebook.com"));
+  });
+
+  it("legacy /api/ai/reply uses the 402-safe suggestion helper and still stores a draft", () => {
+    const src = readSrc("app/api/ai/reply/route.ts");
+    expect(src).toContain("generateReplySuggestionSafe");
+    expect(src).not.toMatch(/generateReplySuggestion\(/);
+    expect(src).toContain("storePendingReplyDraft");
+    expect(src).toContain('mode: "legacy"');
+  });
+
+  it("website widget persists a notice on fallback drafts", () => {
+    const src = readSrc("lib/widget/chat-handler.ts");
+    expect(src).toContain("notice:");
+    expect(src).toMatch(/result\.notice/);
+  });
+
+  it("reply agent UI has no unused Send import", () => {
+    const src = readSrc("components/ai/customer-reply-agent.tsx");
+    expect(src).not.toMatch(/\bSend\b/);
+  });
 });
