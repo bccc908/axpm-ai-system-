@@ -48,6 +48,15 @@ export async function appendGoldSignal(
   return row;
 }
 
+/**
+ * Latest signal Kayden has APPROVED. Used by the public ATAS / Bookmap / MT5 bridges so a pending or
+ * rejected signal never reaches a trading terminal.
+ */
+export async function getLatestApprovedGoldSignal(): Promise<GoldSignal | null> {
+  const store = await ensureStore();
+  return store.signals.find((s) => s.approval?.status === "approved") ?? null;
+}
+
 export function toAtasAlert(signal: GoldSignal): AtasGoldAlert {
   const entryMid =
     signal.entry_zone != null
