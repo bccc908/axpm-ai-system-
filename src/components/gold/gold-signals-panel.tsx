@@ -43,7 +43,7 @@ function MarketSignalsDesk({ instrument }: { instrument: SignalInstrument }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${config.apiBase}?limit=12`, { credentials: "include" });
+      const res = await fetch(`${config.apiBase}?limit=20`, { credentials: "include" });
       const data = (await res.json().catch(() => null)) as
         | { signals?: DeskSignal[]; error?: string }
         | null;
@@ -224,7 +224,7 @@ function MarketSignalsDesk({ instrument }: { instrument: SignalInstrument }) {
         <section className="hidden min-h-0 min-w-0 overflow-hidden xl:flex xl:flex-col">
           <GoldPriceLadder signal={latest} orderFlowMode={view === "orderflow"} />
         </section>
-        <aside className="flex min-h-0 min-w-0 flex-col gap-3 lg:overflow-hidden">
+        <aside className="relative z-0 isolate flex min-h-0 min-w-0 flex-col gap-3 overflow-x-hidden lg:overflow-hidden">
           <div className="min-w-0 lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto">
             <GoldSignalSidebar
               latest={latest}
