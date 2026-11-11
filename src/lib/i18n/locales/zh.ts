@@ -2,7 +2,7 @@ import type { TranslationDict } from "../types";
 
 export const zh: TranslationDict = {
   auth: {
-    loginTitle: "登录 Grok Trading",
+    loginTitle: "登录 AXPM",
     loginDesc: "登录后只能看到你有权限使用的功能。",
     setupTitle: "创建所有者账号",
     setupDesc: "首次使用请创建你的管理员账号（仅一次）。",
@@ -73,16 +73,16 @@ export const zh: TranslationDict = {
     referralLinksBoth: "中文版 / 英文版链接：",
   },
   app: {
-    brand: "Grok Trading",
-    title: "Grok Trading · 运营系统",
+    brand: "AXPM",
+    title: "AXPM · 运营系统",
     version: "v0.1.0 — MVP",
-    installTitle: "安装 Grok Trading 应用",
+    installTitle: "安装 AXPM 应用",
     installDesc: "添加到主屏幕，像手机 App 一样快速打开。",
     installBtn: "安装应用",
     installIosHint: "iPhone：Safari → 分享 → 添加到主屏幕。",
     installAndroidHint: "Android：Chrome 菜单 (⋮) → 安装应用，或添加到主屏幕。",
     installMacSafariHint:
-      "Mac Safari：菜单 文件 → 添加到程序坞（或 分享 → 添加到程序坞），然后从 Dock 打开 Grok Trading。",
+      "Mac Safari：菜单 文件 → 添加到程序坞（或 分享 → 添加到程序坞），然后从 Dock 打开 AXPM。",
     installMacChromeHint:
       "Mac Chrome：地址栏点击安装图标 (⊕)，或 ⋮ 菜单 → 保存并分享 → 将页面安装为应用。",
     installGenericHint: "使用浏览器菜单安装，或将此页加入书签以便快速打开。",
@@ -450,7 +450,7 @@ export const zh: TranslationDict = {
     shareGateTitle: "继续追问前，请先分享",
     shareGateShareTitle: "分享给朋友",
     shareGateDesc: "把这次分析分享给朋友，即可解锁追问（每次新分析需分享一次）",
-    shareGateDescOwner: "分享可推广 Grok Trading；你也可以跳过直接追问（仅管理员）",
+    shareGateDescOwner: "分享可推广 AXPM；你也可以跳过直接追问（仅管理员）",
     shareGateShareBtn: "分享",
     shareGateCopyBtn: "复制分享文案",
     shareGateCopyLink: "复制分享链接",
@@ -553,7 +553,7 @@ export const zh: TranslationDict = {
     importChooseFile: "选择 conversations.json",
     importPreview: "预览",
     importPreviewCount: "共 {readings} 条解读，来自 {conversations} 个对话",
-    importConfirm: "导入到 Grok Trading",
+    importConfirm: "导入到 AXPM",
     importNow: "立即导入",
     importSuccess: "已导入 {imported} 条（跳过 {skipped} 条重复）",
     importFailed: "导入失败 — 请检查文件格式",
@@ -1000,7 +1000,7 @@ export const zh: TranslationDict = {
     agentPromptDesc:
       "系统已内置专业话术与高回复率策略。在此补充您的产品说明、署名、入金步骤、允许提及的优惠等。",
     agentPromptPlaceholder:
-      "示例：\n- 署名：Grok Trading 客户成功 — Kayden\n- 入金问题：优先提供 MYR 银行转账指引\n- 可提及 7×24 客服与当日处理\n- 不得承诺固定收益",
+      "示例：\n- 署名：AXPM 客户成功 — Kayden\n- 入金问题：优先提供 MYR 银行转账指引\n- 可提及 7×24 客服与当日处理\n- 不得承诺固定收益",
     saveAgentPrompt: "保存助手指令",
     savingPrompt: "保存中…",
     promptSaved: "已保存 — 下次生成回复将使用新指令",
@@ -1651,7 +1651,7 @@ export const zh: TranslationDict = {
     pptGammaDoneMsg: "✅ Gamma PPT 已生成：《{title}》共 {n} 页 — 可下载或在线编辑",
   },
   register: {
-    title: "Grok Trading · 客户注册",
+    title: "AXPM · 客户注册",
     subtitle: "请填写以下资料，我们将尽快与您联系。",
     name: "姓名",
     nameRequired: "必填",
@@ -1966,7 +1966,7 @@ export const zh: TranslationDict = {
     widgetTitle: "网站在线客服 Widget",
     widgetDesc: "嵌入 atlasdigital.my — 访客聊天自动同步到本系统的客户库与微信记录。",
     widgetEnabled: "启用网站客服 Widget",
-    widgetTitlePlaceholder: "标题（如：Grok Trading 在线客服）",
+    widgetTitlePlaceholder: "标题（如：AXPM 在线客服）",
     widgetSubtitlePlaceholder: "副标题（如：Axel Private Market）",
     widgetWelcomePlaceholder: "打开聊天时显示的欢迎语",
     widgetColorLabel: "按钮颜色",
@@ -1974,11 +1974,11 @@ export const zh: TranslationDict = {
     widgetCopyEmbed: "复制嵌入代码",
     widgetCopied: "已复制",
     widgetPreviewLink: "预览 Widget",
-    widgetPublicWarning: "NEXT_PUBLIC_APP_URL 仍是 localhost — 需把 Grok Trading 部署到公网 URL 后，官网才能连上客服。",
+    widgetPublicWarning: "NEXT_PUBLIC_APP_URL 仍是 localhost — 需把 AXPM 部署到公网 URL 后，官网才能连上客服。",
     widgetDeployReady: "Widget 已就绪 — 下方嵌入代码可用于 atlasdigital.my。",
     widgetApiBase: "API 地址 (NEXT_PUBLIC_APP_URL)",
     widgetAllowedOrigins: "允许的网站来源 (WIDGET_ALLOWED_ORIGINS)",
-    widgetDeployStep1: "将 Grok Trading 部署到公网 HTTPS 地址，并在 .env.local 设置 NEXT_PUBLIC_APP_URL",
+    widgetDeployStep1: "将 AXPM 部署到公网 HTTPS 地址，并在 .env.local 设置 NEXT_PUBLIC_APP_URL",
     widgetDeployStep2: "复制下方脚本，粘贴到 atlasdigital.my 的 </body> 前",
     widgetDeployStep3: "打开收件箱 → 接管网站会话 → 回复 — 访客几秒内自动收到",
     widgetOpenInbox: "打开收件箱测试实时聊天",

@@ -493,7 +493,7 @@ export function SettingsDashboard() {
               type="button"
               disabled={widgetSaving}
               onClick={() => void saveWidgetSettings()}
-              className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50"
             >
               {widgetSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {t("settings.widgetSave")}
@@ -596,7 +596,7 @@ WHATSAPP_NOTIFY_PHONE=+60123456789`}
             type="button"
             onClick={testWhatsApp}
             disabled={whatsappTesting || !data.integrations.whatsapp.configured}
-            className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50"
           >
             {whatsappTesting && <Loader2 className="h-4 w-4 animate-spin" />}
             {t("settings.whatsappTestSend")}
@@ -632,7 +632,7 @@ META_PAGE_ACCESS_TOKEN=从Graph API复制的Page Token`}
             type="button"
             onClick={testFacebook}
             disabled={facebookTesting || !data.integrations.social.facebook}
-            className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50"
           >
             {facebookTesting && <Loader2 className="h-4 w-4 animate-spin" />}
             {t("settings.metaTestSend")}
@@ -825,7 +825,7 @@ DOUYIN_ACCESS_TOKEN=可选（直接填 token）`}
             type="button"
             onClick={saveSettings}
             disabled={saving}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted disabled:opacity-50"
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50"
           >
             {saving ? <Loader2 className="inline h-4 w-4 animate-spin" /> : t("common.save")}
           </button>

@@ -86,7 +86,7 @@ export function InstallAppBanner() {
           <button
             type="button"
             onClick={handleInstall}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-xs font-medium text-white hover:bg-accent-muted"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-xs font-medium text-accent-foreground hover:bg-accent-muted"
           >
             <Download className="h-3.5 w-3.5" />
             {t("app.installBtn")}

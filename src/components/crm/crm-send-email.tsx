@@ -86,7 +86,7 @@ export function CrmSendEmail({ target, recordId, defaultTo, onSent }: Props) {
           type="button"
           disabled={sending || !to.trim() || !subject.trim() || !body.trim()}
           onClick={() => void sendEmail()}
-          className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50"
         >
           {sending ? (
             <Loader2 className="h-4 w-4 animate-spin" />

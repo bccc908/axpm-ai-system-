@@ -1,12 +1,12 @@
 /** Sober trading-desk palette (broker platform style) */
 export const VIZ = {
-  bg: "#11161e",
-  buy: "#26a69a",
-  buyDim: "#1e877d",
+  bg: "#171c2a",
+  buy: "#2ebd85",
+  buyDim: "#26a06f",
   sell: "#ef5350",
   sellDim: "#c94442",
-  cyan: "#5b9cf0",
-  cyanBright: "#8ab8f5",
+  cyan: "#71d2e0",
+  cyanBright: "#9fe0ea",
   gold: "#d9a03f",
   goldBright: "#e8bd6a",
   purple: "#9a84e8",

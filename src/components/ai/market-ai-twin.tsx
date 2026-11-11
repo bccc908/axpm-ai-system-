@@ -1361,7 +1361,7 @@ export function MarketAiTwin() {
                 type="button"
                 disabled={uploading}
                 onClick={() => fileInputRef.current?.click()}
-                className="mt-3 inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted disabled:opacity-50"
+                className="mt-3 inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50"
               >
                 {uploading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -1406,7 +1406,7 @@ export function MarketAiTwin() {
                     type="button"
                     disabled={pasteSaving || pasteText.trim().length < 20}
                     onClick={() => void importPastedText()}
-                    className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50"
                   >
                     {pasteSaving ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -1765,7 +1765,7 @@ export function MarketAiTwin() {
               <div
                 className={`max-w-full rounded-2xl px-4 py-3 ${
                   turn.role === "user"
-                    ? "bg-accent text-white"
+                    ? "bg-accent text-accent-foreground"
                     : "border border-card-border bg-card text-foreground shadow-sm"
                 }`}
               >
@@ -1810,7 +1810,7 @@ export function MarketAiTwin() {
                       <a
                         href={turn.downloadUrl}
                         download
-                        className="mt-3 inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted"
+                        className="mt-3 inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted"
                       >
                         <Download className="h-4 w-4" />
                         {turn.downloadLabel ?? t("marketAi.downloadPptNow")}
@@ -1931,7 +1931,7 @@ export function MarketAiTwin() {
                     type="button"
                     disabled={imagePreview.saving || imagePreview.regeneratingSlide !== null}
                     onClick={() => void saveImagePreview()}
-                    className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50"
                   >
                     {imagePreview.saving ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -2020,7 +2020,7 @@ export function MarketAiTwin() {
               <a
                 href={generatedAsset.downloadUrl}
                 download
-                className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted"
+                className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted"
               >
                 <Download className="h-4 w-4" />
                 {generatedAsset.kind === "chart-ppt"
@@ -2185,7 +2185,7 @@ export function MarketAiTwin() {
               type="button"
               disabled={sending || !input.trim()}
               onClick={() => void sendMessage()}
-              className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-muted disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50"
             >
               {sending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

@@ -44,7 +44,7 @@ const RANGES: { id: ChartRange; label: string }[] = [
 
 const CHART_BASE = {
   layout: {
-    background: { type: ColorType.Solid, color: "#11161e" },
+    background: { type: ColorType.Solid, color: "#171c2a" },
     textColor: "#8b95a5",
     fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', sans-serif",
   },
@@ -52,8 +52,8 @@ const CHART_BASE = {
     vertLines: { color: "rgba(255, 255, 255, 0.04)" },
     horzLines: { color: "rgba(255, 255, 255, 0.04)" },
   },
-  rightPriceScale: { borderColor: "#222a36" },
-  timeScale: { borderColor: "#222a36", timeVisible: true },
+  rightPriceScale: { borderColor: "#262d3d" },
+  timeScale: { borderColor: "#262d3d", timeVisible: true },
   crosshair: { mode: 1 as const },
   handleScroll: {
     mouseWheel: true,
@@ -221,7 +221,7 @@ export function GoldTradingChart({
     volumeRef.current?.update({
       time: t,
       value: last.volume,
-      color: last.close >= last.open ? "rgba(38,166,154,0.72)" : "rgba(239,83,80,0.72)",
+      color: last.close >= last.open ? "rgba(46,189,133,0.72)" : "rgba(239,83,80,0.72)",
     });
 
     if (showEma) {
@@ -247,7 +247,7 @@ export function GoldTradingChart({
       macdHistRef.current?.update({
         time: h.time as UTCTimestamp,
         value: h.value,
-        color: h.value >= 0 ? "rgba(38,166,154,0.8)" : "rgba(239,83,80,0.8)",
+        color: h.value >= 0 ? "rgba(46,189,133,0.8)" : "rgba(239,83,80,0.8)",
       });
     }
     if (m) setMacdLive(m.value);
@@ -276,7 +276,7 @@ export function GoldTradingChart({
         bars.map((b) => ({
           time: b.time as UTCTimestamp,
           value: b.volume,
-          color: b.close >= b.open ? "rgba(38,166,154,0.72)" : "rgba(239,83,80,0.72)",
+          color: b.close >= b.open ? "rgba(46,189,133,0.72)" : "rgba(239,83,80,0.72)",
         })),
       );
 
@@ -309,7 +309,7 @@ export function GoldTradingChart({
         histogram.map((p) => ({
           time: p.time as UTCTimestamp,
           value: p.value,
-          color: p.value >= 0 ? "rgba(38,166,154,0.8)" : "rgba(239,83,80,0.8)",
+          color: p.value >= 0 ? "rgba(46,189,133,0.8)" : "rgba(239,83,80,0.8)",
         })),
       );
       setMacdLive(macd.at(-1)?.value ?? null);
@@ -439,10 +439,10 @@ export function GoldTradingChart({
     });
 
     const candles = mainChart.addSeries(CandlestickSeries, {
-      upColor: "#26a69a",
+      upColor: "#2ebd85",
       downColor: "#ef5350",
       borderVisible: false,
-      wickUpColor: "#26a69a",
+      wickUpColor: "#2ebd85",
       wickDownColor: "#ef5350",
     });
     const volume = mainChart.addSeries(HistogramSeries, {
@@ -473,7 +473,7 @@ export function GoldTradingChart({
       });
       const rsiLine = rsiChart.addSeries(LineSeries, { color: VIZ.purple, lineWidth: 2, title: "RSI" });
       rsiLine.createPriceLine({ price: 70, color: "rgba(239,83,80,0.7)", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "70" });
-      rsiLine.createPriceLine({ price: 30, color: "rgba(38,166,154,0.7)", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "30" });
+      rsiLine.createPriceLine({ price: 30, color: "rgba(46,189,133,0.7)", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "30" });
       rsiChartRef.current = rsiChart;
       rsiSeriesRef.current = rsiLine;
       charts.push(rsiChart);
@@ -582,7 +582,7 @@ export function GoldTradingChart({
   }, [showEma, applyBarData]);
 
   return (
-    <div className={cn("flex h-full flex-col bg-[#11161e]", className)}>
+    <div className={cn("flex h-full flex-col bg-[#171c2a]", className)}>
       <div className="flex flex-wrap items-center gap-2 border-b border-card-border bg-surface px-3 py-2">
         <div className="flex gap-0.5 rounded-lg border border-white/[0.06] bg-black/50 p-0.5">
           {RANGES.map((r) => (
@@ -640,7 +640,7 @@ export function GoldTradingChart({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-card-border bg-[#11161e]/80 px-3 py-2 font-mono text-[10px]">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-card-border bg-[#171c2a]/80 px-3 py-2 font-mono text-[10px]">
         {lastPrice != null ? (
           <span className="text-sm font-semibold tabular-nums text-foreground">${lastPrice.toFixed(2)}</span>
         ) : null}
@@ -651,12 +651,12 @@ export function GoldTradingChart({
           </span>
         ) : null}
         {rsiLive != null ? (
-          <span className={cn(rsiLive > 70 ? "text-[#ef5350]" : rsiLive < 30 ? "text-[#26a69a]" : "text-muted")}>
+          <span className={cn(rsiLive > 70 ? "text-[#ef5350]" : rsiLive < 30 ? "text-[#2ebd85]" : "text-muted")}>
             RSI <span className="font-semibold">{rsiLive.toFixed(1)}</span>
           </span>
         ) : null}
         {macdLive != null ? (
-          <span className={macdLive >= 0 ? "text-[#26a69a]" : "text-[#ef5350]"}>
+          <span className={macdLive >= 0 ? "text-[#2ebd85]" : "text-[#ef5350]"}>
             MACD{" "}
             <span className="font-semibold">
               {macdLive >= 0 ? "+" : ""}

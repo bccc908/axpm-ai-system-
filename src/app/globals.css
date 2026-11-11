@@ -2,8 +2,11 @@
 
 /*
  * AXPM broker theme
- * Sober, regulated-broker look: charcoal/navy base, one brand blue,
- * green/red reserved for price direction, flat panels with 1px dividers.
+ * Brand colours taken from the official AXPM sites (axpmprime.com / axpmprimecn.com):
+ *   --primary-color #ff6a32 (orange), --secondary-color #089fac (teal),
+ *   --third-color #71d2e0, --dark-color #111521, --bg-light-color #f5f3ef,
+ *   logo navy #00344d and logo orange #dc7122 (sampled from /assets/img/logo.png).
+ * Surfaces/borders are neutral tints of the brand dark. Green/red are reserved for price direction.
  */
 :root {
   --font-ui: var(--font-inter), "Inter", system-ui, -apple-system, BlinkMacSystemFont,
@@ -16,23 +19,34 @@
   --font-geist-mono: var(--font-ui);
   --font-noto-serif: var(--font-ui);
 
-  --background: #0b0f15;
-  --surface: #11161e;
-  --surface-2: #161c26;
-  --surface-3: #1c2330;
+  /* Official brand colours */
+  --brand-orange: #ff6a32;
+  --brand-orange-logo: #dc7122;
+  --brand-teal: #089fac;
+  --brand-teal-light: #71d2e0;
+  --brand-navy: #00344d;
+  --brand-dark: #111521;
+  --brand-light: #f5f3ef;
+
+  --background: var(--brand-dark);
+  --surface: #171c2a;
+  --surface-2: #1d2333;
+  --surface-3: #242b3d;
   --foreground: #e6e9ef;
-  --card: #11161e;
-  --card-solid: #11161e;
-  --card-border: #222a36;
-  --border-strong: #2d3746;
-  --accent: #3b7cf0;
-  --accent-muted: #2d63c7;
+  --card: #171c2a;
+  --card-solid: #171c2a;
+  --card-border: #262d3d;
+  --border-strong: #333c50;
+  --accent: var(--brand-orange);
+  --accent-muted: #e85d27;
+  --accent-foreground: var(--brand-dark);
   --accent-glow: transparent;
-  --success: #26a69a;
+  --secondary: var(--brand-teal);
+  --success: #2ebd85;
   --warning: #d9a03f;
   --danger: #ef5350;
   --muted: #8b95a5;
-  --ring: rgba(59, 124, 240, 0.45);
+  --ring: rgba(255, 106, 50, 0.5);
 }
 
 @theme inline {
@@ -46,6 +60,11 @@
   --color-border-strong: var(--border-strong);
   --color-accent: var(--accent);
   --color-accent-muted: var(--accent-muted);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-secondary: var(--secondary);
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-teal: var(--brand-teal);
+  --color-brand-light: var(--brand-light);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
@@ -84,7 +103,7 @@ body {
 }
 
 ::selection {
-  background: rgba(59, 124, 240, 0.35);
+  background: rgba(255, 106, 50, 0.3);
 }
 
 /* Numbers: tabular figures wherever the old monospace styling was used */
@@ -98,7 +117,7 @@ body {
 /* Thin, unobtrusive scrollbars */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #2d3746 transparent;
+  scrollbar-color: #333c50 transparent;
 }
 
 /* Plain app canvas (no ambient glow / noise) */
@@ -134,10 +153,10 @@ body {
   border-color: var(--border-strong);
 }
 
-/* Primary action button: solid brand blue */
+/* Primary action button: solid brand orange, dark text (AA contrast 6.4:1) */
 .btn-premium {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-foreground);
   font-weight: 600;
   border: 1px solid transparent;
   box-shadow: none;
@@ -171,8 +190,8 @@ body {
 }
 
 .nav-pill-active {
-  background: var(--surface-3);
-  color: var(--foreground);
+  background: var(--brand-navy);
+  color: #fff;
 }
 
 .sidebar-glow-line {
@@ -218,7 +237,7 @@ body {
 
 @keyframes gold-tape-flash {
   0% {
-    background-color: rgba(59, 124, 240, 0.18);
+    background-color: rgba(255, 106, 50, 0.16);
   }
   100% {
     background-color: transparent;

@@ -25,6 +25,7 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
+import { BrandLogo } from "@/components/layout/brand-logo";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useLocale } from "@/components/providers/locale-provider";
@@ -126,17 +127,9 @@ export function Sidebar() {
   return (
     <aside className="flex h-full w-60 flex-col border-r border-card-border bg-surface">
       <div className="flex h-14 items-center gap-3 border-b border-card-border px-4">
-        <span
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent text-[13px] font-bold tracking-tight text-white"
-          aria-hidden
-        >
-          AX
-        </span>
+        <BrandLogo height={20} />
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold leading-5 text-foreground">
-            {t("app.brand")}
-          </p>
-          <p className="truncate text-[11px] leading-4 text-muted">
+          <p className="truncate text-[11px] font-medium uppercase leading-4 tracking-[0.06em] text-muted">
             {t("app.title").replace(t("app.brand"), "").replace(/^[\s·\-–—|]+/, "") || t("app.title")}
           </p>
         </div>

@@ -303,7 +303,7 @@ export function GoldOrderFlowViz({
 
   return (
     <div className={cn("flex h-full min-h-0 flex-col", className)}>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[#222a36] bg-[#11161e] px-3 py-1.5">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[#262d3d] bg-[#171c2a] px-3 py-1.5">
         <span className="inline-flex items-center gap-1.5 rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5">
           <span className="relative flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
@@ -417,7 +417,7 @@ export function GoldOrderFlowByPrice({ signal }: { signal: DeskSignal | null }) 
               </div>
               <div className="mt-1 flex h-1.5 overflow-hidden rounded-full bg-black/40">
                 <div
-                  className="bg-[#26a69a]/80 transition-all duration-500"
+                  className="bg-[#2ebd85]/80 transition-all duration-500"
                   style={{ width: `${buyPct}%` }}
                 />
                 <div
@@ -426,7 +426,7 @@ export function GoldOrderFlowByPrice({ signal }: { signal: DeskSignal | null }) 
                 />
               </div>
               <div className="mt-0.5 flex justify-between text-[9px]">
-                <span className="font-semibold text-[#26a69a]">
+                <span className="font-semibold text-[#2ebd85]">
                   {t("goldSignals.orderFlowBuy")} {formatVol(row.buyVol)}
                 </span>
                 <span className="font-semibold text-[#ef5350]">
@@ -459,14 +459,14 @@ function BarFlowTape({
   const { t } = useLocale();
 
   return (
-    <div className="flex w-full shrink-0 flex-col border-t border-[#222a36] bg-[#11161e] lg:w-[220px] lg:border-l lg:border-t-0">
-      <div className="border-b border-[#222a36] px-3 py-2">
+    <div className="flex w-full shrink-0 flex-col border-t border-[#262d3d] bg-[#171c2a] lg:w-[220px] lg:border-l lg:border-t-0">
+      <div className="border-b border-[#262d3d] px-3 py-2">
         <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-300/90">
           {t("goldSignals.orderFlowTape")}
         </p>
         <p className="mt-0.5 text-[9px] text-muted">{t("goldSignals.orderFlowHint")}</p>
       </div>
-      <div className="grid shrink-0 grid-cols-[auto_1fr_auto_auto] gap-x-2 border-b border-[#222a36] px-2 py-1.5 font-mono text-[8px] uppercase tracking-wider text-muted">
+      <div className="grid shrink-0 grid-cols-[auto_1fr_auto_auto] gap-x-2 border-b border-[#262d3d] px-2 py-1.5 font-mono text-[8px] uppercase tracking-wider text-muted">
         <span>{t("goldSignals.orderFlowTime")}</span>
         <span>{t("goldSignals.orderFlowDelta")}</span>
         <span className="text-right">{t("goldSignals.price")}</span>
@@ -501,7 +501,7 @@ function BarFlowTape({
                 <span
                   className={cn(
                     "font-semibold",
-                    r.delta >= 0 ? "text-[#26a69a]" : "text-[#ef5350]",
+                    r.delta >= 0 ? "text-[#2ebd85]" : "text-[#ef5350]",
                   )}
                 >
                   {r.delta >= 0 ? "+" : ""}

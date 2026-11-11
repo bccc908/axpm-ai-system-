@@ -12,6 +12,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import { BrandLogo } from "@/components/layout/brand-logo";
 import { InstallAppBanner } from "@/components/layout/install-app-banner";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -57,7 +58,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           />
           <div className="absolute left-0 top-0 flex h-full w-[min(280px,85vw)] flex-col border-r border-card-border bg-surface shadow-2xl">
             <div className="flex items-center justify-between border-b border-card-border px-4 py-3">
-              <span className="font-semibold text-foreground">{t("app.brand")}</span>
+              <BrandLogo height={16} />
               <button type="button" onClick={() => setMenuOpen(false)} className="p-2 text-muted">
                 <X className="h-5 w-5" />
               </button>
@@ -82,7 +83,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <p className="text-sm font-semibold text-foreground">{t("app.title")}</p>
+          <BrandLogo height={16} />
           <LanguageSwitcher className="text-xs" />
         </header>
 

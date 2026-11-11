@@ -9,13 +9,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Grok Trading",
-  description: "Grok Trading — CRM、财务、收件箱与 AI 助手",
-  applicationName: "Grok Trading",
+  title: "AXPM",
+  description: "AXPM — CRM、财务、收件箱与 AI 助手",
+  applicationName: "AXPM",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Grok Trading",
+    title: "AXPM",
   },
   formatDetection: {
     telephone: false,
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b0f15",
+  themeColor: "#111521",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,

@@ -60,10 +60,10 @@ export function GoldPriceLadder({
                 >
                   <div className="relative flex h-6 items-center justify-end pr-1.5">
                     <div
-                      className="absolute inset-y-0.5 right-0 rounded-l bg-[#26a69a]/20"
+                      className="absolute inset-y-0.5 right-0 rounded-l bg-[#2ebd85]/20"
                       style={{ width: `${row.bidPct}%` }}
                     />
-                    <span className="relative z-10 tabular-nums font-medium text-[#4db6ac]">{row.bidSize}</span>
+                    <span className="relative z-10 tabular-nums font-medium text-[#5fd3a4]">{row.bidSize}</span>
                   </div>
                   <div
                     className={cn(

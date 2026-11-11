@@ -89,7 +89,7 @@ export function HyperliquidAccountCard() {
   }
 
   return (
-    <div className="gold-desk-panel border-[#222a36] bg-[#11161e] px-4 py-3">
+    <div className="gold-desk-panel border-[#262d3d] bg-[#171c2a] px-4 py-3">
       <div className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-muted">
         <Wallet className="h-3.5 w-3.5 text-accent" />
         {t("hlSignals.walletTitle")}

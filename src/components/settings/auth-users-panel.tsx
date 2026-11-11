@@ -108,7 +108,7 @@ export function AuthUsersPanel() {
         <button
           type="submit"
           disabled={loading}
-          className="sm:col-span-2 inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="sm:col-span-2 inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground disabled:opacity-50"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {t("auth.addUser")}

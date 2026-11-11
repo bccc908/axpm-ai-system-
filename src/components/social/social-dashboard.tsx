@@ -36,7 +36,7 @@ function voiceLabel(v: VoiceOption, loc: string) {
 const inputClass =
   "w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none";
 const btnPrimary =
-  "inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted transition-colors disabled:opacity-50";
+  "inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted transition-colors disabled:opacity-50";
 
 const ALL_PLATFORMS: SocialPlatform[] = [
   "facebook",
@@ -867,7 +867,7 @@ export function SocialDashboard() {
                     type="button"
                     onClick={() => void generateMedia()}
                     disabled={mediaLoading || !title.trim() || !content.trim()}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-muted disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50"
                   >
                     {mediaLoading ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />

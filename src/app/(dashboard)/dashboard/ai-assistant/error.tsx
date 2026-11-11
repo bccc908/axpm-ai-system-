@@ -21,7 +21,7 @@ export default function AiAssistantError({
       <button
         type="button"
         onClick={() => reset()}
-        className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+        className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:opacity-90"
       >
         Try again
       </button>

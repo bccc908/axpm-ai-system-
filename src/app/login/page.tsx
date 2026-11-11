@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
 import { Loader2, ShieldCheck } from "lucide-react";
+import { BrandLogo } from "@/components/layout/brand-logo";
 import { LocaleProvider, useLocale } from "@/components/providers/locale-provider";
 import type { AuthModule, UserRole } from "@/lib/auth/types";
 
@@ -76,17 +77,9 @@ function LoginForm() {
 
   return (
     <main className="premium-canvas flex min-h-screen flex-col">
-      <header className="flex h-14 items-center gap-3 border-b border-card-border bg-surface px-6">
-        <span
-          className="flex h-8 w-8 items-center justify-center rounded-md bg-accent text-[13px] font-bold tracking-tight text-white"
-          aria-hidden
-        >
-          AX
-        </span>
-        <span className="text-sm font-semibold text-foreground">{t("app.brand")}</span>
-      </header>
       <div className="flex flex-1 items-center justify-center p-6">
       <div className="glass-panel w-full max-w-[400px] rounded-lg p-7 md:p-8">
+        <BrandLogo height={26} className="mb-6" />
         <h1 className="text-[22px] font-semibold tracking-tight text-foreground">
           {setupRequired ? t("auth.setupTitle") : t("auth.loginTitle")}
         </h1>
