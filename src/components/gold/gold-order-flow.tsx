@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Info, Loader2 } from "lucide-react";
 import { useLocale } from "@/components/providers/locale-provider";
 import { useGoldDesk } from "@/components/gold/gold-desk-context";
@@ -13,6 +13,7 @@ import {
   footprintStableRange,
   type BarFlowRow,
 } from "@/lib/gold-signals/order-flow";
+import { buildLadderItems } from "@/lib/gold-signals/ladder-display";
 import { VIZ } from "@/lib/gold-signals/viz-colors";
 import { cn } from "@/lib/utils";
 import type { DeskSignal } from "@/lib/market-signals/instruments";
@@ -379,64 +380,149 @@ export function GoldOrderFlowViz({
   );
 }
 
+const HIDE_EMPTY_KEY = "axpm.goldSignals.ladder.hideEmpty";
+
+/** "Hide empty prices" preference — defaults ON, persisted in localStorage. */
+function useHideEmptyPrices(): [boolean, (v: boolean) => void] {
+  const [value, setValue] = useState(true);
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(HIDE_EMPTY_KEY);
+      if (raw === "0") setValue(false);
+    } catch {
+      /* storage unavailable — keep default */
+    }
+  }, []);
+  const update = useCallback((v: boolean) => {
+    setValue(v);
+    try {
+      window.localStorage.setItem(HIDE_EMPTY_KEY, v ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  return [value, update];
+}
+
 export function GoldOrderFlowByPrice({ signal }: { signal: DeskSignal | null }) {
   const { t } = useLocale();
   const { structureBars } = useGoldDesk();
+  const [hideEmpty, setHideEmpty] = useHideEmptyPrices();
+  const entryLo = signal?.entry_zone?.low ?? null;
+  const entryHi = signal?.entry_zone?.high ?? null;
 
-  const rows = useMemo(() => {
-    return aggregateFlowByPrice(
-      structureBars,
-      signal?.entry_zone?.low ?? null,
-      signal?.entry_zone?.high ?? null,
-    ).filter((r) => r.buyVol + r.sellVol > 0);
-  }, [structureBars, signal]);
+  const levels = useMemo(
+    () => aggregateFlowByPrice(structureBars, entryLo, entryHi),
+    [structureBars, entryLo, entryHi],
+  );
+  const items = useMemo(
+    () => buildLadderItems(levels, hideEmpty, entryLo, entryHi),
+    [levels, hideEmpty, entryLo, entryHi],
+  );
 
-  const maxVol = Math.max(1, ...rows.map((r) => r.buyVol + r.sellVol));
+  const maxVol = Math.max(1, ...levels.map((r) => r.buyVol + r.sellVol));
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto font-mono text-[10px]">
-      {rows.length === 0 ? (
-        <p className="p-6 text-center text-muted">—</p>
-      ) : (
-        rows.map((row) => {
-          const buyPct = (row.buyVol / maxVol) * 100;
-          const sellPct = (row.sellVol / maxVol) * 100;
-          return (
-            <div
-              key={row.price}
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 items-center justify-end border-b border-card-border px-2 py-1">
+        <label className="inline-flex cursor-pointer select-none items-center gap-1.5 text-[10px] font-medium text-muted hover:text-foreground">
+          <span>{t("goldSignals.hideEmptyPrices")}</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={hideEmpty}
+            aria-label={t("goldSignals.hideEmptyPrices")}
+            onClick={() => setHideEmpty(!hideEmpty)}
+            className={cn(
+              "relative inline-flex h-3.5 w-6 shrink-0 items-center rounded-full border transition-colors",
+              hideEmpty ? "border-accent bg-accent" : "border-border-strong bg-surface-3",
+            )}
+          >
+            <span
               className={cn(
-                "border-b border-white/[0.03] px-2 py-1.5 transition-colors duration-300",
-                row.inEntryZone && "bg-amber-500/10",
+                "inline-block h-2.5 w-2.5 rounded-full bg-white shadow-sm transition-transform",
+                hideEmpty ? "translate-x-[11px]" : "translate-x-[1px]",
               )}
-            >
-              <div className="flex items-center justify-between">
-                <span className={cn("tabular-nums font-semibold", row.inEntryZone && "text-amber-200")}>
-                  {row.price.toFixed(2)}
-                </span>
-                <span className="text-muted">{row.barCount} bars</span>
-              </div>
-              <div className="mt-1 flex h-1.5 overflow-hidden rounded-full bg-black/40">
+            />
+          </button>
+        </label>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto font-mono text-[10px]">
+        {items.length === 0 ? (
+          <p className="p-6 text-center text-muted">—</p>
+        ) : (
+          items.map((item) => {
+            if (item.kind === "gap") {
+              return (
                 <div
-                  className="bg-[#2ebd85]/80 transition-all duration-500"
-                  style={{ width: `${buyPct}%` }}
-                />
+                  key={`gap-${item.from}`}
+                  className="flex items-center gap-2 border-b border-card-border/60 bg-background/60 px-2 py-0.5 text-[9px] text-muted/80"
+                  title={t("goldSignals.emptyPricesSkipped", { count: String(item.count) })}
+                >
+                  <span className="h-px flex-1 bg-card-border" />
+                  <span className="tabular-nums">
+                    {item.from.toFixed(2)}–{item.to.toFixed(2)}
+                  </span>
+                  <span className="text-muted/60">
+                    · {t("goldSignals.emptyPricesSkipped", { count: String(item.count) })}
+                  </span>
+                  <span className="h-px flex-1 bg-card-border" />
+                </div>
+              );
+            }
+            const row = item.row;
+            if (item.empty) {
+              return (
                 <div
-                  className="bg-[#ef5350]/80 transition-all duration-500"
-                  style={{ width: `${sellPct}%` }}
-                />
+                  key={row.price}
+                  className={cn(
+                    "border-b border-white/[0.03] px-2 py-1 text-muted/60",
+                    row.inEntryZone && "bg-amber-500/10",
+                  )}
+                >
+                  <span className="tabular-nums">{row.price.toFixed(2)}</span>
+                </div>
+              );
+            }
+            const buyPct = (row.buyVol / maxVol) * 100;
+            const sellPct = (row.sellVol / maxVol) * 100;
+            return (
+              <div
+                key={row.price}
+                className={cn(
+                  "border-b border-white/[0.03] px-2 py-1.5 transition-colors duration-300",
+                  row.inEntryZone && "bg-amber-500/10",
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <span className={cn("tabular-nums font-semibold", row.inEntryZone && "text-amber-200")}>
+                    {row.price.toFixed(2)}
+                  </span>
+                  <span className="text-muted">{row.barCount} bars</span>
+                </div>
+                <div className="mt-1 flex h-1.5 overflow-hidden rounded-full bg-black/40">
+                  <div
+                    className="bg-[#2ebd85]/80 transition-all duration-500"
+                    style={{ width: `${buyPct}%` }}
+                  />
+                  <div
+                    className="bg-[#ef5350]/80 transition-all duration-500"
+                    style={{ width: `${sellPct}%` }}
+                  />
+                </div>
+                <div className="mt-0.5 flex justify-between text-[9px]">
+                  <span className="font-semibold text-[#2ebd85]">
+                    {t("goldSignals.orderFlowBuy")} {formatVol(row.buyVol)}
+                  </span>
+                  <span className="font-semibold text-[#ef5350]">
+                    {t("goldSignals.orderFlowSell")} {formatVol(row.sellVol)}
+                  </span>
+                </div>
               </div>
-              <div className="mt-0.5 flex justify-between text-[9px]">
-                <span className="font-semibold text-[#2ebd85]">
-                  {t("goldSignals.orderFlowBuy")} {formatVol(row.buyVol)}
-                </span>
-                <span className="font-semibold text-[#ef5350]">
-                  {t("goldSignals.orderFlowSell")} {formatVol(row.sellVol)}
-                </span>
-              </div>
-            </div>
-          );
-        })
-      )}
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }
