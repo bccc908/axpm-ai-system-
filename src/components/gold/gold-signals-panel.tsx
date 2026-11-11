@@ -178,7 +178,7 @@ function MarketSignalsDesk({ instrument }: { instrument: SignalInstrument }) {
   const prev = signals[1] ?? null;
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-3 md:overflow-hidden md:px-6 lg:px-8">
+    <div className="flex min-w-0 flex-1 flex-col gap-3 px-4 py-3 md:px-6 lg:px-8">
       <PageHeader
         badge={config.badge}
         title={t(`${i18nNs}.title`)}
@@ -212,8 +212,8 @@ function MarketSignalsDesk({ instrument }: { instrument: SignalInstrument }) {
         onGenerate={() => void handleGenerate()}
       />
 
-      <div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-3 overflow-hidden lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,13.75rem)_minmax(0,20rem)]">
-        <section className="flex min-h-[360px] min-w-0 flex-col overflow-hidden lg:min-h-0">
+      <div className="grid min-w-0 shrink-0 grid-cols-1 gap-3 lg:h-[max(36rem,calc(100dvh-7rem))] lg:overflow-hidden lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,13.75rem)_minmax(0,20rem)]">
+        <section className="flex h-[max(30rem,80dvh)] min-w-0 flex-col overflow-hidden lg:h-auto lg:min-h-0">
           <GoldDeskMainView
             view={view}
             heatmapMode={heatmapMode}
@@ -269,7 +269,7 @@ export function GoldSignalsPanel() {
   const [instrument, setInstrument] = useState<SignalInstrument>(initial);
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+    <div className="flex min-w-0 flex-1 flex-col">
       <div className="flex shrink-0 flex-wrap gap-0 border-b border-card-border bg-surface px-4 md:px-6 lg:px-8">
         {INSTRUMENTS.map((id) => (
           <button

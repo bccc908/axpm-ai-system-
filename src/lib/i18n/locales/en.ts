@@ -1146,6 +1146,7 @@ export const en = {
     orderFlowByPrice: "By price",
     orderFlowCluster: "Cum Δ",
     hideEmptyPrices: "Hide empty prices",
+    jumpToPrice: "Jump to price",
     emptyPricesSkipped: "{count} empty",
     dailyTitle: "Daily auto signal",
     dailyDesc: "Generate XAUUSD signal and push to Telegram on schedule (same cron as daily fortune).",
