@@ -5,10 +5,9 @@ import { getLlmProvider } from "@/lib/ai/llm-config";
 import { getReplyProvider, isOpenClawConfigured } from "@/lib/ai/openclaw-config";
 import { getAgentTrainingBrief } from "@/lib/ai/agent-knowledge";
 import { readAppSettings } from "@/lib/finance/settings";
-import { listMessages, createMessage } from "@/lib/conversations/store";
+import { listMessages } from "@/lib/conversations/store";
 import { listClients } from "@/lib/crm/store";
-import { sendWhatsAppMessage } from "@/lib/integrations/whatsapp";
-import { sendWeChatWorkMessage } from "@/lib/integrations/wechat-work";
+import { storePendingReplyDraft } from "@/lib/support/draft-approval";
 import type { Channel } from "@/types/database";
 
 export type AutoReplyInput = {
@@ -26,6 +25,7 @@ export type AutoReplyResult = {
   reason?: string;
   provider?: string;
   fallback?: boolean;
+  draftId?: string;
 };
 
 export async function isAutoReplyEnabledForChannel(
@@ -100,52 +100,28 @@ export async function maybeAutoReply(
     return { sent: false, reason: "empty_reply", fallback: result.fallback };
   }
 
-  if (input.channel === "whatsapp") {
-    const ok = await sendWhatsAppMessage(input.sendTarget, reply);
-    if (!ok) {
-      return { sent: false, reason: "whatsapp_send_failed", reply };
-    }
-    await createMessage({
-      client_id: input.clientId,
-      client_name: input.clientName,
-      channel: "whatsapp",
-      direction: "outbound",
-      sender_label: "Grok Trading自动回复",
-      content: reply,
-      source: "whatsapp",
-    });
-    return {
-      sent: true,
-      reply,
-      provider: result.fallback ? "fallback" : "ai",
-      fallback: result.fallback,
-    };
-  }
-
-  const sendResult = await sendWeChatWorkMessage({
-    external_userid: input.sendTarget,
-    content: reply,
-  });
-  if (!sendResult.ok) {
-    return { sent: false, reason: sendResult.error, reply };
-  }
-
-  await createMessage({
-    client_id: input.clientId,
-    client_name: input.clientName,
-    wechat_id: input.sendTarget,
-    channel: "wechat",
-    direction: "outbound",
-    sender_label: "Grok Trading自动回复",
-    content: reply,
-    source: "wechat_work",
-    external_id: sendResult.msgid,
+  // Approval gate: never send to the inbound WhatsApp/WeChat target.
+  // sendTarget is accepted only so callers keep compiling; it is not used to deliver.
+  void input.sendTarget;
+  const draft = await storePendingReplyDraft({
+    channel: input.channel,
+    clientName: input.clientName,
+    clientId: input.clientId,
+    customerQuestion: input.customerQuestion,
+    conversationHistory: conversationHistory || undefined,
+    replies: result.replies,
+    provider: result.fallback ? "fallback" : (result.provider ?? "ai"),
+    fallback: Boolean(result.fallback),
+    notice: "notice" in result && typeof result.notice === "string" ? result.notice : null,
+    source: "auto_reply",
   });
 
   return {
-    sent: true,
+    sent: false,
     reply,
-    provider: result.fallback ? "fallback" : "ai",
+    reason: "pending_approval",
+    provider: result.fallback ? "fallback" : (result.provider ?? "ai"),
     fallback: result.fallback,
+    draftId: draft?.id,
   };
 }

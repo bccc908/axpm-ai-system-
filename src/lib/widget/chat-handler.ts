@@ -9,6 +9,8 @@ import { readAppSettings } from "@/lib/finance/settings";
 import { createMessage, listMessages } from "@/lib/conversations/store";
 import { ensureWebVisitorClient, findWebVisitorBySession } from "@/lib/widget/web-visitor";
 import { createActivity, ensureClientDeal } from "@/lib/crm/pro-store";
+import { storePendingReplyDraft } from "@/lib/support/draft-approval";
+import { HOLDING_REPLY_TO_VISITOR } from "@/lib/support/client-send-gate";
 
 export type WidgetChatMessage = {
   role: "assistant" | "user";
@@ -150,42 +152,46 @@ export async function handlePublicWidgetChat(input: {
       ? await generateDeepSeekCustomerReply(replyInput)
       : await generateCustomerReply(replyInput);
 
-  const reply =
-    result.replies[0]?.trim() ||
-    "Thanks for your message. A team member will follow up shortly.";
-
-  const sentAt = new Date().toISOString();
-  await createMessage({
-    client_id: client.id,
-    client_name: client.name,
+  const draft = await storePendingReplyDraft({
     channel: "web",
-    direction: "outbound",
-    sender_label: "Grok Trading助手",
-    content: reply,
+    clientName: input.visitorName?.trim() || client.name,
+    clientId: client.id,
+    customerQuestion: message,
+    conversationHistory: conversationHistory || undefined,
+    replies: result.replies,
+    provider: result.fallback ? "fallback" : (result.provider ?? "ai"),
+    fallback: Boolean(result.fallback),
     source: "web_widget",
-    external_id: randomUUID(),
-    sent_at: sentAt,
   });
+
+  const holding = HOLDING_REPLY_TO_VISITOR;
+  const sentAt = new Date().toISOString();
 
   await createActivity({
     client_id: client.id,
     type: "message",
-    title: "AI reply sent",
-    body: reply,
+    title: "AI draft pending approval",
+    body: draft?.draftReply ?? "(no draft)",
     channel: "web",
-    actor_name: "Grok Trading助手",
-    metadata: { direction: "outbound", fallback: Boolean(result.fallback) },
+    actor_name: "AXPM Support",
+    metadata: {
+      direction: "internal",
+      fallback: Boolean(result.fallback),
+      draftId: draft?.id ?? null,
+      deliveredToVisitor: false,
+    },
   });
 
   return {
-    reply,
+    reply: holding,
     sessionId,
     clientId: client.id,
     clientName: client.name,
     fallback: Boolean(result.fallback),
     detectedLanguage: result.detectedLanguage,
     sentAt,
-    handoff: false,
+    handoff: true,
+    draftId: draft?.id ?? null,
   };
 }
 
