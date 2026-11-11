@@ -161,6 +161,8 @@ export async function handlePublicWidgetChat(input: {
     replies: result.replies,
     provider: result.fallback ? "fallback" : (result.provider ?? "ai"),
     fallback: Boolean(result.fallback),
+    notice:
+      "notice" in result && typeof result.notice === "string" ? result.notice : null,
     source: "web_widget",
   });
 
