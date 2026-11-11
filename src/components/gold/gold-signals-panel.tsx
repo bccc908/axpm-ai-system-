@@ -11,6 +11,7 @@ import type { DeskView, HeatmapMode } from "@/components/gold/gold-desk-types";
 import { GoldPriceLadder } from "@/components/gold/gold-price-ladder";
 import { GoldSignalHistory } from "@/components/gold/gold-signal-history";
 import { GoldSignalSidebar } from "@/components/gold/gold-signal-sidebar";
+import { SignalRiskReviewCard } from "@/components/gold/signal-risk-review-card";
 import { GoldTickerStrip } from "@/components/gold/gold-ticker-strip";
 import { HyperliquidAccountCard } from "@/components/gold/hyperliquid-account-card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -239,6 +240,11 @@ function MarketSignalsDesk({ instrument }: { instrument: SignalInstrument }) {
               onNotesChange={setNotes}
               onDailyToggle={() => void handleDailyToggle()}
               onDailySendNow={() => void handleDailySendNow()}
+              afterTradePlan={
+                instrument === "gold" && latest ? (
+                  <SignalRiskReviewCard key={latest.id} signal={latest} />
+                ) : null
+              }
             />
           </div>
           <GoldSignalHistory
