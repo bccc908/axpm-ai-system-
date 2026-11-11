@@ -146,7 +146,7 @@ export function AccountDetail({ accountId }: { accountId: string }) {
                 {t("zoho.addCustomField")}
               </button>
             </div>
-            <button type="button" disabled={saving} onClick={() => void save()} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted disabled:opacity-50">
+            <button type="button" disabled={saving} onClick={() => void save()} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {t("common.save")}
             </button>

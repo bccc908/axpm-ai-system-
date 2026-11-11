@@ -100,7 +100,7 @@ export function DashboardHome() {
         <button
           type="button"
           onClick={() => load()}
-          className="mt-4 rounded-xl btn-premium px-4 py-2.5 text-sm"
+          className="mt-4 rounded-md btn-premium px-4 py-2 text-sm"
         >
           {t("common.refresh")}
         </button>
@@ -111,7 +111,7 @@ export function DashboardHome() {
   const followUps: FollowUp[] = overview.recentFollowUps;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader title={t("dashboard.title")} subtitle={t("dashboard.subtitle")} />
 
       <IntegrationsStatus />
@@ -125,32 +125,32 @@ export function DashboardHome() {
 
       <PersonalLiveStats />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="border-accent/30 bg-accent/5">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
           <CardHeader title={t("dashboard.myAssistantTitle")} description={t("dashboard.myAssistantDesc")} action={<Link href="/dashboard/my-assistant" className="text-sm text-accent hover:underline">{t("common.open")}</Link>} />
           <p className="text-sm text-muted">{t("dashboard.myAssistantBody")}</p>
-          <Link href="/dashboard/my-assistant" className="mt-4 inline-flex items-center gap-2 rounded-xl btn-premium px-4 py-2.5 text-sm transition-colors">
+          <Link href="/dashboard/my-assistant" className="mt-4 inline-flex items-center gap-2 rounded-md btn-premium px-3.5 py-2 text-sm">
             <NotebookPen className="h-4 w-4" />{t("dashboard.goAssistant")}
           </Link>
         </Card>
-        <Card className="border-success/30 bg-success/5">
+        <Card>
           <CardHeader title={t("dashboard.financeTitle")} description={t("dashboard.financeDesc")} action={<Link href="/dashboard/finance" className="text-sm text-accent hover:underline">{t("common.open")}</Link>} />
           <p className="text-sm text-muted">{t("dashboard.financeBody")}</p>
-          <Link href="/dashboard/finance" className="mt-4 inline-flex items-center gap-2 rounded-lg bg-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity">
+          <Link href="/dashboard/finance" className="mt-4 inline-flex items-center gap-2 rounded-md border border-card-border bg-surface-2 px-3.5 py-2 text-sm font-medium text-foreground transition-colors hover:border-border-strong">
             <Wallet className="h-4 w-4" />{t("dashboard.goFinance")}
           </Link>
         </Card>
-        <Card className="border-accent/20 bg-accent/5">
+        <Card>
           <CardHeader title={t("dashboard.inboxTitle")} description={t("dashboard.inboxDesc")} action={<Link href="/dashboard/conversations" className="text-sm text-accent hover:underline">{t("common.open")}</Link>} />
           <p className="text-sm text-muted">{t("dashboard.inboxBody")}</p>
-          <Link href="/dashboard/conversations" className="mt-4 inline-flex items-center gap-2 rounded-xl btn-premium px-4 py-2.5 text-sm transition-colors">
+          <Link href="/dashboard/conversations" className="mt-4 inline-flex items-center gap-2 rounded-md border border-card-border bg-surface-2 px-3.5 py-2 text-sm font-medium text-foreground transition-colors hover:border-border-strong">
             <MessagesSquare className="h-4 w-4" />{t("dashboard.goInbox")}
           </Link>
         </Card>
         <Card>
           <CardHeader title={t("dashboard.crmTitle")} description={t("dashboard.crmDesc")} action={<Link href="/dashboard/crm" className="text-sm text-accent hover:underline">{t("common.open")}</Link>} />
           <p className="text-sm text-muted">{t("dashboard.crmBody")}</p>
-          <Link href="/dashboard/crm" className="mt-4 inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-accent/30 hover:text-accent">
+          <Link href="/dashboard/crm" className="mt-4 inline-flex items-center gap-2 rounded-md border border-card-border bg-surface-2 px-3.5 py-2 text-sm font-medium text-foreground transition-colors hover:border-border-strong">
             <Kanban className="h-4 w-4" />{t("dashboard.goCrm")}
           </Link>
         </Card>
@@ -161,7 +161,7 @@ export function DashboardHome() {
               <p className="text-sm text-muted">{t("dashboard.noFollowUps")}</p>
             ) : (
               overview.clientsDueToday.map((client) => (
-                <div key={client.id} className="flex items-center justify-between rounded-lg border border-card-border bg-background/50 px-4 py-3">
+                <div key={client.id} className="flex items-center justify-between rounded-md border border-card-border bg-background px-3.5 py-2.5">
                   <div>
                     <p className="font-medium text-foreground">{client.name}</p>
                     <p className="text-xs text-muted">
@@ -210,7 +210,7 @@ export function DashboardHome() {
             {threads.map((thread) => (
               <div
                 key={thread.client_id ?? thread.client_name}
-                className="flex items-center justify-between rounded-lg border border-card-border bg-background/50 px-4 py-3"
+                className="flex items-center justify-between rounded-md border border-card-border bg-background px-3.5 py-2.5"
               >
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-foreground">{thread.client_name}</p>
@@ -233,22 +233,22 @@ export function DashboardHome() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-card-border text-left text-muted">
-                <th className="pb-3 pr-4 font-medium">{t("dashboard.client")}</th>
-                <th className="pb-3 pr-4 font-medium">{t("dashboard.channel")}</th>
-                <th className="pb-3 pr-4 font-medium">{t("dashboard.summary")}</th>
-                <th className="pb-3 font-medium">{t("dashboard.status")}</th>
+              <tr className="border-b border-card-border text-left text-[11px] uppercase tracking-[0.06em] text-muted">
+                <th className="pb-2 pr-4 font-semibold">{t("dashboard.client")}</th>
+                <th className="pb-2 pr-4 font-semibold">{t("dashboard.channel")}</th>
+                <th className="pb-2 pr-4 font-semibold">{t("dashboard.summary")}</th>
+                <th className="pb-2 font-semibold">{t("dashboard.status")}</th>
               </tr>
             </thead>
             <tbody>
               {followUps.map((fu) => {
                 const client = clients.find((c) => c.id === fu.client_id);
                 return (
-                  <tr key={fu.id} className="border-b border-card-border/50">
-                    <td className="py-3 pr-4 font-medium text-foreground">{client?.name ?? "—"}</td>
-                    <td className="py-3 pr-4 capitalize text-muted">{fu.channel}</td>
-                    <td className="py-3 pr-4 text-foreground/80">{fu.summary ?? fu.notes}</td>
-                    <td className="py-3">
+                  <tr key={fu.id} className="border-b border-card-border/60 hover:bg-surface-2">
+                    <td className="py-2.5 pr-4 font-medium text-foreground">{client?.name ?? "—"}</td>
+                    <td className="py-2.5 pr-4 capitalize text-muted">{fu.channel}</td>
+                    <td className="py-2.5 pr-4 text-foreground/80">{fu.summary ?? fu.notes}</td>
+                    <td className="py-2.5">
                       <Badge variant={fu.completed_at ? "success" : "warning"}>
                         {fu.completed_at ? t("common.done") : t("dashboard.scheduled")}
                       </Badge>

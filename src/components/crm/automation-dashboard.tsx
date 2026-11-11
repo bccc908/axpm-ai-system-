@@ -135,7 +135,7 @@ export function AutomationDashboard() {
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
           <CardHeader title={t("automation.leadAnalysis")} description={t("automation.leadAnalysisDesc")} />
-          <button type="button" onClick={runAiAnalysis} disabled={analyzing || clients.length === 0} className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted disabled:opacity-50">
+          <button type="button" onClick={runAiAnalysis} disabled={analyzing || clients.length === 0} className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50">
             {analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {t("ai.generate")}
           </button>

@@ -89,7 +89,7 @@ export function HyperliquidAccountCard() {
   }
 
   return (
-    <div className="gold-desk-panel border-[#1e2836] bg-[#0a0e14] px-4 py-3">
+    <div className="gold-desk-panel border-[#262d3d] bg-[#171c2a] px-4 py-3">
       <div className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-muted">
         <Wallet className="h-3.5 w-3.5 text-accent" />
         {t("hlSignals.walletTitle")}
@@ -121,7 +121,7 @@ export function HyperliquidAccountCard() {
           {t("hlSignals.refresh")}
         </button>
       </div>
-      {error ? <p className="mt-2 text-xs text-rose-400">{error}</p> : null}
+      {error ? <p className="mt-2 text-xs text-danger">{error}</p> : null}
       {loading ? (
         <div className="mt-3 flex items-center gap-2 text-xs text-muted">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -165,7 +165,7 @@ export function HyperliquidAccountCard() {
                       <td
                         className={cn(
                           "py-1.5 pr-3 uppercase",
-                          p.side === "long" ? "text-emerald-400" : "text-rose-400",
+                          p.side === "long" ? "text-success" : "text-danger",
                         )}
                       >
                         {p.side}
@@ -175,7 +175,7 @@ export function HyperliquidAccountCard() {
                       <td
                         className={cn(
                           "py-1.5 pr-3",
-                          (p.unrealized_pnl ?? 0) >= 0 ? "text-emerald-400" : "text-rose-400",
+                          (p.unrealized_pnl ?? 0) >= 0 ? "text-success" : "text-danger",
                         )}
                       >
                         {money(p.unrealized_pnl)}

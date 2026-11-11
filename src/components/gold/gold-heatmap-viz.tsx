@@ -526,7 +526,7 @@ export function GoldHeatmapViz({
     roundRect(ctx, axisX + 2, cpY - 9, axisW - 6, 16, 3);
     ctx.fill();
     ctx.shadowBlur = 0;
-    ctx.fillStyle = "#0a0e14";
+    ctx.fillStyle = "#171c2a";
     ctx.font = "bold 8px ui-monospace, monospace";
     ctx.fillText(currentPrice.toFixed(2), axisX + axisW - 4, cpY + 3);
     ctx.textAlign = "left";
@@ -554,7 +554,7 @@ export function GoldHeatmapViz({
       const isLive = i >= displayBars.length - tickTrailRef.current.length;
       const radius = 2.5 + norm * 16 + (isLast ? pulse * 5 : isLive ? pulse * 2 : 0);
       const color = bar.buy ? "rgba(0, 255, 136, 0.9)" : "rgba(255, 51, 85, 0.9)";
-      const stroke = bar.buy ? "#00ffaa" : "#ff4466";
+      const stroke = bar.buy ? "#2ebd85" : "#ef5350";
 
       const grad = ctx.createRadialGradient(x - radius * 0.3, y - radius * 0.3, 0, x, y, radius);
       grad.addColorStop(0, bar.buy ? "rgba(180,255,220,0.95)" : "rgba(255,180,190,0.95)");
@@ -562,7 +562,7 @@ export function GoldHeatmapViz({
       grad.addColorStop(1, bar.buy ? "rgba(0,120,70,0.85)" : "rgba(140,20,40,0.85)");
 
       ctx.save();
-      ctx.shadowColor = bar.buy ? "rgba(0,255,136,0.8)" : "rgba(255,51,85,0.8)";
+      ctx.shadowColor = bar.buy ? "rgba(46,189,133,0.8)" : "rgba(239,83,80,0.8)";
       ctx.shadowBlur = 10 + norm * 12 + (isLive ? pulse * 14 : 0);
       ctx.beginPath();
       ctx.arc(x, y, radius, 0, Math.PI * 2);
@@ -605,7 +605,7 @@ export function GoldHeatmapViz({
       const bar = displayBars[i];
       const x = left + bar.x - cellW * 0.42;
       const bh = (bar.volume / maxVol) * volBarH;
-      ctx.fillStyle = bar.buy ? "rgba(0,255,136,0.7)" : "rgba(255,51,85,0.7)";
+      ctx.fillStyle = bar.buy ? "rgba(46,189,133,0.7)" : "rgba(239,83,80,0.7)";
       roundRect(ctx, x, volTop + volBarH - bh, cellW * 0.84, bh, 1);
       ctx.fill();
     }
@@ -660,7 +660,7 @@ export function GoldHeatmapViz({
     // per-bar delta histogram
     for (const pt of deltaPoints) {
       const bh = (Math.abs(pt.delta) / maxBar) * (barAreaH * 0.35);
-      ctx.fillStyle = pt.delta >= 0 ? "rgba(0,255,136,0.35)" : "rgba(255,51,85,0.35)";
+      ctx.fillStyle = pt.delta >= 0 ? "rgba(46,189,133,0.35)" : "rgba(239,83,80,0.35)";
       const bx = pt.x - cellW * 0.35;
       if (pt.delta >= 0) ctx.fillRect(bx, midY - bh, cellW * 0.7, bh);
       else ctx.fillRect(bx, midY, cellW * 0.7, bh);
@@ -676,7 +676,7 @@ export function GoldHeatmapViz({
     ctx.lineTo(deltaPoints[deltaPoints.length - 1]?.x ?? left, midY);
     ctx.lineTo(deltaPoints[0]?.x ?? left, midY);
     ctx.closePath();
-    ctx.fillStyle = cumNet >= 0 ? "rgba(0,255,136,0.08)" : "rgba(255,51,85,0.08)";
+    ctx.fillStyle = cumNet >= 0 ? "rgba(46,189,133,0.08)" : "rgba(239,83,80,0.08)";
     ctx.fill();
 
     ctx.strokeStyle = cumNet >= 0 ? VIZ.buy : VIZ.sell;

@@ -319,7 +319,7 @@ export function FortuneReadingFeedback({
         <button
           type="submit"
           disabled={sending || !input.trim()}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white disabled:opacity-40 sm:w-auto sm:min-w-[96px]"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground disabled:opacity-40 sm:w-auto sm:min-w-[96px]"
         >
           {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           {t("fortune.feedbackChatSend")}

@@ -1,5 +1,6 @@
 import type { WithApproval } from "@/lib/signal-approval/types";
 import type { OkBrainMap } from "@/lib/market-signals/ok-brain-map";
+import type { SignalRiskReview } from "@/lib/gold-signals/risk-review/types";
 
 export type GoldSignalBias = "long" | "short" | "neutral" | "wait";
 
@@ -30,6 +31,8 @@ export interface GoldSignal extends WithApproval {
   expires_at: string | null;
   notes?: string | null;
   ok_brain_map?: OkBrainMap | null;
+  /** Latest Risk Manager Review (deterministic checks + optional AI review) */
+  risk_review?: SignalRiskReview | null;
 }
 
 export interface GoldSignalStore {

@@ -1,3 +1,4 @@
+import type { SignalRiskReview } from "@/lib/gold-signals/risk-review/types";
 import type { OkBrainMap } from "@/lib/market-signals/ok-brain-map";
 
 export type SignalInstrument = "gold" | "xau" | "spread" | "btc" | "eth" | "hl";
@@ -30,6 +31,7 @@ export type DeskSignal = {
   expires_at: string | null;
   notes?: string | null;
   ok_brain_map?: OkBrainMap | null;
+  risk_review?: SignalRiskReview | null;
   spread?: {
     xauusd: number;
     xauusdt: number;

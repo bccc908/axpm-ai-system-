@@ -31,6 +31,7 @@ export function GoldSignalSidebar({
   onNotesChange,
   onDailyToggle,
   onDailySendNow,
+  afterTradePlan,
 }: {
   latest: DeskSignal | null;
   notes: string;
@@ -44,25 +45,27 @@ export function GoldSignalSidebar({
   onNotesChange: (v: string) => void;
   onDailyToggle: () => void;
   onDailySendNow: () => void;
+  /** Rendered directly under the trade plan (e.g. the Risk review card) */
+  afterTradePlan?: React.ReactNode;
 }) {
   const { t, locale } = useLocale();
   const [showSetup, setShowSetup] = useState(false);
   const rr = latest ? computeRiskReward(latest) : null;
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex min-w-0 flex-col gap-3 overflow-x-hidden">
       {latest ? (
         <>
-          <div className="gold-desk-panel gold-trade-plan p-4">
+          <div className="gold-desk-panel gold-trade-plan min-w-0 overflow-hidden p-4">
             <div className="flex items-start justify-between gap-3">
               <p className="gold-trade-plan-title">{t(`${i18nNs}.tradeSetup`)}</p>
               <span className="shrink-0 font-mono text-[11px] text-muted/90">
                 {formatSignalTime(latest.created_at, locale)}
               </span>
             </div>
-            <p className="gold-trade-plan-thesis">{latest.thesis}</p>
+            <p className="gold-trade-plan-thesis break-words">{latest.thesis}</p>
             {latest.spread ? (
-              <div className="mt-3 grid grid-cols-3 gap-2 border-t border-white/[0.06] pt-3 font-mono text-[11px]">
+              <div className="mt-3 grid min-w-0 grid-cols-3 gap-2 border-t border-card-border pt-3 font-mono text-[11px]">
                 <div>
                   <p className="text-muted">XAUUSD</p>
                   <p className="text-foreground">${latest.spread.xauusd.toFixed(2)}</p>
@@ -86,11 +89,11 @@ export function GoldSignalSidebar({
                 <summary className="cursor-pointer list-none text-[10px] font-medium uppercase tracking-wider text-muted/80 transition-colors hover:text-accent [&::-webkit-details-marker]:hidden">
                   {locale === "zh" ? "目标 · 风报" : "Targets · R:R"}
                 </summary>
-                <div className="mt-3 space-y-2 border-t border-white/[0.06] pt-3">
+                <div className="mt-3 space-y-2 border-t border-card-border pt-3">
                   {latest.take_profit.length > 0 ? (
                     <div className="flex items-center justify-between font-mono text-xs">
-                      <span className="text-amber-300/80">TP</span>
-                      <span className="tabular-nums text-amber-200">
+                      <span className="text-success">TP</span>
+                      <span className="tabular-nums text-success">
                         {latest.take_profit.map((p) => p.toFixed(2)).join(" · ")}
                       </span>
                     </div>
@@ -116,13 +119,15 @@ export function GoldSignalSidebar({
             ) : null}
           </div>
 
+          {afterTradePlan}
+
           {latest.ok_brain_map ? (
             <OkBrainMapCard map={latest.ok_brain_map} i18nNs={i18nNs} />
           ) : null}
 
           {latest.orderflow_triggers.length > 0 ? (
             <div className="gold-desk-panel p-4">
-              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-400/90">
+              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-success/90">
                 <Target className="h-3 w-3" />
                 {t(`${i18nNs}.triggers`)}
               </p>
@@ -130,33 +135,33 @@ export function GoldSignalSidebar({
                 {latest.orderflow_triggers.map((item, i) => (
                   <li
                     key={item}
-                    className="flex gap-2 rounded-lg border border-white/[0.05] bg-white/[0.02] px-2.5 py-2 text-xs leading-relaxed text-muted"
+                    className="flex gap-2 rounded-lg border border-card-border bg-background px-2.5 py-2 text-xs leading-relaxed text-muted"
                   >
-                    <span className="shrink-0 font-mono text-[10px] text-accent/70">{i + 1}</span>
-                    <span>{item}</span>
+                    <span className="shrink-0 font-mono text-[10px] text-muted">{i + 1}</span>
+                    <span className="min-w-0 break-words">{item}</span>
                   </li>
                 ))}
               </ul>
             </div>
           ) : null}
 
-          <div className="gold-desk-panel border-amber-500/15 p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-300/90">
+          <div className="gold-desk-panel p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">
               {t(`${i18nNs}.tapePlaybook`)}
             </p>
-            <p className="mt-2 text-xs leading-relaxed text-muted whitespace-pre-wrap">
+            <p className="mt-2 min-w-0 break-words text-xs leading-relaxed text-muted whitespace-pre-wrap">
               {latest.bookmap_playbook}
             </p>
           </div>
 
           {latest.invalidation ? (
-            <div className="flex items-start gap-2 rounded-xl border border-rose-500/20 bg-rose-500/5 px-3 py-2.5">
-              <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-400" />
+            <div className="flex items-start gap-2 rounded-md border border-danger/25 bg-danger/5 px-3 py-2.5">
+              <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-danger" />
               <div>
-                <p className="text-[9px] font-semibold uppercase tracking-wider text-rose-300/80">
+                <p className="text-[9px] font-semibold uppercase tracking-wider text-danger/80">
                   {t(`${i18nNs}.invalidation`)}
                 </p>
-                <p className="mt-1 text-xs text-muted">{latest.invalidation}</p>
+                <p className="mt-1 min-w-0 break-words text-xs text-muted">{latest.invalidation}</p>
               </div>
             </div>
           ) : null}
@@ -179,7 +184,7 @@ export function GoldSignalSidebar({
       />
 
       <div className="gold-desk-panel p-4">
-        <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+        <label className="text-[10px] font-semibold uppercase tracking-[0.06em] text-muted">
           {t(`${i18nNs}.notes`)}
         </label>
         <textarea
@@ -209,7 +214,7 @@ export function GoldSignalSidebar({
           {showSetup ? (
             <div className="gold-desk-panel space-y-3 p-4 text-[11px] leading-relaxed text-muted">
               <p>{t(`${i18nNs}.atasTelegramHint`)}</p>
-              <p className="border-t border-white/[0.06] pt-3">{t(`${i18nNs}.atasDesc`)}</p>
+              <p className="border-t border-card-border pt-3">{t(`${i18nNs}.atasDesc`)}</p>
             </div>
           ) : null}
         </>
@@ -241,10 +246,10 @@ function DailyAutomationCard({
     <div className="gold-desk-panel p-4">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300/90">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-muted">
             {t(`${i18nNs}.dailyTitle`)}
           </p>
-          <p className="mt-1 text-[11px] leading-relaxed text-muted">{t(`${i18nNs}.dailyDesc`)}</p>
+          <p className="mt-1 min-w-0 break-words text-[11px] leading-relaxed text-muted">{t(`${i18nNs}.dailyDesc`)}</p>
         </div>
         <button
           type="button"
@@ -253,7 +258,7 @@ function DailyAutomationCard({
           className={cn(
             "shrink-0 rounded-lg border px-2.5 py-1 text-[10px] font-semibold",
             dailyEnabled
-              ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
+              ? "border-emerald-500/40 bg-emerald-500/15 text-success"
               : "border-white/10 bg-white/[0.03] text-muted",
           )}
         >
@@ -272,7 +277,7 @@ function DailyAutomationCard({
         type="button"
         disabled={dailyBusy || !telegramConfigured}
         onClick={onSendNow}
-        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-sky-500/30 bg-sky-500/10 py-2 text-xs font-medium text-sky-200 hover:bg-sky-500/15 disabled:opacity-50"
+        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md border border-card-border bg-surface-2 py-2 text-xs font-medium text-foreground hover:border-border-strong disabled:opacity-50"
       >
         {dailyBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Radio className="h-3.5 w-3.5" />}
         {dailyBusy ? t(`${i18nNs}.dailySending`) : t(`${i18nNs}.dailySendNow`)}
@@ -286,7 +291,7 @@ function TradePlanLevelRail({ signal }: { signal: DeskSignal }) {
   const levels: Array<{ label: string; price: number; tone: string }> = [];
 
   if (signal.stop_loss != null) {
-    levels.push({ label: "STOP", price: signal.stop_loss, tone: "text-rose-400" });
+    levels.push({ label: "STOP", price: signal.stop_loss, tone: "text-danger" });
   }
   if (signal.entry_zone) {
     const flatThreshold = signal.symbol === "BTCUSD" ? 5 : signal.symbol === "ETHUSD" ? 1 : 0.05;
@@ -294,7 +299,7 @@ function TradePlanLevelRail({ signal }: { signal: DeskSignal }) {
       Math.abs(signal.entry_zone.high - signal.entry_zone.low) < flatThreshold
         ? signal.entry_zone.high
         : (signal.entry_zone.low + signal.entry_zone.high) / 2;
-    levels.push({ label: "ENTRY", price: entry, tone: "text-emerald-400" });
+    levels.push({ label: "ENTRY", price: entry, tone: "text-success" });
   }
 
   levels.sort((a, b) => b.price - a.price);

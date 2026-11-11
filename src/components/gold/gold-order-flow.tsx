@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { Info, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Crosshair, Info, Loader2 } from "lucide-react";
 import { useLocale } from "@/components/providers/locale-provider";
 import { useGoldDesk } from "@/components/gold/gold-desk-context";
 import {
@@ -13,6 +13,7 @@ import {
   footprintStableRange,
   type BarFlowRow,
 } from "@/lib/gold-signals/order-flow";
+import { buildLadderItems } from "@/lib/gold-signals/ladder-display";
 import { VIZ } from "@/lib/gold-signals/viz-colors";
 import { cn } from "@/lib/utils";
 import type { DeskSignal } from "@/lib/market-signals/instruments";
@@ -288,7 +289,7 @@ export function GoldOrderFlowViz({
       <div className={cn("flex h-full flex-col items-center justify-center gap-3 px-6 text-center", className)}>
         <p className="text-sm text-muted">{t("goldSignals.orderFlowNoData")}</p>
         {error ? (
-          <p className="max-w-md text-[11px] text-rose-300/80">{t("goldSignals.orderFlowError")}</p>
+          <p className="max-w-md text-[11px] text-danger/80">{t("goldSignals.orderFlowError")}</p>
         ) : null}
         <button
           type="button"
@@ -303,13 +304,13 @@ export function GoldOrderFlowViz({
 
   return (
     <div className={cn("flex h-full min-h-0 flex-col", className)}>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[#1e2836] bg-[#0d1117] px-3 py-1.5">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[#262d3d] bg-[#171c2a] px-3 py-1.5">
         <span className="inline-flex items-center gap-1.5 rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5">
           <span className="relative flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
           </span>
-          <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-emerald-300">
+          <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-success">
             {t("goldSignals.orderFlowLive")}
           </span>
         </span>
@@ -332,8 +333,8 @@ export function GoldOrderFlowViz({
           className={cn(
             "shrink-0 rounded border px-2 py-0.5 font-mono text-[10px] font-semibold tabular-nums transition-colors duration-300",
             cumDelta >= 0
-              ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-300"
-              : "border-rose-500/35 bg-rose-500/10 text-rose-300",
+              ? "border-emerald-500/35 bg-emerald-500/10 text-success"
+              : "border-rose-500/35 bg-rose-500/10 text-danger",
           )}
         >
           Δ {cumDelta >= 0 ? "+" : ""}
@@ -355,7 +356,7 @@ export function GoldOrderFlowViz({
                       ? "border-amber-500/40 bg-amber-500/15 text-amber-200"
                       : c.lastSide === "buy"
                         ? "border-sky-500/30 bg-sky-500/10 text-sky-300"
-                        : "border-rose-500/30 bg-rose-500/10 text-rose-300",
+                        : "border-rose-500/30 bg-rose-500/10 text-danger",
                   )}
                 >
                   {c.price.toFixed(2)} · {c.lastSide === "buy" ? "B" : "S"}{" "}
@@ -379,64 +380,201 @@ export function GoldOrderFlowViz({
   );
 }
 
+const HIDE_EMPTY_KEY = "axpm.goldSignals.ladder.hideEmpty";
+
+/** "Hide empty prices" preference — defaults ON, persisted in localStorage. */
+function useHideEmptyPrices(): [boolean, (v: boolean) => void] {
+  const [value, setValue] = useState(true);
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(HIDE_EMPTY_KEY);
+      if (raw === "0") setValue(false);
+    } catch {
+      /* storage unavailable — keep default */
+    }
+  }, []);
+  const update = useCallback((v: boolean) => {
+    setValue(v);
+    try {
+      window.localStorage.setItem(HIDE_EMPTY_KEY, v ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  return [value, update];
+}
+
 export function GoldOrderFlowByPrice({ signal }: { signal: DeskSignal | null }) {
   const { t } = useLocale();
-  const { structureBars } = useGoldDesk();
+  const { structureBars, livePrice } = useGoldDesk();
+  const [hideEmpty, setHideEmpty] = useHideEmptyPrices();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const centredRef = useRef(false);
+  const entryLo = signal?.entry_zone?.low ?? null;
+  const entryHi = signal?.entry_zone?.high ?? null;
 
-  const rows = useMemo(() => {
-    return aggregateFlowByPrice(
-      structureBars,
-      signal?.entry_zone?.low ?? null,
-      signal?.entry_zone?.high ?? null,
-    ).filter((r) => r.buyVol + r.sellVol > 0);
-  }, [structureBars, signal]);
+  const levels = useMemo(
+    () => aggregateFlowByPrice(structureBars, entryLo, entryHi),
+    [structureBars, entryLo, entryHi],
+  );
+  const items = useMemo(
+    () => buildLadderItems(levels, hideEmpty, entryLo, entryHi),
+    [levels, hideEmpty, entryLo, entryHi],
+  );
 
-  const maxVol = Math.max(1, ...rows.map((r) => r.buyVol + r.sellVol));
+  const maxVol = Math.max(1, ...levels.map((r) => r.buyVol + r.sellVol));
+
+  // Row nearest the live price (falls back to the most recent bar close).
+  const refPrice = livePrice ?? structureBars.at(-1)?.close ?? null;
+  const currentRowPrice = useMemo(() => {
+    if (refPrice == null) return null;
+    let best: number | null = null;
+    for (const item of items) {
+      if (item.kind !== "row") continue;
+      if (best == null || Math.abs(item.row.price - refPrice) < Math.abs(best - refPrice)) best = item.row.price;
+    }
+    return best;
+  }, [items, refPrice]);
+
+  /** Scroll only the ladder container (never the page) so the current price sits in the middle. */
+  const centreOnPrice = useCallback(
+    (behavior: ScrollBehavior = "smooth") => {
+      const box = scrollRef.current;
+      if (!box || currentRowPrice == null) return false;
+      const row = box.querySelector<HTMLElement>(`[data-price="${currentRowPrice}"]`);
+      if (!row) return false;
+      const top = row.offsetTop - box.clientHeight / 2 + row.offsetHeight / 2;
+      box.scrollTo({ top: Math.max(0, top), behavior });
+      return true;
+    },
+    [currentRowPrice],
+  );
+
+  // Auto-centre once, on first load with data.
+  useEffect(() => {
+    if (centredRef.current) return;
+    if (centreOnPrice("auto")) centredRef.current = true;
+  }, [centreOnPrice]);
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto font-mono text-[10px]">
-      {rows.length === 0 ? (
-        <p className="p-6 text-center text-muted">—</p>
-      ) : (
-        rows.map((row) => {
-          const buyPct = (row.buyVol / maxVol) * 100;
-          const sellPct = (row.sellVol / maxVol) * 100;
-          return (
-            <div
-              key={row.price}
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-1 border-b border-card-border px-2 py-1">
+        <button
+          type="button"
+          onClick={() => centreOnPrice()}
+          disabled={currentRowPrice == null}
+          data-testid="ladder-jump-to-price"
+          className="inline-flex items-center gap-1 whitespace-nowrap rounded border border-card-border bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-muted transition-colors hover:border-accent hover:text-foreground disabled:opacity-40"
+        >
+          <Crosshair className="h-3 w-3" />
+          {t("goldSignals.jumpToPrice")}
+        </button>
+        <label className="inline-flex cursor-pointer select-none items-center gap-1.5 whitespace-nowrap text-[10px] font-medium text-muted hover:text-foreground">
+          <span>{t("goldSignals.hideEmptyPrices")}</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={hideEmpty}
+            aria-label={t("goldSignals.hideEmptyPrices")}
+            onClick={() => setHideEmpty(!hideEmpty)}
+            className={cn(
+              "relative inline-flex h-3.5 w-6 shrink-0 items-center rounded-full border transition-colors",
+              hideEmpty ? "border-accent bg-accent" : "border-border-strong bg-surface-3",
+            )}
+          >
+            <span
               className={cn(
-                "border-b border-white/[0.03] px-2 py-1.5 transition-colors duration-300",
-                row.inEntryZone && "bg-amber-500/10",
+                "inline-block h-2.5 w-2.5 rounded-full bg-white shadow-sm transition-transform",
+                hideEmpty ? "translate-x-[11px]" : "translate-x-[1px]",
               )}
-            >
-              <div className="flex items-center justify-between">
-                <span className={cn("tabular-nums font-semibold", row.inEntryZone && "text-amber-200")}>
-                  {row.price.toFixed(2)}
-                </span>
-                <span className="text-muted">{row.barCount} bars</span>
-              </div>
-              <div className="mt-1 flex h-1.5 overflow-hidden rounded-full bg-black/40">
+            />
+          </button>
+        </label>
+      </div>
+      <div
+        ref={scrollRef}
+        data-testid="orderflow-ladder-scroll"
+        className="relative min-h-0 flex-1 overflow-y-auto font-mono text-[10px]"
+      >
+        {items.length === 0 ? (
+          <p className="p-6 text-center text-muted">—</p>
+        ) : (
+          items.map((item) => {
+            if (item.kind === "gap") {
+              return (
                 <div
-                  className="bg-[#00ff88]/80 transition-all duration-500"
-                  style={{ width: `${buyPct}%` }}
-                />
+                  key={`gap-${item.from}`}
+                  className="flex items-center gap-2 border-b border-card-border/60 bg-background/60 px-2 py-0.5 text-[9px] text-muted/80"
+                  title={t("goldSignals.emptyPricesSkipped", { count: String(item.count) })}
+                >
+                  <span className="h-px flex-1 bg-card-border" />
+                  <span className="tabular-nums">
+                    {item.from.toFixed(2)}–{item.to.toFixed(2)}
+                  </span>
+                  <span className="text-muted/60">
+                    · {t("goldSignals.emptyPricesSkipped", { count: String(item.count) })}
+                  </span>
+                  <span className="h-px flex-1 bg-card-border" />
+                </div>
+              );
+            }
+            const row = item.row;
+            if (item.empty) {
+              return (
                 <div
-                  className="bg-[#ff3355]/80 transition-all duration-500"
-                  style={{ width: `${sellPct}%` }}
-                />
+                  key={row.price}
+                  data-price={row.price}
+                  className={cn(
+                    "border-b border-l-2 border-b-white/[0.03] border-l-transparent px-2 py-1 text-muted/60",
+                    row.inEntryZone && "bg-amber-500/10",
+                    row.price === currentRowPrice && "border-l-accent bg-accent/10 text-foreground",
+                  )}
+                >
+                  <span className="tabular-nums">{row.price.toFixed(2)}</span>
+                </div>
+              );
+            }
+            const buyPct = (row.buyVol / maxVol) * 100;
+            const sellPct = (row.sellVol / maxVol) * 100;
+            return (
+              <div
+                key={row.price}
+                data-price={row.price}
+                className={cn(
+                  "border-b border-l-2 border-b-white/[0.03] border-l-transparent px-2 py-1.5 transition-colors duration-300",
+                  row.inEntryZone && "bg-amber-500/10",
+                  row.price === currentRowPrice && "border-l-accent bg-accent/10",
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <span className={cn("tabular-nums font-semibold", row.inEntryZone && "text-amber-200")}>
+                    {row.price.toFixed(2)}
+                  </span>
+                  <span className="text-muted">{row.barCount} bars</span>
+                </div>
+                <div className="mt-1 flex h-1.5 overflow-hidden rounded-full bg-black/40">
+                  <div
+                    className="bg-[#2ebd85]/80 transition-all duration-500"
+                    style={{ width: `${buyPct}%` }}
+                  />
+                  <div
+                    className="bg-[#ef5350]/80 transition-all duration-500"
+                    style={{ width: `${sellPct}%` }}
+                  />
+                </div>
+                <div className="mt-0.5 flex justify-between text-[9px]">
+                  <span className="font-semibold text-[#2ebd85]">
+                    {t("goldSignals.orderFlowBuy")} {formatVol(row.buyVol)}
+                  </span>
+                  <span className="font-semibold text-[#ef5350]">
+                    {t("goldSignals.orderFlowSell")} {formatVol(row.sellVol)}
+                  </span>
+                </div>
               </div>
-              <div className="mt-0.5 flex justify-between text-[9px]">
-                <span className="font-semibold text-[#00ff88]">
-                  {t("goldSignals.orderFlowBuy")} {formatVol(row.buyVol)}
-                </span>
-                <span className="font-semibold text-[#ff5577]">
-                  {t("goldSignals.orderFlowSell")} {formatVol(row.sellVol)}
-                </span>
-              </div>
-            </div>
-          );
-        })
-      )}
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }
@@ -459,20 +597,20 @@ function BarFlowTape({
   const { t } = useLocale();
 
   return (
-    <div className="flex w-full shrink-0 flex-col border-t border-[#1e2836] bg-[#0d1117] lg:w-[220px] lg:border-l lg:border-t-0">
-      <div className="border-b border-[#1e2836] px-3 py-2">
+    <div className="flex max-h-[45%] min-h-0 w-full shrink-0 flex-col border-t border-[#262d3d] bg-[#171c2a] lg:max-h-none lg:w-[220px] lg:border-l lg:border-t-0">
+      <div className="border-b border-[#262d3d] px-3 py-2">
         <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-300/90">
           {t("goldSignals.orderFlowTape")}
         </p>
         <p className="mt-0.5 text-[9px] text-muted">{t("goldSignals.orderFlowHint")}</p>
       </div>
-      <div className="grid shrink-0 grid-cols-[auto_1fr_auto_auto] gap-x-2 border-b border-[#1e2836] px-2 py-1.5 font-mono text-[8px] uppercase tracking-wider text-muted">
+      <div className="grid shrink-0 grid-cols-[auto_1fr_auto_auto] gap-x-2 border-b border-[#262d3d] px-2 py-1.5 font-mono text-[8px] uppercase tracking-wider text-muted">
         <span>{t("goldSignals.orderFlowTime")}</span>
         <span>{t("goldSignals.orderFlowDelta")}</span>
         <span className="text-right">{t("goldSignals.price")}</span>
         <span className="text-right">{t("goldSignals.orderFlowVol")}</span>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto font-mono text-[10px]">
+      <div className="min-h-0 flex-1 overflow-y-auto font-mono text-[10px]" data-testid="orderflow-tape-scroll">
         {rows.length === 0 ? (
           <p className="p-4 text-center text-muted">—</p>
         ) : (
@@ -501,7 +639,7 @@ function BarFlowTape({
                 <span
                   className={cn(
                     "font-semibold",
-                    r.delta >= 0 ? "text-[#00ff88]" : "text-[#ff4466]",
+                    r.delta >= 0 ? "text-[#2ebd85]" : "text-[#ef5350]",
                   )}
                 >
                   {r.delta >= 0 ? "+" : ""}
@@ -511,7 +649,7 @@ function BarFlowTape({
                   className={cn(
                     "text-right tabular-nums",
                     inEntry && "font-bold text-amber-200",
-                    !inEntry && (bullish ? "text-emerald-300/90" : "text-rose-300/90"),
+                    !inEntry && (bullish ? "text-success/90" : "text-danger/90"),
                   )}
                 >
                   {r.close.toFixed(2)}

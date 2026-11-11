@@ -1,9 +1,9 @@
-/** Product display name — Grok Trading */
+/** Product display name — AXPM */
 export const BRAND = {
-  zh: "Grok Trading",
-  en: "Grok Trading",
-  shortZh: "Grok",
-  shortEn: "Grok",
+  zh: "AXPM",
+  en: "AXPM",
+  shortZh: "AXPM",
+  shortEn: "AXPM",
 } as const;
 
 export function brandName(locale: "zh" | "en") {

@@ -52,19 +52,19 @@ export function GoldDeskMainView({
   const showHeatmapEmpty = !signal && !loading && showHeatmap && !hasLiveDesk;
 
   return (
-    <div className="gold-desk-panel flex min-h-[480px] flex-col overflow-hidden border-[#1e2836] bg-[#0a0e14] xl:min-h-[620px]">
+    <div className="gold-desk-panel flex h-full min-h-0 min-w-0 flex-col overflow-hidden border-[#262d3d] bg-[#171c2a]">
       <div className="gold-desk-panel-header">
         <span className="flex items-center gap-2">
-          <Radio className="h-3 w-3 text-accent" />
+          <Radio className="h-3 w-3 text-muted" />
           {t(viewLabelKey(view, heatmapMode))}
         </span>
         {signal ? (
-          <span className="rounded-md border border-accent/25 bg-accent/10 px-2 py-0.5 font-mono text-[10px] text-accent shadow-[0_0_12px_-4px_rgba(212,168,83,0.4)]">
+          <span className="rounded border border-card-border bg-surface-2 px-2 py-0.5 text-[11px] font-medium normal-case tracking-normal tabular-nums text-foreground">
             {t(`goldSignals.strength.${signal.strength}`)} · {signal.confidence}%
           </span>
         ) : null}
       </div>
-      <div className="relative min-h-0 flex-1 bg-[#0a0e14]">
+      <div className="relative min-h-0 flex-1 bg-[#171c2a]">
         {view === "chart" ? (
           <GoldTradingChart signal={signal} className="h-full" />
         ) : view === "orderflow" ? (

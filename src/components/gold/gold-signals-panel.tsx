@@ -11,6 +11,7 @@ import type { DeskView, HeatmapMode } from "@/components/gold/gold-desk-types";
 import { GoldPriceLadder } from "@/components/gold/gold-price-ladder";
 import { GoldSignalHistory } from "@/components/gold/gold-signal-history";
 import { GoldSignalSidebar } from "@/components/gold/gold-signal-sidebar";
+import { SignalRiskReviewCard } from "@/components/gold/signal-risk-review-card";
 import { GoldTickerStrip } from "@/components/gold/gold-ticker-strip";
 import { HyperliquidAccountCard } from "@/components/gold/hyperliquid-account-card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -43,7 +44,7 @@ function MarketSignalsDesk({ instrument }: { instrument: SignalInstrument }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${config.apiBase}?limit=12`, { credentials: "include" });
+      const res = await fetch(`${config.apiBase}?limit=20`, { credentials: "include" });
       const data = (await res.json().catch(() => null)) as
         | { signals?: DeskSignal[]; error?: string }
         | null;
@@ -177,7 +178,7 @@ function MarketSignalsDesk({ instrument }: { instrument: SignalInstrument }) {
   const prev = signals[1] ?? null;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 px-4 md:px-6 lg:px-8">
+    <div className="flex min-w-0 flex-1 flex-col gap-3 px-4 py-3 md:px-6 lg:px-8">
       <PageHeader
         badge={config.badge}
         title={t(`${i18nNs}.title`)}
@@ -193,7 +194,7 @@ function MarketSignalsDesk({ instrument }: { instrument: SignalInstrument }) {
             <TrendingUp className="h-4 w-4 text-accent" />
           )
         }
-        className="mb-2"
+        className="mb-0 shrink-0 border-b-0 pb-0 [&_h1]:text-xl md:[&_h1]:text-2xl [&_p]:mt-0.5"
       />
 
       <GoldTickerStrip latest={latest} prev={prev} />
@@ -211,38 +212,51 @@ function MarketSignalsDesk({ instrument }: { instrument: SignalInstrument }) {
         onGenerate={() => void handleGenerate()}
       />
 
-      <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[minmax(0,1fr)_220px_300px]">
-        <GoldDeskMainView
-          view={view}
-          heatmapMode={heatmapMode}
-          signal={latest}
-          loading={loading}
-          i18nNs={i18nNs}
-        />
-        <GoldPriceLadder signal={latest} orderFlowMode={view === "orderflow"} />
-        <GoldSignalSidebar
-          latest={latest}
-          notes={notes}
-          message={message}
-          generating={generating}
-          dailyEnabled={dailyEnabled}
-          lastDailySent={lastDailySent}
-          telegramConfigured={telegramConfigured}
-          dailyBusy={dailyBusy}
-          i18nNs={i18nNs}
-          onNotesChange={setNotes}
-          onDailyToggle={() => void handleDailyToggle()}
-          onDailySendNow={() => void handleDailySendNow()}
-        />
+      <div className="grid min-w-0 shrink-0 grid-cols-1 gap-3 lg:h-[max(36rem,calc(100dvh-7rem))] lg:overflow-hidden lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,13.75rem)_minmax(0,20rem)]">
+        <section className="flex h-[max(30rem,80dvh)] min-w-0 flex-col overflow-hidden lg:h-auto lg:min-h-0">
+          <GoldDeskMainView
+            view={view}
+            heatmapMode={heatmapMode}
+            signal={latest}
+            loading={loading}
+            i18nNs={i18nNs}
+          />
+        </section>
+        <section className="hidden min-h-0 min-w-0 overflow-hidden xl:flex xl:flex-col">
+          <GoldPriceLadder signal={latest} orderFlowMode={view === "orderflow"} />
+        </section>
+        <aside className="relative z-0 isolate flex min-h-0 min-w-0 flex-col gap-3 overflow-x-hidden lg:overflow-hidden">
+          <div className="min-w-0 lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto">
+            <GoldSignalSidebar
+              latest={latest}
+              notes={notes}
+              message={message}
+              generating={generating}
+              dailyEnabled={dailyEnabled}
+              lastDailySent={lastDailySent}
+              telegramConfigured={telegramConfigured}
+              dailyBusy={dailyBusy}
+              i18nNs={i18nNs}
+              onNotesChange={setNotes}
+              onDailyToggle={() => void handleDailyToggle()}
+              onDailySendNow={() => void handleDailySendNow()}
+              afterTradePlan={
+                instrument === "gold" && latest ? (
+                  <SignalRiskReviewCard key={latest.id} signal={latest} />
+                ) : null
+              }
+            />
+          </div>
+          <GoldSignalHistory
+            i18nNs={i18nNs}
+            signals={signals}
+            onSelect={(s) => setSignals((prev) => [s, ...prev.filter((x) => x.id !== s.id)])}
+            className="max-h-[22rem] min-h-[10rem] shrink-0 lg:h-[min(22rem,42%)]"
+          />
+        </aside>
       </div>
 
-      <GoldSignalHistory
-        i18nNs={i18nNs}
-        signals={signals}
-        onSelect={(s) => setSignals((prev) => [s, ...prev.filter((x) => x.id !== s.id)])}
-      />
-
-      <p className="pb-2 text-[10px] leading-relaxed text-muted/70">{t(`${i18nNs}.disclaimer`)}</p>
+      <p className="shrink-0 pb-1 text-[10px] leading-relaxed text-muted/70">{t(`${i18nNs}.disclaimer`)}</p>
     </div>
   );
 }
@@ -255,18 +269,18 @@ export function GoldSignalsPanel() {
   const [instrument, setInstrument] = useState<SignalInstrument>(initial);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex gap-2 px-4 pt-4 md:px-6 lg:px-8">
+    <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex shrink-0 flex-wrap gap-0 border-b border-card-border bg-surface px-4 md:px-6 lg:px-8">
         {INSTRUMENTS.map((id) => (
           <button
             key={id}
             type="button"
             onClick={() => setInstrument(id)}
             className={cn(
-              "rounded-xl border px-4 py-2 font-mono text-xs font-semibold tracking-wide transition-colors",
+              "-mb-px border-b-2 px-3.5 py-2.5 text-[13px] font-medium transition-colors",
               instrument === id
-                ? "border-accent/40 bg-accent/10 text-accent"
-                : "border-white/[0.08] bg-white/[0.03] text-muted hover:text-foreground",
+                ? "border-accent text-foreground"
+                : "border-transparent text-muted hover:text-foreground",
             )}
           >
             {t(SIGNAL_INSTRUMENTS[id].tabKey)}

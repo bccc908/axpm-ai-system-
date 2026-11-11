@@ -3,6 +3,7 @@ import "server-only";
 import { randomUUID } from "crypto";
 import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
+import type { SignalRiskReview } from "@/lib/gold-signals/risk-review/types";
 import type { AtasGoldAlert, BookmapGoldAlert, GoldSignal, GoldSignalStore, Mt5GoldAlert } from "@/types/gold-signal";
 
 const DATA_DIR = path.join(process.cwd(), "data");
@@ -46,6 +47,24 @@ export async function appendGoldSignal(
   store.updated_at = row.created_at;
   await writeFile(STORE_PATH, JSON.stringify(store, null, 2), "utf8");
   return row;
+}
+
+export async function getGoldSignalById(id: string): Promise<GoldSignal | null> {
+  const store = await ensureStore();
+  return store.signals.find((s) => s.id === id) ?? null;
+}
+
+/** Attach (or replace) the Risk Manager Review on a stored signal. */
+export async function saveGoldSignalRiskReview(
+  id: string,
+  review: SignalRiskReview,
+): Promise<boolean> {
+  const store = await ensureStore();
+  const idx = store.signals.findIndex((s) => s.id === id);
+  if (idx < 0) return false;
+  store.signals[idx] = { ...store.signals[idx], risk_review: review };
+  await writeFile(STORE_PATH, JSON.stringify(store, null, 2), "utf8");
+  return true;
 }
 
 /**

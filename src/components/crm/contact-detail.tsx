@@ -267,7 +267,7 @@ export function ContactDetail({ clientId }: { clientId: string }) {
                 type="button"
                 disabled={savingNote || !noteTitle.trim()}
                 onClick={() => void addNote()}
-                className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50"
               >
                 {savingNote ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -298,7 +298,7 @@ export function ContactDetail({ clientId }: { clientId: string }) {
                 type="button"
                 disabled={savingTask || !taskTitle.trim()}
                 onClick={() => void addTask()}
-                className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-muted disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50"
               >
                 {savingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                 {t("crmPro.addTask")}

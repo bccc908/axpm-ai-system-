@@ -59,7 +59,7 @@ export function GoldDeskToolbar({
           <button
             type="button"
             onClick={onRefresh}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-muted transition-colors hover:border-accent/25 hover:text-foreground"
+            className="inline-flex items-center gap-1.5 rounded-md border border-card-border bg-surface px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:border-border-strong hover:text-foreground"
           >
             <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
             {t(`${i18nNs}.refresh`)}
@@ -68,7 +68,7 @@ export function GoldDeskToolbar({
             type="button"
             disabled={generating}
             onClick={onGenerate}
-            className="inline-flex items-center gap-2 rounded-xl btn-premium px-4 py-2 text-xs shadow-[0_0_24px_-4px_rgba(212,168,83,0.55)] disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-md btn-premium px-3.5 py-1.5 text-xs disabled:opacity-50"
           >
             {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
             {generating ? t(`${i18nNs}.generating`) : t(`${i18nNs}.generate`)}
@@ -77,7 +77,7 @@ export function GoldDeskToolbar({
       </div>
 
       {view === "heatmap" ? (
-        <div className="flex flex-wrap gap-1 rounded-lg border border-white/[0.06] bg-black/30 p-1">
+        <div className="flex flex-wrap gap-1 rounded-md border border-card-border bg-background p-0.5">
           {HEATMAP_MODES.map((m) => {
             const Icon = m.icon;
             const active = heatmapMode === m.id;
@@ -87,9 +87,9 @@ export function GoldDeskToolbar({
                 type="button"
                 onClick={() => onHeatmapModeChange(m.id)}
                 className={cn(
-                  "inline-flex items-center gap-1 rounded-md px-2 py-1 font-mono text-[10px] uppercase tracking-wide transition-colors",
+                  "inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition-colors",
                   active
-                    ? "bg-sky-500/15 text-sky-300"
+                    ? "bg-surface-3 text-foreground"
                     : "text-muted hover:bg-white/[0.04] hover:text-foreground",
                 )}
               >

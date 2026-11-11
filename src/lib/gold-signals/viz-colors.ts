@@ -1,16 +1,16 @@
-/** Vivid trading-desk palette (Bookmap / ATAS style) */
+/** Sober trading-desk palette (broker platform style) */
 export const VIZ = {
-  bg: "#0a0e14",
-  buy: "#00ff88",
-  buyDim: "#00cc6a",
-  sell: "#ff3355",
-  sellDim: "#ff1144",
-  cyan: "#00e5ff",
-  cyanBright: "#66f0ff",
-  gold: "#ffcc00",
-  goldBright: "#ffe566",
-  purple: "#c77dff",
-  orange: "#ff8800",
+  bg: "#171c2a",
+  buy: "#2ebd85",
+  buyDim: "#26a06f",
+  sell: "#ef5350",
+  sellDim: "#c94442",
+  cyan: "#71d2e0",
+  cyanBright: "#9fe0ea",
+  gold: "#d9a03f",
+  goldBright: "#e8bd6a",
+  purple: "#9a84e8",
+  orange: "#e08a3c",
 } as const;
 
 /** Target ~70% of heatmap cells in warm/red band */
