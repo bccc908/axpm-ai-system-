@@ -45,6 +45,7 @@ function isCronApi(pathname: string) {
     pathname.startsWith("/api/eth-signals/daily") ||
     pathname.startsWith("/api/hl-signals/daily") ||
     pathname.startsWith("/api/xau-signals/daily") ||
+    pathname.startsWith("/api/signals/approvals/poll") ||
     pathname.startsWith("/api/system/backup") ||
     pathname.startsWith("/api/groktagon/autopilot")
   );
