@@ -7,6 +7,7 @@ import { generateReplySuggestion } from "@/lib/ai/openai";
 import { getAgentTrainingBrief } from "@/lib/ai/agent-knowledge";
 import { getLlmProvider } from "@/lib/ai/llm-config";
 import { getReplyProvider, isOpenClawConfigured } from "@/lib/ai/openclaw-config";
+import { storePendingReplyDraft } from "@/lib/support/draft-approval";
 
 /** Allow slow OpenAI calls (default Next timeout is too short) */
 export const maxDuration = 60;
@@ -15,6 +16,7 @@ export const dynamic = "force-dynamic";
 const schema = z.object({
   channel: z.enum(["whatsapp", "wechat", "telegram", "email", "phone", "web"]),
   clientName: z.string().min(1),
+  clientId: z.string().optional(),
   customerQuestion: z.string().min(1).optional(),
   context: z.string().optional(),
   conversationHistory: z.string().optional(),
@@ -66,19 +68,43 @@ export async function POST(request: Request) {
 
       const usedTrainingDocs =
         Boolean(trainingBrief?.trim()) && Boolean(result.fallback);
+      const provider =
+        result.provider ??
+        (result.fallback ? "fallback" : preferOpenClaw ? "openclaw" : getLlmProvider());
+      const notice =
+        "notice" in result && typeof result.notice === "string"
+          ? result.notice
+          : null;
+      const draft = await storePendingReplyDraft({
+        channel: parsed.data.channel,
+        clientName: parsed.data.clientName,
+        clientId: parsed.data.clientId,
+        customerQuestion: parsed.data.customerQuestion.trim(),
+        conversationHistory: history || undefined,
+        replies: result.replies,
+        provider,
+        fallback: Boolean(result.fallback),
+        notice,
+        source: "reply_agent",
+      });
       return NextResponse.json({
         suggestions: result.replies,
         detectedLanguage: result.detectedLanguage,
         mode: result.fallback ? "fallback" : "agent",
         fallback: result.fallback ?? false,
-        provider: result.provider ?? (result.fallback ? "fallback" : preferOpenClaw ? "openclaw" : getLlmProvider()),
-        notice:
-          "notice" in result && typeof result.notice === "string"
-            ? result.notice
-            : null,
+        provider,
+        notice,
         usedTrainingDocs,
         openaiReachable: !result.fallback,
         llmReachable: !result.fallback,
+        draft: draft
+          ? {
+              id: draft.id,
+              status: draft.status,
+              notifiedTelegram: draft.notifiedTelegram,
+              telegramError: draft.telegramError,
+            }
+          : null,
       });
     }
 
