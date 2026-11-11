@@ -40,12 +40,11 @@ run() {
 
 run "Daily digest (Telegram)" "$BASE/api/digest/daily$QS"
 run "Daily fortune (Telegram)" "$BASE/api/fortune/daily$QS"
-run "Daily gold signal (Telegram)" "$BASE/api/gold-signals/daily$QS"
-run "Daily BTC signal (Telegram)" "$BASE/api/btc-signals/daily$QS"
-run "Daily ETH signal (Telegram)" "$BASE/api/eth-signals/daily$QS"
-run "Daily Hyperliquid signal (Telegram)" "$BASE/api/hl-signals/daily$QS"
+# Signals: gold + BTC only. Each goes to Kayden as "pending approval" (src/lib/signal-approval).
+# ETH / Hyperliquid / XAUUSDT daily signals are intentionally not scheduled.
+run "Daily gold signal (pending approval)" "$BASE/api/gold-signals/daily$QS"
+run "Daily BTC signal (pending approval)" "$BASE/api/btc-signals/daily$QS"
 run "Groktagon autopilot tick" "$BASE/api/groktagon/autopilot?tick=1${SECRET:+&secret=$SECRET}"
-run "Daily XAUUSDT signal (Telegram)" "$BASE/api/xau-signals/daily$QS"
 run "Email automation" "$BASE/api/email/automation$QS"
 run "Finance automation" "$BASE/api/finance/automation$QS"
 run "Social publish queue" "$BASE/api/social/publish$QS"
