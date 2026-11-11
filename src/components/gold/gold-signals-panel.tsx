@@ -43,7 +43,7 @@ function MarketSignalsDesk({ instrument }: { instrument: SignalInstrument }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${config.apiBase}?limit=12`, { credentials: "include" });
+      const res = await fetch(`${config.apiBase}?limit=20`, { credentials: "include" });
       const data = (await res.json().catch(() => null)) as
         | { signals?: DeskSignal[]; error?: string }
         | null;
@@ -177,7 +177,7 @@ function MarketSignalsDesk({ instrument }: { instrument: SignalInstrument }) {
   const prev = signals[1] ?? null;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 px-4 md:px-6 lg:px-8">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-3 md:overflow-hidden md:px-6 lg:px-8">
       <PageHeader
         badge={config.badge}
         title={t(`${i18nNs}.title`)}
@@ -193,7 +193,7 @@ function MarketSignalsDesk({ instrument }: { instrument: SignalInstrument }) {
             <TrendingUp className="h-4 w-4 text-accent" />
           )
         }
-        className="mb-2"
+        className="mb-0 shrink-0 [&_h1]:text-2xl md:[&_h1]:text-3xl [&_p]:mt-1 [&_.badge-shimmer]:py-0.5"
       />
 
       <GoldTickerStrip latest={latest} prev={prev} />
@@ -211,38 +211,46 @@ function MarketSignalsDesk({ instrument }: { instrument: SignalInstrument }) {
         onGenerate={() => void handleGenerate()}
       />
 
-      <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[minmax(0,1fr)_220px_300px]">
-        <GoldDeskMainView
-          view={view}
-          heatmapMode={heatmapMode}
-          signal={latest}
-          loading={loading}
-          i18nNs={i18nNs}
-        />
-        <GoldPriceLadder signal={latest} orderFlowMode={view === "orderflow"} />
-        <GoldSignalSidebar
-          latest={latest}
-          notes={notes}
-          message={message}
-          generating={generating}
-          dailyEnabled={dailyEnabled}
-          lastDailySent={lastDailySent}
-          telegramConfigured={telegramConfigured}
-          dailyBusy={dailyBusy}
-          i18nNs={i18nNs}
-          onNotesChange={setNotes}
-          onDailyToggle={() => void handleDailyToggle()}
-          onDailySendNow={() => void handleDailySendNow()}
-        />
+      <div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-3 overflow-hidden lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,13.75rem)_minmax(0,20rem)]">
+        <section className="flex min-h-[360px] min-w-0 flex-col overflow-hidden lg:min-h-0">
+          <GoldDeskMainView
+            view={view}
+            heatmapMode={heatmapMode}
+            signal={latest}
+            loading={loading}
+            i18nNs={i18nNs}
+          />
+        </section>
+        <section className="hidden min-h-0 min-w-0 overflow-hidden xl:flex xl:flex-col">
+          <GoldPriceLadder signal={latest} orderFlowMode={view === "orderflow"} />
+        </section>
+        <aside className="relative z-0 isolate flex min-h-0 min-w-0 flex-col gap-3 overflow-x-hidden lg:overflow-hidden">
+          <div className="min-w-0 lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto">
+            <GoldSignalSidebar
+              latest={latest}
+              notes={notes}
+              message={message}
+              generating={generating}
+              dailyEnabled={dailyEnabled}
+              lastDailySent={lastDailySent}
+              telegramConfigured={telegramConfigured}
+              dailyBusy={dailyBusy}
+              i18nNs={i18nNs}
+              onNotesChange={setNotes}
+              onDailyToggle={() => void handleDailyToggle()}
+              onDailySendNow={() => void handleDailySendNow()}
+            />
+          </div>
+          <GoldSignalHistory
+            i18nNs={i18nNs}
+            signals={signals}
+            onSelect={(s) => setSignals((prev) => [s, ...prev.filter((x) => x.id !== s.id)])}
+            className="max-h-[22rem] min-h-[10rem] shrink-0 lg:h-[min(22rem,42%)]"
+          />
+        </aside>
       </div>
 
-      <GoldSignalHistory
-        i18nNs={i18nNs}
-        signals={signals}
-        onSelect={(s) => setSignals((prev) => [s, ...prev.filter((x) => x.id !== s.id)])}
-      />
-
-      <p className="pb-2 text-[10px] leading-relaxed text-muted/70">{t(`${i18nNs}.disclaimer`)}</p>
+      <p className="shrink-0 pb-1 text-[10px] leading-relaxed text-muted/70">{t(`${i18nNs}.disclaimer`)}</p>
     </div>
   );
 }
@@ -255,15 +263,15 @@ export function GoldSignalsPanel() {
   const [instrument, setInstrument] = useState<SignalInstrument>(initial);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex gap-2 px-4 pt-4 md:px-6 lg:px-8">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex shrink-0 flex-wrap gap-1.5 px-4 pt-3 md:px-6 lg:px-8">
         {INSTRUMENTS.map((id) => (
           <button
             key={id}
             type="button"
             onClick={() => setInstrument(id)}
             className={cn(
-              "rounded-xl border px-4 py-2 font-mono text-xs font-semibold tracking-wide transition-colors",
+              "rounded-lg border px-3 py-1.5 font-mono text-[11px] font-semibold tracking-wide transition-colors",
               instrument === id
                 ? "border-accent/40 bg-accent/10 text-accent"
                 : "border-white/[0.08] bg-white/[0.03] text-muted hover:text-foreground",

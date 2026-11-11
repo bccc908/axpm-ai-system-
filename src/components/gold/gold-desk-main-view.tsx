@@ -52,7 +52,7 @@ export function GoldDeskMainView({
   const showHeatmapEmpty = !signal && !loading && showHeatmap && !hasLiveDesk;
 
   return (
-    <div className="gold-desk-panel flex min-h-[480px] flex-col overflow-hidden border-[#1e2836] bg-[#0a0e14] xl:min-h-[620px]">
+    <div className="gold-desk-panel flex h-full min-h-0 min-w-0 flex-col overflow-hidden border-[#1e2836] bg-[#0a0e14]">
       <div className="gold-desk-panel-header">
         <span className="flex items-center gap-2">
           <Radio className="h-3 w-3 text-accent" />

@@ -23,7 +23,7 @@ export function GoldPriceLadder({
   );
 
   return (
-    <div className="gold-desk-panel hidden flex-col overflow-hidden xl:flex">
+    <div className="gold-desk-panel flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       <div className="gold-desk-panel-header">
         <span>{orderFlowMode ? t("goldSignals.orderFlowByPrice") : t("goldSignals.priceLadder")}</span>
         <span className="font-mono normal-case tracking-normal text-muted">

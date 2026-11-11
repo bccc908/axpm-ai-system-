@@ -50,19 +50,19 @@ export function GoldSignalSidebar({
   const rr = latest ? computeRiskReward(latest) : null;
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex min-w-0 flex-col gap-3 overflow-x-hidden">
       {latest ? (
         <>
-          <div className="gold-desk-panel gold-trade-plan p-4">
+          <div className="gold-desk-panel gold-trade-plan min-w-0 overflow-hidden p-4">
             <div className="flex items-start justify-between gap-3">
               <p className="gold-trade-plan-title">{t(`${i18nNs}.tradeSetup`)}</p>
               <span className="shrink-0 font-mono text-[11px] text-muted/90">
                 {formatSignalTime(latest.created_at, locale)}
               </span>
             </div>
-            <p className="gold-trade-plan-thesis">{latest.thesis}</p>
+            <p className="gold-trade-plan-thesis break-words">{latest.thesis}</p>
             {latest.spread ? (
-              <div className="mt-3 grid grid-cols-3 gap-2 border-t border-white/[0.06] pt-3 font-mono text-[11px]">
+              <div className="mt-3 grid min-w-0 grid-cols-3 gap-2 border-t border-white/[0.06] pt-3 font-mono text-[11px]">
                 <div>
                   <p className="text-muted">XAUUSD</p>
                   <p className="text-foreground">${latest.spread.xauusd.toFixed(2)}</p>
@@ -133,7 +133,7 @@ export function GoldSignalSidebar({
                     className="flex gap-2 rounded-lg border border-white/[0.05] bg-white/[0.02] px-2.5 py-2 text-xs leading-relaxed text-muted"
                   >
                     <span className="shrink-0 font-mono text-[10px] text-accent/70">{i + 1}</span>
-                    <span>{item}</span>
+                    <span className="min-w-0 break-words">{item}</span>
                   </li>
                 ))}
               </ul>
@@ -144,7 +144,7 @@ export function GoldSignalSidebar({
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-300/90">
               {t(`${i18nNs}.tapePlaybook`)}
             </p>
-            <p className="mt-2 text-xs leading-relaxed text-muted whitespace-pre-wrap">
+            <p className="mt-2 min-w-0 break-words text-xs leading-relaxed text-muted whitespace-pre-wrap">
               {latest.bookmap_playbook}
             </p>
           </div>
@@ -156,7 +156,7 @@ export function GoldSignalSidebar({
                 <p className="text-[9px] font-semibold uppercase tracking-wider text-rose-300/80">
                   {t(`${i18nNs}.invalidation`)}
                 </p>
-                <p className="mt-1 text-xs text-muted">{latest.invalidation}</p>
+                <p className="mt-1 min-w-0 break-words text-xs text-muted">{latest.invalidation}</p>
               </div>
             </div>
           ) : null}
@@ -244,7 +244,7 @@ function DailyAutomationCard({
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300/90">
             {t(`${i18nNs}.dailyTitle`)}
           </p>
-          <p className="mt-1 text-[11px] leading-relaxed text-muted">{t(`${i18nNs}.dailyDesc`)}</p>
+          <p className="mt-1 min-w-0 break-words text-[11px] leading-relaxed text-muted">{t(`${i18nNs}.dailyDesc`)}</p>
         </div>
         <button
           type="button"

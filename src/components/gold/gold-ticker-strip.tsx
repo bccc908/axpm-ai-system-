@@ -42,7 +42,7 @@ export function GoldTickerStrip({
         : "spreadSignals.leaderAligned";
 
   return (
-    <div className="gold-ticker-strip flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 md:px-5">
+    <div className="gold-ticker-strip flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 overflow-hidden px-3 py-2.5 md:px-4">
       {instrument === "spread" && spread ? (
         <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
           <div>
@@ -96,7 +96,7 @@ export function GoldTickerStrip({
         </span>
         <span
           className={cn(
-            "font-mono text-3xl font-semibold tabular-nums tracking-tight text-foreground transition-colors duration-300 md:text-4xl",
+            "font-mono text-2xl font-semibold tabular-nums tracking-tight text-foreground transition-colors duration-300 md:text-3xl",
             flashKey > 0 && "text-accent",
           )}
           key={flashKey}
