@@ -31,6 +31,7 @@ export function GoldSignalSidebar({
   onNotesChange,
   onDailyToggle,
   onDailySendNow,
+  afterTradePlan,
 }: {
   latest: DeskSignal | null;
   notes: string;
@@ -44,6 +45,8 @@ export function GoldSignalSidebar({
   onNotesChange: (v: string) => void;
   onDailyToggle: () => void;
   onDailySendNow: () => void;
+  /** Rendered directly under the trade plan (e.g. the Risk review card) */
+  afterTradePlan?: React.ReactNode;
 }) {
   const { t, locale } = useLocale();
   const [showSetup, setShowSetup] = useState(false);
@@ -115,6 +118,8 @@ export function GoldSignalSidebar({
               </details>
             ) : null}
           </div>
+
+          {afterTradePlan}
 
           {latest.ok_brain_map ? (
             <OkBrainMapCard map={latest.ok_brain_map} i18nNs={i18nNs} />
