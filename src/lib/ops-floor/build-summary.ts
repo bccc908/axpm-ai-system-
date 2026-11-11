@@ -89,7 +89,7 @@ const ROSTER: Array<{
   { id: "agent-5", name: "Vega", floor: 2, module: "eth", role_en: "ETH signals", role_zh: "ETH 信号", href: "/dashboard/gold-signals?tab=eth" },
   { id: "agent-6", name: "Echo", floor: 2, module: "grok", role_en: "Groktagon / Hyperliquid", role_zh: "Groktagon / Hyperliquid", href: "/dashboard/groktagon" },
   { id: "agent-7", name: "Juno", floor: 3, module: "followups", role_en: "CRM follow-ups", role_zh: "客户跟进", href: "/dashboard/crm" },
-  { id: "agent-8", name: "Kai", floor: 3, module: "reminders", role_en: "CRM reminders", role_zh: "客户提醒", href: "/dashboard/reminders" },
+  { id: "agent-8", name: "AH BAO", floor: 3, module: "reminders", role_en: "CRM reminders", role_zh: "客户提醒", href: "/dashboard/reminders" },
   { id: "agent-9", name: "Pixel", floor: 0, module: "inbox", role_en: "Inbox & reply", role_zh: "收件箱与回复", href: "/dashboard/conversations" },
   { id: "agent-10", name: "Sage", floor: 4, module: "bills", role_en: "Bill reminders", role_zh: "账单提醒", href: "/dashboard/finance" },
   { id: "agent-11", name: "Bolt", floor: 4, module: "usdt", role_en: "USDT checker", role_zh: "USDT 查询", href: "/dashboard/usdt" },

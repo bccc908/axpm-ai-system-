@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   });
 
   const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE, token, sessionCookieOptions());
+  cookieStore.set(SESSION_COOKIE, token, sessionCookieOptions(undefined, request));
 
   return NextResponse.json({
     ok: true,

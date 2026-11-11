@@ -46,6 +46,11 @@ export async function sendEmail(
         pass: config.credentials.pass,
       },
       tls: { minVersion: "TLSv1.2" },
+      // DigitalOcean blocks outbound SMTP until a support ticket is approved.
+      // Fail fast so daily cron does not hang on a connection timeout.
+      connectionTimeout: 15_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 15_000,
     });
 
     const info = await transporter.sendMail({
