@@ -72,7 +72,7 @@ let demoEnabled = DEMO_MODE;
  * Status colors map below; add more statuses as needed.
  * ============================================================ */
 const STATUS_COLORS = { working: 0x4ff0ff, idle: 0x8a97b3, busy: 0xb07cff, error: 0xff4f6d };
-const NAMES = ['Atlas', 'Nova', 'Orion', 'Lyra', 'Vega', 'Echo', 'Juno', 'Kai', 'Pixel', 'Sage', 'Bolt', 'Iris', 'Rex', 'Zed', 'Mira'];
+const NAMES = ['Atlas', 'Nova', 'Orion', 'Lyra', 'Vega', 'Echo', 'Juno', 'AH BAO', 'Pixel', 'Sage', 'Bolt', 'Iris', 'Rex', 'Zed', 'Mira'];
 const ROLES = ['Planner', 'Coder', 'Researcher', 'Reviewer', 'Ops', 'Data Analyst', 'Support', 'Designer', 'QA', 'Writer'];
 const TASKS = ['Refactor auth module', 'Summarize tickets', 'Index knowledge base', 'Review PR #42', 'Train embeddings',
   'Draft weekly report', 'Triage alerts', 'Sync CRM records', 'Run test suite', 'Optimize SQL query',

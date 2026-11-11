@@ -93,10 +93,45 @@ export async function verifySessionToken(token: string | undefined | null): Prom
   }
 }
 
-export function sessionCookieOptions(maxAgeSeconds = SESSION_DAYS * 86400) {
+export function isHttpsRequest(request: { headers: Headers; url: string }): boolean {
+  const forwarded = request.headers.get("x-forwarded-proto");
+  if (forwarded) return forwarded.split(",")[0].trim().toLowerCase() === "https";
+  try {
+    return new URL(request.url).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/** Origin the browser actually used, including when Caddy proxies to 127.0.0.1:3000. */
+export function publicRequestOrigin(request: { headers: Headers; url: string }): string {
+  const host = (request.headers.get("x-forwarded-host") || request.headers.get("host") || "")
+    .split(",")[0]
+    .trim();
+  const proto = (
+    request.headers.get("x-forwarded-proto") ||
+    (request.url.startsWith("https:") ? "https" : "http")
+  )
+    .split(",")[0]
+    .trim()
+    .toLowerCase();
+  if (host) return `${proto}://${host}`;
+  try {
+    return new URL(request.url).origin;
+  } catch {
+    return "http://127.0.0.1:3000";
+  }
+}
+
+export function sessionCookieOptions(
+  maxAgeSeconds = SESSION_DAYS * 86400,
+  request?: { headers: Headers; url: string },
+) {
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    // Only mark Secure on real HTTPS. A production HTTP IP login would otherwise
+    // set a cookie the browser drops, and middleware redirects would bounce forever.
+    secure: request ? isHttpsRequest(request) : false,
     sameSite: "lax" as const,
     path: "/",
     maxAge: maxAgeSeconds,

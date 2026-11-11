@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { roleCanAccessPath } from "@/lib/auth/permissions";
-import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth/session";
+import { verifySessionToken, SESSION_COOKIE, publicRequestOrigin } from "@/lib/auth/session";
 
 const PUBLIC_PAGE_PREFIXES = ["/login", "/signup", "/register", "/widget"];
 
@@ -35,9 +35,17 @@ function isCronApi(pathname: string) {
   return (
     pathname.startsWith("/api/digest/") ||
     pathname.startsWith("/api/email/automation") ||
+    pathname.startsWith("/api/email/send-digest") ||
+    pathname.startsWith("/api/email/send-fortune") ||
     pathname.startsWith("/api/finance/automation") ||
     pathname.startsWith("/api/social/publish") ||
     pathname.startsWith("/api/fortune/daily") ||
+    pathname.startsWith("/api/gold-signals/daily") ||
+    pathname.startsWith("/api/btc-signals/daily") ||
+    pathname.startsWith("/api/eth-signals/daily") ||
+    pathname.startsWith("/api/hl-signals/daily") ||
+    pathname.startsWith("/api/xau-signals/daily") ||
+    pathname.startsWith("/api/system/backup") ||
     pathname.startsWith("/api/groktagon/autopilot")
   );
 }
@@ -60,7 +68,7 @@ export async function middleware(request: NextRequest) {
       const token = request.cookies.get(SESSION_COOKIE)?.value;
       const session = await verifySessionToken(token);
       if (session) {
-        return NextResponse.redirect(new URL("/dashboard", request.url));
+        return NextResponse.redirect(new URL("/dashboard", publicRequestOrigin(request)));
       }
     }
     return NextResponse.next();
@@ -77,7 +85,7 @@ export async function middleware(request: NextRequest) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const loginUrl = new URL("/login", request.url);
+    const loginUrl = new URL("/login", publicRequestOrigin(request));
     if (pathname.startsWith("/dashboard")) {
       loginUrl.searchParams.set("next", pathname);
     }
@@ -85,7 +93,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (pathname.startsWith("/dashboard") && !roleCanAccessPath(session.role, pathname)) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/dashboard", publicRequestOrigin(request)));
   }
 
   return NextResponse.next();

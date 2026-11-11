@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       name: user.name,
     });
     const cookieStore = await cookies();
-    cookieStore.set(SESSION_COOKIE, token, sessionCookieOptions());
+    cookieStore.set(SESSION_COOKIE, token, sessionCookieOptions(undefined, request));
     return NextResponse.json({ ok: true, user });
   } catch (error) {
     return NextResponse.json(

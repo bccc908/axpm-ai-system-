@@ -5,15 +5,17 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-BASE="${NEXT_PUBLIC_APP_URL:-http://localhost:3000}"
+# Hit the local Next process. NEXT_PUBLIC_APP_URL may be a public hostname
+# that is not yet pointed at this server (cron would then fail or hit the old box).
+BASE="${AXPM_CRON_BASE:-http://127.0.0.1:3000}"
 SECRET="${CRON_SECRET:-}"
 
 if [[ -f .env.local ]]; then
   # shellcheck disable=SC1091
   set -a
-  source <(grep -E '^(CRON_SECRET|NEXT_PUBLIC_APP_URL)=' .env.local | sed 's/^/export /')
+  source <(grep -E '^(CRON_SECRET|AXPM_CRON_BASE)=' .env.local | sed 's/^/export /')
   set +a
-  BASE="${NEXT_PUBLIC_APP_URL:-$BASE}"
+  BASE="${AXPM_CRON_BASE:-$BASE}"
   SECRET="${CRON_SECRET:-$SECRET}"
 fi
 
