@@ -24,7 +24,8 @@ function envDailyEnabled(): boolean {
   const v = process.env.BTC_DAILY_TELEGRAM?.trim().toLowerCase();
   if (v === "0" || v === "false" || v === "off") return false;
   if (v === "1" || v === "true" || v === "on") return true;
-  return Boolean(process.env.TELEGRAM_BOT_TOKEN?.trim() && process.env.TELEGRAM_CHAT_ID?.trim());
+  // Default OFF: a missing automation file must never switch daily sends on by itself.
+  return false;
 }
 
 function defaultAutomation(): BtcSignalAutomation {
