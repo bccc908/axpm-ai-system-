@@ -51,3 +51,8 @@ export function openAiErrorMessage(error: unknown): string {
   }
   return `${name} request failed`;
 }
+
+export function isInsufficientLlmBalance(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error ?? "");
+  return /(?:\b402\b|insufficient balance)/i.test(msg);
+}

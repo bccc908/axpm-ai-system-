@@ -3,7 +3,7 @@ import { z } from "zod";
 import { openAiErrorMessage } from "@/lib/ai/client";
 import { generateCustomerReply } from "@/lib/ai/customer-reply";
 import { generateDeepSeekCustomerReply } from "@/lib/ai/deepseek-reply";
-import { generateReplySuggestion } from "@/lib/ai/openai";
+import { generateReplySuggestionSafe } from "@/lib/ai/openai";
 import { getAgentTrainingBrief } from "@/lib/ai/agent-knowledge";
 import { getLlmProvider } from "@/lib/ai/llm-config";
 import { getReplyProvider, isOpenClawConfigured } from "@/lib/ai/openclaw-config";
@@ -108,14 +108,39 @@ export async function POST(request: Request) {
       });
     }
 
-    const suggestions = await generateReplySuggestion({
+    const legacy = await generateReplySuggestionSafe({
       channel: parsed.data.channel,
       clientName: parsed.data.clientName,
       context: history || "General follow-up",
       language: parsed.data.language,
     });
-
-    return NextResponse.json({ suggestions, mode: "legacy" });
+    const legacyDraft = await storePendingReplyDraft({
+      channel: parsed.data.channel,
+      clientName: parsed.data.clientName,
+      clientId: parsed.data.clientId,
+      customerQuestion: history || "General follow-up",
+      conversationHistory: history || undefined,
+      replies: legacy.suggestions,
+      provider: legacy.provider,
+      fallback: legacy.fallback,
+      notice: legacy.notice,
+      source: "reply_agent",
+    });
+    return NextResponse.json({
+      suggestions: legacy.suggestions,
+      mode: "legacy",
+      fallback: legacy.fallback,
+      provider: legacy.provider,
+      notice: legacy.notice,
+      draft: legacyDraft
+        ? {
+            id: legacyDraft.id,
+            status: legacyDraft.status,
+            notifiedTelegram: legacyDraft.notifiedTelegram,
+            telegramError: legacyDraft.telegramError,
+          }
+        : null,
+    });
   } catch (error) {
     console.error("[AI Reply]", error);
     return NextResponse.json(
