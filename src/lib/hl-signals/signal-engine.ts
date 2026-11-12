@@ -1,7 +1,7 @@
 import "server-only";
 
 import { z } from "zod";
-import { deepSeekChat } from "@/lib/ai/deepseek-client";
+import { llmChat } from "@/lib/ai/deepseek-client";
 import { fetchHlSpotQuote, type HlSpotQuote } from "@/lib/hyperliquid/price";
 import { appendHlSignal } from "@/lib/hl-signals/store";
 import type { HlSignalBias, HlSignalStrength } from "@/types/hl-signal";
@@ -160,7 +160,7 @@ ${params.notes?.trim() ? `Trader notes: ${params.notes}\n` : ""}${news ? `\nMacr
 Generate a Hyperliquid BTC perpetual trading signal.`;
 
   const callAi = (json: boolean) =>
-    deepSeekChat({
+    llmChat({
       messages: [
         { role: "system", content: buildSystemPrompt(params.locale) },
         { role: "user", content: userContent },

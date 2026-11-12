@@ -1,7 +1,7 @@
 import "server-only";
 
 import { z } from "zod";
-import { deepSeekChat } from "@/lib/ai/deepseek-client";
+import { llmChat } from "@/lib/ai/deepseek-client";
 import { fetchGoldSpotQuote, type GoldSpotQuote } from "@/lib/gold-signals/price";
 import { appendGoldSignal } from "@/lib/gold-signals/store";
 import type { GoldSignalBias, GoldSignalStrength } from "@/types/gold-signal";
@@ -155,7 +155,7 @@ ${params.notes?.trim() ? `Trader notes: ${params.notes}\n` : ""}${news ? `\nMacr
 Generate a professional gold trading signal for Bookmap order-flow trading.`;
 
   const callAi = (json: boolean) =>
-    deepSeekChat({
+    llmChat({
       messages: [
         { role: "system", content: buildSystemPrompt(params.locale) },
         { role: "user", content: userContent },

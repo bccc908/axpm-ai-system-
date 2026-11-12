@@ -1,7 +1,7 @@
 import "server-only";
 
 import { z } from "zod";
-import { deepSeekChat } from "@/lib/ai/deepseek-client";
+import { llmChat } from "@/lib/ai/deepseek-client";
 import { fetchBtcSpotQuote, type BtcSpotQuote } from "@/lib/btc-signals/price";
 import { appendBtcSignal } from "@/lib/btc-signals/store";
 import type { BtcSignalBias, BtcSignalStrength } from "@/types/btc-signal";
@@ -157,7 +157,7 @@ ${params.notes?.trim() ? `Trader notes: ${params.notes}\n` : ""}${news ? `\nMacr
 Generate a professional bitcoin trading signal.`;
 
   const callAi = (json: boolean) =>
-    deepSeekChat({
+    llmChat({
       messages: [
         { role: "system", content: buildSystemPrompt(params.locale) },
         { role: "user", content: userContent },

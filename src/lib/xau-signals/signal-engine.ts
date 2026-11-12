@@ -1,7 +1,7 @@
 import "server-only";
 
 import { z } from "zod";
-import { deepSeekChat } from "@/lib/ai/deepseek-client";
+import { llmChat } from "@/lib/ai/deepseek-client";
 import { fetchXauSpotQuote, type XauSpotQuote } from "@/lib/xau-signals/price";
 import { appendXauSignal } from "@/lib/xau-signals/store";
 import type { XauSignalBias, XauSignalStrength } from "@/types/xau-signal";
@@ -155,7 +155,7 @@ ${params.notes?.trim() ? `Trader notes: ${params.notes}\n` : ""}${news ? `\nMacr
 Generate a professional XAUUSDT gold trading signal.`;
 
   const callAi = (json: boolean) =>
-    deepSeekChat({
+    llmChat({
       messages: [
         { role: "system", content: buildSystemPrompt(params.locale) },
         { role: "user", content: userContent },
