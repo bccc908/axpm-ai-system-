@@ -1,6 +1,6 @@
 import "server-only";
 
-import { sendTelegramMessage } from "@/lib/integrations/telegram";
+import { requestSignalApproval } from "@/lib/signal-approval";
 import { formatOkBrainMap } from "@/lib/market-signals/ok-brain-map";
 import type { EthSignal } from "@/types/eth-signal";
 
@@ -49,6 +49,11 @@ export function formatEthSignalTelegram(
     .join("\n");
 }
 
+/** Sends ONLY to the approver (Kayden) as "pending approval" with Approve / Reject buttons. */
 export async function sendEthSignalTelegram(signal: EthSignal, opts?: { daily?: boolean }) {
-  return sendTelegramMessage(formatEthSignalTelegram(signal, opts));
+  return requestSignalApproval({
+    engine: "eth",
+    signalId: signal.id,
+    html: formatEthSignalTelegram(signal, opts),
+  });
 }

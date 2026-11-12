@@ -1,6 +1,6 @@
 import "server-only";
 
-import { sendTelegramMessage } from "@/lib/integrations/telegram";
+import { requestSignalApproval } from "@/lib/signal-approval";
 import { formatOkBrainMap } from "@/lib/market-signals/ok-brain-map";
 import type { GoldSignal } from "@/types/gold-signal";
 
@@ -49,6 +49,11 @@ export function formatGoldSignalTelegram(
     .join("\n");
 }
 
+/** Sends ONLY to the approver (Kayden) as "pending approval" with Approve / Reject buttons. */
 export async function sendGoldSignalTelegram(signal: GoldSignal, opts?: { daily?: boolean }) {
-  return sendTelegramMessage(formatGoldSignalTelegram(signal, opts));
+  return requestSignalApproval({
+    engine: "gold",
+    signalId: signal.id,
+    html: formatGoldSignalTelegram(signal, opts),
+  });
 }

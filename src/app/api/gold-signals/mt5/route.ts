@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { assertLocalApiAuth, LocalApiAuthError } from "@/lib/local/local-api-auth";
 import { recordBridgePoll } from "@/lib/ops-floor/bridge-poll";
-import { getLatestGoldSignal, toMt5Alert } from "@/lib/gold-signals/store";
+import { getLatestApprovedGoldSignal, toMt5Alert } from "@/lib/gold-signals/store";
 
 export const dynamic = "force-dynamic";
 
@@ -17,9 +17,9 @@ export async function GET(request: Request) {
   }
 
   recordBridgePoll("mt5");
-  const signal = await getLatestGoldSignal();
+  const signal = await getLatestApprovedGoldSignal();
   if (!signal) {
-    return NextResponse.json({ alert: null, message: "no signal yet" });
+    return NextResponse.json({ alert: null, message: "no approved signal yet" });
   }
 
   return NextResponse.json({

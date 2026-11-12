@@ -1,6 +1,6 @@
 import "server-only";
 
-import { sendTelegramMessage } from "@/lib/integrations/telegram";
+import { requestSignalApproval } from "@/lib/signal-approval";
 import { formatOkBrainMap } from "@/lib/market-signals/ok-brain-map";
 import type { HlSignal } from "@/types/hl-signal";
 
@@ -46,6 +46,11 @@ export function formatHlSignalTelegram(signal: HlSignal, opts?: { daily?: boolea
     .join("\n");
 }
 
+/** Sends ONLY to the approver (Kayden) as "pending approval" with Approve / Reject buttons. */
 export async function sendHlSignalTelegram(signal: HlSignal, opts?: { daily?: boolean }) {
-  return sendTelegramMessage(formatHlSignalTelegram(signal, opts));
+  return requestSignalApproval({
+    engine: "hl",
+    signalId: signal.id,
+    html: formatHlSignalTelegram(signal, opts),
+  });
 }

@@ -7,6 +7,7 @@ cd "$ROOT"
 LABEL="com.axpm.automation"
 PLIST="$HOME/Library/LaunchAgents/${LABEL}.plist"
 CRON_CMD="cd \"$ROOT\" && /usr/bin/env bash scripts/cron-tick.sh >> .run/cron.log 2>&1"
+APPROVALS_CMD="cd \"$ROOT\" && /usr/bin/env bash scripts/approvals-tick.sh >> .run/approvals.log 2>&1"
 UPGRADE_CMD="cd \"$ROOT\" && /usr/bin/env bash scripts/upgrade-system.sh >> .run/upgrade.log 2>&1"
 
 mkdir -p "$ROOT/.run"
@@ -50,6 +51,7 @@ echo "  Includes: digest, fortune, gold signals, email, finance, social, auto-ba
 else
   (crontab -l 2>/dev/null | grep -v "axpm-ai-system" || true
    echo "0 9 * * * ${CRON_CMD}"
+   echo "* * * * * ${APPROVALS_CMD}"
    echo "0 3 * * 0 ${UPGRADE_CMD}") | crontab -
   echo "Installed crontab: daily 9:00 automation, weekly Sunday 3:00 upgrade"
 fi

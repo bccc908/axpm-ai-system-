@@ -1,3 +1,4 @@
+import type { WithApproval } from "@/lib/signal-approval/types";
 import type { OkBrainMap } from "@/lib/market-signals/ok-brain-map";
 import type { SignalRiskReview } from "@/lib/gold-signals/risk-review/types";
 
@@ -10,7 +11,7 @@ export interface GoldPriceZone {
   high: number;
 }
 
-export interface GoldSignal {
+export interface GoldSignal extends WithApproval {
   id: string;
   created_at: string;
   symbol: "XAUUSD";
