@@ -5,6 +5,14 @@ import {
   getDeepSeekModel,
   isDeepSeekConfigured,
 } from "@/lib/ai/deepseek-config";
+import {
+  getChatModel,
+  getLlmApiKey,
+  getLlmBaseURL,
+  getLlmDisplayName,
+  getLlmProvider,
+} from "@/lib/ai/llm-config";
+import { proxiedFetch } from "@/lib/ai/proxy-fetch";
 
 export type DeepSeekMessage = {
   role: "system" | "user" | "assistant";
@@ -52,7 +60,7 @@ export async function isDeepSeekReachable(): Promise<boolean> {
   }
 }
 
-export async function deepSeekChat(params: {
+export type ChatParams = {
   messages: DeepSeekMessage[];
   model?: string;
   json?: boolean;
@@ -60,20 +68,63 @@ export async function deepSeekChat(params: {
   maxTokens?: number;
   apiKey?: string;
   baseUrl?: string;
-}): Promise<
+};
+
+export type ChatResult =
   | { ok: true; content: string; model: string; usage?: unknown }
-  | { ok: false; error: string }
-> {
-  const apiKey = params.apiKey?.trim() || getDeepSeekApiKey();
+  | { ok: false; error: string };
+
+/** DeepSeek-only chat (kept for callers that need DeepSeek specifically). */
+export async function deepSeekChat(params: ChatParams): Promise<ChatResult> {
+  return chatCompletion(params, {
+    name: "DeepSeek",
+    keyEnv: "DEEPSEEK_API_KEY",
+    apiKey: params.apiKey?.trim() || getDeepSeekApiKey(),
+    baseUrl: params.baseUrl ?? getDeepSeekBaseURL(),
+    model: params.model ?? getDeepSeekModel(),
+    fetchImpl: fetch,
+    topUpHint: "top up at platform.deepseek.com",
+  });
+}
+
+/**
+ * Provider-neutral chat: follows AI_PROVIDER via llm-config
+ * (OpenAI or DeepSeek), same return shape as deepSeekChat.
+ */
+export async function llmChat(params: ChatParams): Promise<ChatResult> {
+  const provider = getLlmProvider();
+  if (provider === "deepseek") return deepSeekChat(params);
+  return chatCompletion(params, {
+    name: getLlmDisplayName(),
+    keyEnv: "OPENAI_API_KEY",
+    apiKey: params.apiKey?.trim() || getLlmApiKey(),
+    baseUrl: params.baseUrl ?? getLlmBaseURL(),
+    model: params.model ?? getChatModel(),
+    fetchImpl: proxiedFetch as typeof fetch,
+    topUpHint: "check billing at platform.openai.com",
+  });
+}
+
+async function chatCompletion(
+  params: ChatParams,
+  cfg: {
+    name: string;
+    keyEnv: string;
+    apiKey: string | null;
+    baseUrl: string;
+    model: string;
+    fetchImpl: typeof fetch;
+    topUpHint: string;
+  },
+): Promise<ChatResult> {
+  const apiKey = cfg.apiKey;
   if (!apiKey) {
-    return { ok: false, error: "DEEPSEEK_API_KEY not set in .env.local" };
+    return { ok: false, error: `${cfg.keyEnv} not set in .env.local` };
   }
 
-  const model = params.model ?? getDeepSeekModel();
-  const base = (params.baseUrl ?? getDeepSeekBaseURL()).replace(/\/$/, "");
-  const chatUrl = base.endsWith("/v1")
-    ? `${base}/chat/completions`
-    : `${base}/chat/completions`;
+  const model = cfg.model;
+  const base = cfg.baseUrl.replace(/\/$/, "");
+  const chatUrl = `${base}/chat/completions`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 90_000);
 
@@ -86,7 +137,7 @@ export async function deepSeekChat(params: {
     };
 
     const attempt = async (jsonMode: boolean) => {
-      const res = await fetch(chatUrl, {
+      const res = await cfg.fetchImpl(chatUrl, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -115,16 +166,22 @@ export async function deepSeekChat(params: {
     if (!res.ok) {
       const msg = data.error?.message ?? `HTTP ${res.status}`;
       if (res.status === 401) {
-        return { ok: false, error: "Invalid DEEPSEEK_API_KEY" };
+        return { ok: false, error: `Invalid ${cfg.keyEnv}` };
       }
       if (res.status === 402) {
         return {
           ok: false,
-          error: "Insufficient Balance — top up at platform.deepseek.com",
+          error: `Insufficient Balance — ${cfg.topUpHint}`,
         };
       }
       if (res.status === 429) {
-        return { ok: false, error: "DeepSeek rate limit — try again shortly" };
+        const quota = /quota|billing/i.test(msg);
+        return {
+          ok: false,
+          error: quota
+            ? `Insufficient Balance — ${cfg.name}: ${msg}`
+            : `${cfg.name} rate limit — try again shortly`,
+        };
       }
       return { ok: false, error: msg };
     }
@@ -165,7 +222,7 @@ export async function deepSeekChat(params: {
             : "";
       return {
         ok: false,
-        error: `DeepSeek returned an empty response${hint}`,
+        error: `${cfg.name} returned an empty response${hint}`,
       };
     }
 
@@ -177,9 +234,9 @@ export async function deepSeekChat(params: {
     };
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "DeepSeek request failed";
+      error instanceof Error ? error.message : `${cfg.name} request failed`;
     if (message.includes("abort")) {
-      return { ok: false, error: "DeepSeek request timed out" };
+      return { ok: false, error: `${cfg.name} request timed out` };
     }
     return { ok: false, error: message };
   } finally {

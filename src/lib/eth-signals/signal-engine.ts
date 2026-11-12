@@ -1,7 +1,7 @@
 import "server-only";
 
 import { z } from "zod";
-import { deepSeekChat } from "@/lib/ai/deepseek-client";
+import { llmChat } from "@/lib/ai/deepseek-client";
 import { fetchEthSpotQuote, type EthSpotQuote } from "@/lib/eth-signals/price";
 import { appendEthSignal } from "@/lib/eth-signals/store";
 import type { EthSignalBias, EthSignalStrength } from "@/types/eth-signal";
@@ -157,7 +157,7 @@ ${params.notes?.trim() ? `Trader notes: ${params.notes}\n` : ""}${news ? `\nMacr
 Generate a professional ethereum trading signal.`;
 
   const callAi = (json: boolean) =>
-    deepSeekChat({
+    llmChat({
       messages: [
         { role: "system", content: buildSystemPrompt(params.locale) },
         { role: "user", content: userContent },

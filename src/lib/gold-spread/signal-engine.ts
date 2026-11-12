@@ -1,7 +1,7 @@
 import "server-only";
 
 import { z } from "zod";
-import { deepSeekChat } from "@/lib/ai/deepseek-client";
+import { llmChat } from "@/lib/ai/deepseek-client";
 import { fetchGoldSpreadSnapshot } from "@/lib/gold-spread/quotes";
 import { appendGoldSpreadSignal } from "@/lib/gold-spread/store";
 import type { XauSignalBias, XauSignalStrength } from "@/types/xau-signal";
@@ -168,7 +168,7 @@ ${params.notes?.trim() ? `Trader notes: ${params.notes}\n` : ""}${news ? `\nMacr
 Explain the divergence and give an XAUUSDT-primary trade (or spread mean-reversion).`;
 
   const callAi = (json: boolean) =>
-    deepSeekChat({
+    llmChat({
       messages: [
         { role: "system", content: buildSystemPrompt(params.locale) },
         { role: "user", content: userContent },

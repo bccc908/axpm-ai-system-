@@ -1,8 +1,8 @@
 import "server-only";
 
 import { z } from "zod";
-import { deepSeekChat } from "@/lib/ai/deepseek-client";
-import { getDeepSeekModel, isDeepSeekConfigured } from "@/lib/ai/deepseek-config";
+import { llmChat } from "@/lib/ai/deepseek-client";
+import { getChatModel, getLlmProvider, isLlmConfigured } from "@/lib/ai/llm-config";
 import { fetchGoldOhlc } from "@/lib/gold-signals/chart-data";
 import { getGoldSignalById, saveGoldSignalRiskReview } from "@/lib/gold-signals/store";
 import {
@@ -157,7 +157,7 @@ Respond with ONLY a JSON object of this exact shape:
 function classifyFailure(error: string): Extract<RiskAiStatus, { state: "unavailable" }>["reason"] {
   const e = error.toLowerCase();
   if (e.includes("insufficient") || e.includes("balance") || e.includes("402")) return "insufficient_balance";
-  if (e.includes("not set") || e.includes("invalid deepseek_api_key")) return "not_configured";
+  if (e.includes("not set") || e.includes("invalid deepseek_api_key") || e.includes("invalid openai_api_key")) return "not_configured";
   return "request_failed";
 }
 
@@ -178,7 +178,7 @@ function enforceHardRules(ai: Omit<RiskAiReview, "overridden_by_rule" | "model">
 
 /**
  * Run the full Risk Manager Review for a signal: deterministic checks always,
- * AI review when DeepSeek is available. Never throws.
+ * AI review when the configured LLM (OpenAI or DeepSeek) is available. Never throws.
  * Reusable by other flows (e.g. the Telegram approval gate).
  */
 export async function reviewSignalRisk(
@@ -201,17 +201,21 @@ export async function reviewSignalRisk(
   if (opts.skipAi) {
     return { ...base, ai: null, ai_status: { state: "unavailable", reason: "request_failed", detail: "AI review skipped" } };
   }
-  if (!isDeepSeekConfigured()) {
+  if (!isLlmConfigured()) {
     return {
       ...base,
       ai: null,
-      ai_status: { state: "unavailable", reason: "not_configured", detail: "DEEPSEEK_API_KEY not set" },
+      ai_status: {
+        state: "unavailable",
+        reason: "not_configured",
+        detail: `${getLlmProvider() === "openai" ? "OPENAI_API_KEY" : "DEEPSEEK_API_KEY"} not set`,
+      },
     };
   }
 
   try {
     const prompt = buildRiskReviewPrompt({ signal, checks, context, locale });
-    const res = await deepSeekChat({
+    const res = await llmChat({
       messages: [
         { role: "system", content: prompt.system },
         { role: "user", content: prompt.user },
@@ -255,7 +259,7 @@ export async function reviewSignalRisk(
       },
       checks,
     );
-    return { ...base, ai: { ...ai, model: res.model || getDeepSeekModel() }, ai_status: { state: "ok" } };
+    return { ...base, ai: { ...ai, model: res.model || getChatModel() }, ai_status: { state: "ok" } };
   } catch (error) {
     return {
       ...base,
