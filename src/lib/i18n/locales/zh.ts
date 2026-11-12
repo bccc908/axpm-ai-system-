@@ -333,7 +333,7 @@ export const zh: TranslationDict = {
     notesPlaceholder: "目标、顾虑、希望解读的背景...",
     saveProfile: "保存资料",
     profileSaved: "已保存",
-    readTitle: "求一签",
+    readTitle: "开卦",
     readDesc: "选择主题或占卜体系",
     readDescCombined: "八字+称骨+紫微+梅花+易经+星座+数字+塔罗，九系合一解读",
     combinedHint: "九系依次解读再交叉对照，输出统一结论（约 30–50 秒）",
