@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { redactTelegramSecrets } from "@/lib/integrations/telegram";
 import { pollApprovalCallbacks } from "@/lib/signal-approval";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const result = await pollApprovalCallbacks();
-  if (!result.ok) return NextResponse.json({ error: result.error }, { status: 502 });
+  if (!result.ok) {
+    const body = {
+      error: redactTelegramSecrets(result.error),
+      error_code: result.error_code,
+      description: result.description === null ? null : redactTelegramSecrets(result.description),
+      http_status: result.http_status,
+      attempts: result.attempts,
+    };
+    // pm2 keeps stderr: this line is what explains a 502 later (409 conflict vs Telegram/network).
+    console.error(`[approvals/poll] getUpdates failed ${JSON.stringify(body)}`);
+    return NextResponse.json(body, { status: 502 });
+  }
   return NextResponse.json(result);
 }

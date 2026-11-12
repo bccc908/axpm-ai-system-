@@ -111,7 +111,16 @@ export async function pollApprovalCallbacks() {
     limit: 100,
     allowed_updates: ["callback_query"],
   });
-  if (!res.ok) return { ok: false as const, error: res.error };
+  if (!res.ok) {
+    return {
+      ok: false as const,
+      error: res.error,
+      error_code: res.error_code ?? null,
+      description: res.description ?? null,
+      http_status: res.http_status ?? null,
+      attempts: res.attempts,
+    };
+  }
 
   const outcomes: CallbackOutcome[] = [];
   let next = offset;
