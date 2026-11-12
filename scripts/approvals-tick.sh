@@ -22,13 +22,23 @@ if [[ -z "$SECRET" ]]; then
   exit 1
 fi
 
-code="$(curl -s -o /tmp/axpm-approvals.json -w "%{http_code}" -X POST \
-  -H "Authorization: Bearer $SECRET" "$BASE/api/signals/approvals/poll" || echo 000)"
+OUT="$(mktemp "${TMPDIR:-/tmp}/axpm-approvals.XXXXXX")"
+trap 'rm -f "$OUT"' EXIT
+
+# --max-time > the app's 10s Telegram timeout + one retry, so curl does not give up first.
+code="$(curl -s --max-time 30 -o "$OUT" -w "%{http_code}" -X POST \
+  -H "Authorization: Bearer $SECRET" "$BASE/api/signals/approvals/poll" || true)"
+[[ "$code" =~ ^[0-9]{3}$ ]] || code=000
 if [[ "$code" != "200" ]]; then
   echo "$(date -Is) approvals-tick: HTTP $code" >&2
+  # One line, bot token redacted, ~500 chars: enough to tell a 409 conflict from a Telegram/network 5xx.
+  body="$(tr '\r\n\t' '   ' < "$OUT" 2>/dev/null \
+    | sed -E 's/bot[0-9]+:[A-Za-z0-9_-]+/bot<redacted>/g; s/[0-9]{6,}:[A-Za-z0-9_-]{30,}/<redacted>/g' \
+    | cut -c1-500 || true)"
+  echo "$(date -Is) approvals-tick: body ${body:-<empty>}" >&2
   exit 1
 fi
 # Log only when a tap was processed.
-if grep -q '"handled":true' /tmp/axpm-approvals.json; then
-  echo "$(date -Is) approvals-tick: $(cat /tmp/axpm-approvals.json)"
+if grep -q '"handled":true' "$OUT"; then
+  echo "$(date -Is) approvals-tick: $(cat "$OUT")"
 fi
