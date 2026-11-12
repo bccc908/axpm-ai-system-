@@ -1,5 +1,5 @@
 import type { Channel } from "@/types/database";
-import { getOpenAI, getChatModel } from "@/lib/ai/client";
+import { getOpenAI, getChatModel, openAiErrorMessage, isInsufficientLlmBalance, getLlmDisplayName, getLlmProvider } from "@/lib/ai/client";
 import { buildReplyAgentSystemPrompt } from "@/lib/ai/reply-agent-prompt";
 
 export async function generateReplySuggestion(params: {
@@ -41,6 +41,39 @@ export async function generateReplySuggestion(params: {
     .map((line) => line.replace(/^\d+[\.\)]\s*/, "").trim())
     .filter(Boolean)
     .slice(0, 3);
+}
+
+export async function generateReplySuggestionSafe(params: {
+  channel: Channel;
+  clientName: string;
+  context: string;
+  language?: string;
+}): Promise<{
+  suggestions: string[];
+  fallback: boolean;
+  notice: string | null;
+  provider: string;
+}> {
+  try {
+    const suggestions = await generateReplySuggestion(params);
+    return {
+      suggestions,
+      fallback: false,
+      notice: null,
+      provider: getLlmProvider(),
+    };
+  } catch (error) {
+    const raw = openAiErrorMessage(error);
+    const notice = isInsufficientLlmBalance(error)
+      ? `${getLlmDisplayName()} unreachable: ${raw}`
+      : raw;
+    return {
+      suggestions: getMockSuggestions(params.channel),
+      fallback: true,
+      notice,
+      provider: "fallback",
+    };
+  }
 }
 
 export async function summarizeConversation(params: {

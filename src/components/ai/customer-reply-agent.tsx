@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, Copy, Loader2, MessageSquare, Send, Sparkles } from "lucide-react";
+import { Check, Copy, Loader2, MessageSquare, Sparkles } from "lucide-react";
 import { useLocale } from "@/components/providers/locale-provider";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -49,10 +49,8 @@ export function CustomerReplyAgent({
   const [replies, setReplies] = useState<string[]>([]);
   const [detectedLanguage, setDetectedLanguage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [sending, setSending] = useState<number | null>(null);
   const [copied, setCopied] = useState<number | null>(null);
   const [status, setStatus] = useState<string | null>(null);
-  const [workReady, setWorkReady] = useState(false);
   const [agentPrompt, setAgentPrompt] = useState("");
   const [savingPrompt, setSavingPrompt] = useState(false);
   const [openaiReady, setOpenaiReady] = useState<boolean | null>(null);
@@ -61,6 +59,12 @@ export function CustomerReplyAgent({
   const [providerLabel, setProviderLabel] = useState("AI");
   const [usedDocFallback, setUsedDocFallback] = useState(false);
   const [replyNotice, setReplyNotice] = useState<string | null>(null);
+  const [draftInfo, setDraftInfo] = useState<{
+    id: string;
+    status: string;
+    notifiedTelegram: boolean;
+    telegramError: string | null;
+  } | null>(null);
 
   const selectedClient = clients.find((c) => c.id === clientId);
   const clientName =
@@ -112,13 +116,6 @@ export function CustomerReplyAgent({
   useEffect(() => {
     loadClients();
   }, [loadClients]);
-
-  useEffect(() => {
-    fetch("/api/wechat-work/status")
-      .then((r) => r.json())
-      .then((d) => setWorkReady(Boolean(d.canSend)))
-      .catch(() => setWorkReady(false));
-  }, []);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -191,6 +188,7 @@ export function CustomerReplyAgent({
     setReplies([]);
     setReplyNotice(null);
     setUsedDocFallback(false);
+    setDraftInfo(null);
     setStatus(t("ai.testGeneratingHint"));
 
     const controller = new AbortController();
@@ -205,6 +203,7 @@ export function CustomerReplyAgent({
         body: JSON.stringify({
           channel,
           clientName,
+          clientId: clientId || undefined,
           customerQuestion: customerQuestion.trim(),
           conversationHistory: history || undefined,
           clientNotes: selectedClient?.notes ?? undefined,
@@ -225,7 +224,21 @@ export function CustomerReplyAgent({
       setDetectedLanguage(data.detectedLanguage ?? null);
       setUsedDocFallback(Boolean(data.usedTrainingDocs));
       setReplyNotice(typeof data.notice === "string" ? data.notice : null);
-      setStatus(null);
+      if (data.draft?.id) {
+        setDraftInfo({
+          id: data.draft.id,
+          status: data.draft.status,
+          notifiedTelegram: Boolean(data.draft.notifiedTelegram),
+          telegramError: data.draft.telegramError ?? null,
+        });
+        setStatus(
+          data.draft.status === "pending_approval"
+            ? "Draft saved as pending approval. It has not been sent to the client."
+            : null,
+        );
+      } else {
+        setStatus(null);
+      }
     } catch (err) {
       setReplies([
         err instanceof Error && err.name === "AbortError"
@@ -245,24 +258,6 @@ export function CustomerReplyAgent({
     setTimeout(() => setCopied(null), 2000);
   }
 
-  async function sendViaWeChatWork(content: string, index: number) {
-    if (!clientId) return;
-    setSending(index);
-    try {
-      const res = await fetch("/api/wechat-work/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ client_id: clientId, content }),
-      });
-      if (res.ok) {
-        setStatus(t("ai.sent"));
-      } else {
-        setStatus(t("ai.sendFailed"));
-      }
-    } finally {
-      setSending(null);
-    }
-  }
 
   async function saveToLog(content: string) {
     if (!clientId) {
@@ -518,25 +513,26 @@ export function CustomerReplyAgent({
                       {t("ai.saveToLog")}
                     </button>
                   )}
-                  {channel === "wechat" && workReady && selectedClient?.wechat && clientId && (
-                    <button
-                      type="button"
-                      disabled={sending === i}
-                      onClick={() => sendViaWeChatWork(reply, i)}
-                      className="inline-flex items-center gap-1 text-xs text-accent disabled:opacity-50"
-                    >
-                      {sending === i ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Send className="h-3 w-3" />
-                      )}
-                      {t("ai.sendWeChat")}
-                    </button>
-                  )}
                 </div>
               </div>
             ))}
           </div>
+        )}
+
+        {draftInfo && (
+          <p className="text-xs text-amber-200">
+            Stored draft {draftInfo.id} · {draftInfo.status.replaceAll("_", " ")}
+            {draftInfo.notifiedTelegram
+              ? " · notice sent to Kayden's Telegram"
+              : draftInfo.telegramError
+                ? ` · Telegram notice not sent (${draftInfo.telegramError})`
+                : " · Telegram notice not sent"}
+            .{" "}
+            <Link href="/dashboard/conversations#reply-drafts" className="text-accent hover:underline">
+              Review in CRM
+            </Link>
+            . Approving does not send to the client.
+          </p>
         )}
 
         {!compact && (

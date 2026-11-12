@@ -189,6 +189,13 @@ export function ConversationalInbox() {
       const res = await fetch(`/api/inbox/sessions/${selectedId}/reply${q}`);
       const data = await res.json();
       if (data.draft) setReply(data.draft);
+      if (data.draftRecord?.id) {
+        setSendStatus(
+          data.draftRecord.status === "pending_approval"
+            ? "AI draft saved as pending approval. It has not been sent. Review it in Reply drafts — approving does not send. Type your own message to send a manual reply."
+            : `AI draft ${data.draftRecord.status}.`,
+        );
+      }
     } finally {
       setDrafting(false);
     }
