@@ -1,7 +1,8 @@
 import { mkdtempSync } from "fs";
 import { tmpdir } from "os";
 import path from "path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
+import { telegramRetryTiming } from "@/lib/integrations/telegram";
 import { POST } from "./route";
 
 const TOKEN = "987654321:AAFakeRouteTokenForTests_zyxwvutsrqpo";
@@ -9,6 +10,7 @@ const SECRET = "cron-test-secret";
 
 let fetchMock: ReturnType<typeof vi.fn>;
 let errSpy: ReturnType<typeof vi.spyOn>;
+let sleepSpy: MockInstance<(ms: number) => Promise<void>>;
 
 function req() {
   return new Request("http://127.0.0.1:3000/api/signals/approvals/poll", {
@@ -27,23 +29,17 @@ beforeEach(() => {
   fetchMock = vi.fn();
   vi.stubGlobal("fetch", fetchMock);
   errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-  vi.useFakeTimers();
+  // The retry wait resolves at once (no clock involved), so real file I/O in the route cannot race it.
+  sleepSpy = vi.spyOn(telegramRetryTiming, "sleep").mockResolvedValue(undefined);
 });
 afterEach(() => {
-  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   delete process.env.CRON_SECRET;
 });
 
-/** Run POST while stepping fake timers, so the ~2s retry sleep passes instantly. */
 async function call() {
-  let done = false;
-  const p = POST(req()).finally(() => {
-    done = true;
-  });
-  for (let i = 0; i < 100 && !done; i++) await vi.advanceTimersByTimeAsync(250);
-  const res = await p;
+  const res = await POST(req());
   return { res, body: await res.json() };
 }
 
@@ -63,6 +59,7 @@ describe("POST /api/signals/approvals/poll", () => {
       attempts: 1,
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(sleepSpy).not.toHaveBeenCalled();
     expect(logged()).toMatch(/\[approvals\/poll\] getUpdates failed .*"error_code":409/);
     expect(logged()).toContain("Conflict: terminated by other getUpdates request");
   });
@@ -75,6 +72,7 @@ describe("POST /api/signals/approvals/poll", () => {
     expect(res.status).toBe(502);
     expect(body).toMatchObject({ error_code: 502, description: "Bad Gateway", attempts: 2 });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(sleepSpy.mock.calls).toEqual([[2_000]]); // one ~2s wait between the two attempts
   });
 
   it("never puts the bot token in the log or the response", async () => {

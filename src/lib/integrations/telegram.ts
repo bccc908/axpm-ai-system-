@@ -70,7 +70,13 @@ export function redactTelegramSecrets(text: string): string {
   return out;
 }
 
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+/**
+ * The wait between the first attempt and the retry. Production always uses this setTimeout;
+ * tests replace `sleep` with vi.spyOn so they check the exact delay without waiting real time.
+ */
+export const telegramRetryTiming = {
+  sleep: (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
+};
 
 type Attempt<T> =
   | { kind: "ok"; result: T }
@@ -159,7 +165,7 @@ export async function telegramRequest<T>(
     if (r.kind === "ok") return { ok: true, result: r.result };
     // Never retry 409 (another getUpdates consumer / webhook set) or any other 4xx except 429.
     if (!r.retryable || attempt >= maxAttempts) return { ...r.error, attempts: attempt };
-    await sleep(r.delayMs);
+    await telegramRetryTiming.sleep(r.delayMs);
   }
 }
 
