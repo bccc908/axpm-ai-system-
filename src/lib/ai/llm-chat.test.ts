@@ -67,3 +67,22 @@ describe("llmChat provider routing", () => {
     if (!res.ok) expect(res.error).toMatch(/^Insufficient Balance/);
   });
 });
+
+describe("proxiedFetch", () => {
+  it("strips an explicit content-length header before fetching", async () => {
+    vi.resetModules();
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { proxiedFetch } = await import("@/lib/ai/proxy-fetch");
+    await proxiedFetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "content-length": "12", "Content-Type": "application/json" },
+      body: '{"a":"中文"}',
+    });
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const headers = new Headers(init.headers);
+    expect(headers.has("content-length")).toBe(false);
+    expect(headers.get("content-type")).toBe("application/json");
+    vi.unstubAllGlobals();
+  });
+});
