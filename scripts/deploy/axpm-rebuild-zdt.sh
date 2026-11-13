@@ -187,7 +187,7 @@ write_caddyfile() {
   cat > "$tmp" <<EOF
 # Managed by axpm-rebuild-zdt.sh. Backend is 127.0.0.1:${backend}.
 # Do not hand-edit the reverse_proxy targets; use the ZDT script.
-:80 {
+http://:80 {
 	reverse_proxy 127.0.0.1:${backend} {
 		header_up Host {host}
 		header_up X-Forwarded-Host {host}
@@ -200,7 +200,10 @@ EOF
     cat >> "$tmp" <<EOF
 
 # Stable local port for cron (approvals-tick / cron-tick) and health probes.
-127.0.0.1:${FRONT_PORT} {
+# http:// is required: a bare 127.0.0.1:3000 site makes Caddy enable auto-HTTPS,
+# after which HTTP probes and cron get "Client sent an HTTP request to an HTTPS server".
+http://127.0.0.1:${FRONT_PORT} {
+	bind 127.0.0.1
 	reverse_proxy 127.0.0.1:${backend} {
 		header_up Host {host}
 		header_up X-Forwarded-Host {host}
@@ -325,6 +328,7 @@ rollback() {
   if [[ "$PHASE" == "done" ]]; then
     return 0
   fi
+  trap - EXIT ERR INT TERM
   log "rollback starting (phase=${PHASE}, exit=${rc})"
   set +e
   if [[ "$PHASE" == "old_stopped" || "$PHASE" == "traffic_shifted" || "$PHASE" == "proxied_pending" ]]; then
@@ -370,7 +374,20 @@ rollback() {
   exit "$rc"
 }
 
-trap rollback ERR INT TERM
+stop_mem() { :; }
+
+# EXIT is required: `cmd || exit 1` does not fire the ERR trap.
+rollback_from_trap() {
+  local rc=$?
+  if [[ "$PHASE" == "done" ]]; then
+    return 0
+  fi
+  trap - EXIT ERR INT TERM
+  stop_mem 2>/dev/null || true
+  (exit "$rc")
+  rollback
+}
+trap rollback_from_trap EXIT ERR INT TERM
 
 free_mem() {
   awk '/MemAvailable:/ {printf "avail=%dMB ", $2/1024} /MemTotal:/ {printf "total=%dMB ", $2/1024}' /proc/meminfo
@@ -422,9 +439,8 @@ MEM_LOG="${STATE_DIR}/memory-${BUILD_ID}.log"
   done
 ) &
 MEM_PID=$!
-stop_mem() { kill "$MEM_PID" 2>/dev/null || true; }
-on_error() { local rc=$?; stop_mem; (exit "$rc"); rollback; }
-trap on_error ERR INT TERM
+stop_mem() { [[ -n "${MEM_PID:-}" ]] && kill "$MEM_PID" 2>/dev/null || true; }
+# keep the EXIT/ERR trap from above; stop_mem is called from rollback_from_trap
 
 log "creating worktree ${NEW_RELEASE}"
 as_axpm git -C "$APP_ROOT" worktree add --detach "$NEW_RELEASE" "$TARGET_SHA"
@@ -449,7 +465,6 @@ log "building in ${NEW_RELEASE} (live process stays up) NODE_OPTIONS=${NODE_OPTI
 # Never `npm run build`: package.json currently kills whatever is on port 3000.
 as_axpm bash -c "cd $(printf '%q' "$NEW_RELEASE") && npx next build"
 stop_mem
-trap rollback ERR INT TERM
 log "build finished; memory $(free_mem)"
 if [[ -f "$MEM_LOG" ]]; then
   log "memory log ${MEM_LOG} (min available RAM / min free swap during build):"
@@ -602,7 +617,7 @@ if [[ "$KEEP_RELEASES" -gt 0 ]]; then
 fi
 
 PHASE="done"
-trap - ERR INT TERM
+trap - EXIT ERR INT TERM
 log "deploy complete sha=${TARGET_SHA} pm2=${NEW_PM2} port=${NEW_PORT} release=${NEW_RELEASE}"
 log "final health public=$(http_code "${PUBLIC_URL}${HEALTH_PATH}") local=$(http_code "${LOCAL_URL}${HEALTH_PATH}")"
 as_axpm pm2 status

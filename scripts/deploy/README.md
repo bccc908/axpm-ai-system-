@@ -29,7 +29,7 @@ Do not use `npm run build` on the server: that npm script kills port 3000.
 
 ## Layout after the first cutover
 
-- Caddy listens on `:80` and `127.0.0.1:3000` and proxies to `127.0.0.1:3001` or `:3002`.
+- Caddy listens on `http://:80` and `http://127.0.0.1:3000` (explicit HTTP, no auto-HTTPS) and proxies to `127.0.0.1:3001` or `:3002`.
 - Cron (`approvals-tick`, `cron-tick`) can keep calling `http://127.0.0.1:3000`.
 - The running app's cwd is the current release directory, with `data`, `.env.local`, and `.run` symlinked back to `/opt/axpm`.
 - State is stored in `/var/lib/axpm/zdt-state`.
