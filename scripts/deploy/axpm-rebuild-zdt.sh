@@ -35,7 +35,7 @@
 #        iptables -t nat -D OUTPUT ...   # same rule
 #   3. Switch back to the previous release:
 #        STATE=/var/lib/axpm/zdt-state; . "$STATE" if present
-#        sudo -u axpm -H pm2 start /var/lib/axpm/ecosystem-<old>.cjs
+#        sudo -u axpm -H pm2 start /var/lib/axpm/<old-name>/ecosystem.config.cjs
 #        or, to restore the pre-ZDT layout (Next on :3000):
 #          - Caddyfile should proxy :80 to 127.0.0.1:3000 only (no :3000 bind)
 #          - sudo -u axpm -H pm2 start /opt/axpm/ecosystem.config.cjs
@@ -141,7 +141,7 @@ EOF
 http_code() {
   local url="$1"
   local code
-  code="$(curl -sS -o /dev/null -w "%{http_code}" --connect-timeout 3 --max-time 8 "$url" || true)"
+  code="$(curl -sS -o /dev/null -w "%{http_code}" --connect-timeout 3 --max-time 8 "$url" 2>/dev/null || true)"
   [[ "$code" =~ ^[0-9]{3}$ ]] || code="000"
   printf '%s
 ' "$code"
@@ -284,8 +284,10 @@ write_ecosystem() {
   local name="$1"
   local cwd="$2"
   local port="$3"
-  local path="${STATE_DIR}/ecosystem-${name}.cjs"
-  mkdir -p "$STATE_DIR"
+  # PM2 only treats a file as an ecosystem config if it is named
+  # ecosystem.config.js/cjs (or .json). Any other name is started as a script.
+  local path="${STATE_DIR}/${name}/ecosystem.config.cjs"
+  mkdir -p "$(dirname "$path")"
   cat > "$path" <<EOF
 module.exports = {
   apps: [
@@ -345,7 +347,7 @@ rollback() {
       else
         restore_caddy_prev || true
         if [[ -n "$CURRENT_PM2" ]] && ! pm2_exists "$CURRENT_PM2"; then
-          local eco="${STATE_DIR}/ecosystem-${CURRENT_PM2}.cjs"
+          local eco="${STATE_DIR}/${CURRENT_PM2}/ecosystem.config.cjs"
           if [[ -f "$eco" ]]; then
             as_axpm pm2 start "$eco" || true
           fi
@@ -488,7 +490,8 @@ as_axpm pm2 start "$ECO"
 PHASE="standby_up"
 
 if ! wait_healthy "http://127.0.0.1:${NEW_PORT}${HEALTH_PATH}" "standby :${NEW_PORT}"; then
-  as_axpm pm2 logs "$NEW_PM2" --lines 40 --nostream || true
+  timeout 10 as_axpm pm2 logs "$NEW_PM2" --lines 40 --nostream || true
+  as_axpm pm2 status || true
   exit 1
 fi
 

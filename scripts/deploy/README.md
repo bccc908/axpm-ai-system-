@@ -39,7 +39,7 @@ Do not use `npm run build` on the server: that npm script kills port 3000.
 1. Restore `/etc/caddy/Caddyfile` from `/etc/caddy/Caddyfile.zdt-prev` (or a backup under `/root/axpm-backups/`) and run `systemctl reload caddy`.
 2. If an iptables bridge is still installed: `iptables -t nat -L OUTPUT --line-numbers | grep axpm-zdt-bridge`, then delete that rule.
 3. Start the previous process:
-   - After a ZDT deploy: `sudo -u axpm -H pm2 start /var/lib/axpm/ecosystem-axpm-<old-port>.cjs && sudo -u axpm -H pm2 save`
+   - After a ZDT deploy: `sudo -u axpm -H pm2 start /var/lib/axpm/axpm-<old-port>/ecosystem.config.cjs && sudo -u axpm -H pm2 save`
    - Back to the pre-ZDT layout (Next bound to :3000): Caddy must **not** listen on 3000, then `sudo -u axpm -H pm2 start /opt/axpm/ecosystem.config.cjs && sudo -u axpm -H pm2 save`.
 
 The previous release is kept at `/opt/axpm-releases/previous` when one exists.
