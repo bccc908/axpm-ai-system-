@@ -27,14 +27,19 @@
 #           delete /opt/axpm/ecosystem.config.cjs or write-env.py.
 # Do not use `npm run build` (that script kills port 3000). Always `npx next build`.
 #
+#   axpm-rebuild-zdt.sh --migrate-caddy  # one-time: split upstream into
+#                                        # /etc/caddy/axpm-upstream.caddy
+#
 # Rollback (automatic on healthcheck failure). Manual, if needed:
-#   1. Restore /etc/caddy/Caddyfile from /etc/caddy/Caddyfile.zdt-prev (or the
-#      pre-zdt backup) and: systemctl reload caddy
+#   1. Restore /etc/caddy/axpm-upstream.caddy from
+#      /etc/caddy/axpm-upstream.caddy.zdt-prev (or a backup under
+#      /root/axpm-backups/) and: systemctl reload caddy
+#      Do not overwrite the main Caddyfile unless you are undoing --migrate-caddy.
 #   2. Remove a leftover bridge, if any:
 #        iptables -t nat -L OUTPUT --line-numbers | grep axpm-zdt-bridge
 #        iptables -t nat -D OUTPUT ...   # same rule
-#   3. Switch back to the previous release:
-#        STATE=/var/lib/axpm/zdt-state; . "$STATE" if present
+#   3. Switch back to the previous release. Read /var/lib/axpm/zdt-state as
+#      KEY=VALUE (do not source it) and:
 #        sudo -u axpm -H pm2 start /var/lib/axpm/<old-name>/ecosystem.config.cjs
 #        or, to restore the pre-ZDT layout (Next on :3000):
 #          - Caddyfile should proxy :80 to 127.0.0.1:3000 only (no :3000 bind)
@@ -48,7 +53,8 @@ RELEASES="/opt/axpm-releases"
 STATE_DIR="/var/lib/axpm"
 STATE_FILE="${STATE_DIR}/zdt-state"
 CADDYFILE="/etc/caddy/Caddyfile"
-CADDY_PREV="${CADDYFILE}.zdt-prev"
+CADDY_UPSTREAM="/etc/caddy/axpm-upstream.caddy"
+CADDY_UPSTREAM_PREV="${CADDY_UPSTREAM}.zdt-prev"
 CADDY_WRITTEN=0
 PUBLIC_URL="${AXPM_PUBLIC_URL:-http://127.0.0.1}"
 LOCAL_URL="http://127.0.0.1:3000"
@@ -56,22 +62,24 @@ HEALTH_PATH="/login"
 BACKEND_A=3001
 BACKEND_B=3002
 FRONT_PORT=3000
-NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=2560}"
+NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=3072}"
 KEEP_RELEASES="${KEEP_RELEASES:-2}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-90}"
 HEALTH_INTERVAL="${HEALTH_INTERVAL:-2}"
 
 UPDATE_CHECKOUT=0
+MIGRATE_CADDY=0
 TARGET_SHA=""
 
 usage() {
-  sed -n '2,40p' "$0" | sed 's/^# \?//'
+  sed -n '2,50p' "$0" | sed 's/^# \?//'
   exit 1
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --update-checkout) UPDATE_CHECKOUT=1; shift ;;
+    --migrate-caddy) MIGRATE_CADDY=1; shift ;;
     --help|-h) usage ;;
     -*)
       echo "Unknown flag: $1" >&2
@@ -100,19 +108,122 @@ as_axpm() {
 log() { echo "=== [zdt $(date -Iseconds)] $* ==="; }
 
 # --- state ---
+# /var/lib/axpm is root:root 0755. zdt-state is root:root 0644 and is never
+# sourced (it is world-readable, so we parse only allowlisted KEY=VALUE lines).
+# pm2 ecosystem files live in /var/lib/axpm/<name>/ and may be axpm-owned.
 CURRENT_PORT=""
 CURRENT_PM2=""
 CURRENT_RELEASE=""
+CURRENT_SHA=""
 MODE="legacy" # legacy = Next still binds :3000; proxied = Caddy binds :3000
+
+ensure_state_dir() {
+  mkdir -p "$STATE_DIR"
+  chown root:root "$STATE_DIR"
+  chmod 755 "$STATE_DIR"
+}
+
+valid_backend_port() {
+  [[ "$1" =~ ^[0-9]+$ ]] && { (( 10#$1 == BACKEND_A || 10#$1 == BACKEND_B )); }
+}
+
+valid_pm2_name() {
+  [[ "$1" =~ ^axpm(-[0-9]{4,5})?$ ]]
+}
+
+valid_sha() {
+  [[ "$1" =~ ^[0-9a-f]{7,40}$ ]]
+}
+
+valid_mode() {
+  [[ "$1" == "legacy" || "$1" == "proxied" ]]
+}
+
+# Release dirs are /opt/axpm-releases/<sha>-<utc-timestamp>. Reject anything
+# that could escape that prefix (symlinks, .., extra slashes).
+valid_release_path() {
+  local p="$1"
+  local canon
+  [[ "$p" =~ ^/opt/axpm-releases/[0-9a-f]{7,40}-[0-9]{8}T[0-9]{6}Z$ ]] || return 1
+  if [[ -e "$p" || -L "$p" ]]; then
+    canon="$(readlink -f "$p" || true)"
+    [[ -n "$canon" && "$canon" == "$RELEASES"/* ]] || return 1
+  fi
+  return 0
+}
+
+# Parse KEY=VALUE only. Never source this file; it is not executed.
+parse_state_file() {
+  local file="$1"
+  local line lineno=0
+  local key value
+  local got_port="" got_name="" got_release="" got_sha="" got_mode=""
+
+  if [[ -L "$file" ]]; then
+    log "refusing to read ${file}: is a symlink"
+    return 1
+  fi
+  if [[ ! -f "$file" ]]; then
+    return 1
+  fi
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    lineno=$((lineno + 1))
+    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+    if [[ ! "$line" =~ ^([A-Z][A-Z0-9_]*)=([A-Za-z0-9_./:+-]+)$ ]]; then
+      log "invalid state line ${lineno} in ${file}"
+      return 1
+    fi
+    key="${BASH_REMATCH[1]}"
+    value="${BASH_REMATCH[2]}"
+    case "$key" in
+      BACKEND_PORT)
+        valid_backend_port "$value" || { log "invalid BACKEND_PORT in state"; return 1; }
+        got_port="$value"
+        ;;
+      PM2_NAME)
+        valid_pm2_name "$value" || { log "invalid PM2_NAME in state"; return 1; }
+        got_name="$value"
+        ;;
+      RELEASE)
+        valid_release_path "$value" || { log "invalid RELEASE in state"; return 1; }
+        got_release="$value"
+        ;;
+      SHA)
+        valid_sha "$value" || { log "invalid SHA in state"; return 1; }
+        got_sha="$value"
+        ;;
+      MODE)
+        valid_mode "$value" || { log "invalid MODE in state"; return 1; }
+        got_mode="$value"
+        ;;
+      UPDATED_AT)
+        ;;
+      *)
+        log "unexpected key ${key} in ${file}"
+        return 1
+        ;;
+    esac
+  done < "$file"
+
+  if [[ -z "$got_port" || -z "$got_name" || -z "$got_mode" ]]; then
+    log "state file ${file} missing required keys (BACKEND_PORT, PM2_NAME, MODE)"
+    return 1
+  fi
+  CURRENT_PORT="$got_port"
+  CURRENT_PM2="$got_name"
+  CURRENT_RELEASE="$got_release"
+  CURRENT_SHA="$got_sha"
+  MODE="$got_mode"
+  return 0
+}
 
 load_state() {
   if [[ -f "$STATE_FILE" ]]; then
-    # shellcheck disable=SC1090
-    source "$STATE_FILE"
-    CURRENT_PORT="${BACKEND_PORT:-}"
-    CURRENT_PM2="${PM2_NAME:-}"
-    CURRENT_RELEASE="${RELEASE:-}"
-    MODE="${MODE:-legacy}"
+    parse_state_file "$STATE_FILE" || {
+      log "ignoring unreadable or invalid ${STATE_FILE}"
+      CURRENT_PORT=""; CURRENT_PM2=""; CURRENT_RELEASE=""; CURRENT_SHA=""; MODE="legacy"
+    }
   fi
   if [[ -z "$CURRENT_PM2" ]]; then
     if as_axpm pm2 describe axpm >/dev/null 2>&1; then
@@ -125,15 +236,27 @@ load_state() {
 }
 
 write_state() {
-  mkdir -p "$STATE_DIR"
-  cat > "$STATE_FILE" <<EOF
-BACKEND_PORT=$1
-PM2_NAME=$2
-RELEASE=$3
-SHA=$4
-MODE=$5
+  local port="$1" name="$2" release="$3" sha="$4" mode="$5"
+  local tmp
+  valid_backend_port "$port" || { log "refusing to write invalid BACKEND_PORT"; return 1; }
+  valid_pm2_name "$name" || { log "refusing to write invalid PM2_NAME"; return 1; }
+  valid_release_path "$release" || { log "refusing to write invalid RELEASE"; return 1; }
+  valid_sha "$sha" || { log "refusing to write invalid SHA"; return 1; }
+  valid_mode "$mode" || { log "refusing to write invalid MODE"; return 1; }
+  ensure_state_dir
+  tmp="$(mktemp "${STATE_DIR}/zdt-state.XXXXXX")"
+  cat > "$tmp" <<EOF
+BACKEND_PORT=${port}
+PM2_NAME=${name}
+RELEASE=${release}
+SHA=${sha}
+MODE=${mode}
 UPDATED_AT=$(date -Iseconds)
 EOF
+  chmod 644 "$tmp"
+  chown root:root "$tmp"
+  mv "$tmp" "$STATE_FILE"
+  chown root:root "$STATE_FILE"
   chmod 644 "$STATE_FILE"
 }
 
@@ -177,17 +300,20 @@ assert_healthy() {
 }
 
 # --- caddy ---
-# $1 = backend port
-# $2 = "1" to also bind 127.0.0.1:3000 (proxied mode)
-write_caddyfile() {
+# The main Caddyfile (site blocks, future talent.kaydenchiew.com, etc.) is
+# not overwritten. This script only edits /etc/caddy/axpm-upstream.caddy.
+# Run --migrate-caddy once to switch a combined Caddyfile to that layout.
+
+caddyfile_has_upstream_import() {
+  grep -qE '^[[:space:]]*import[[:space:]]+(axpm-upstream\.caddy|/etc/caddy/axpm-upstream\.caddy)[[:space:]]*$' "$CADDYFILE"
+}
+
+write_upstream_body() {
   local backend="$1"
-  local bind_front="${2:-0}"
-  local tmp
-  tmp="$(mktemp /tmp/Caddyfile.axpm.XXXXXX)"
-  cat > "$tmp" <<EOF
-# Managed by axpm-rebuild-zdt.sh. Backend is 127.0.0.1:${backend}.
-# Do not hand-edit the reverse_proxy targets; use the ZDT script.
-http://:80 {
+  cat <<EOF
+# Managed by axpm-rebuild-zdt.sh. Do not hand-edit the backend port.
+# Imported by /etc/caddy/Caddyfile as the (axpm_backend) snippet.
+(axpm_backend) {
 	reverse_proxy 127.0.0.1:${backend} {
 		header_up Host {host}
 		header_up X-Forwarded-Host {host}
@@ -196,63 +322,202 @@ http://:80 {
 	}
 }
 EOF
-  if [[ "$bind_front" == "1" ]]; then
-    cat >> "$tmp" <<EOF
-
-# Stable local port for cron (approvals-tick / cron-tick) and health probes.
-# http:// is required: a bare 127.0.0.1:3000 site makes Caddy enable auto-HTTPS,
-# after which HTTP probes and cron get "Client sent an HTTP request to an HTTPS server".
-http://127.0.0.1:${FRONT_PORT} {
-	bind 127.0.0.1
-	reverse_proxy 127.0.0.1:${backend} {
-		header_up Host {host}
-		header_up X-Forwarded-Host {host}
-		header_up X-Forwarded-Proto {scheme}
-		header_up X-Forwarded-For {remote_host}
-	}
 }
-EOF
-  fi
-  cat >> "$tmp" <<'EOF'
 
-# After Kayden points talent.kaydenchiew.com to this droplet (DNS only / grey cloud first),
-# add a site block that reverse_proxies the SAME backend port as :80 above
-# (127.0.0.1:3001 or 3002). Do not point it at 127.0.0.1:3000; after the
-# first ZDT cutover, Caddy itself listens on 127.0.0.1:3000.
-EOF
-  if ! caddy validate --config "$tmp" >/tmp/axpm-caddy-validate.log 2>&1; then
-    log "Caddyfile validate failed:"
+# Validate a candidate snippet against the live Caddyfile in a temp dir
+# so a bad file is never installed.
+validate_upstream_snippet() {
+  local snippet="$1"
+  local vdir
+  vdir="$(mktemp -d /tmp/axpm-caddy-validate.XXXXXX)"
+  cp "$CADDYFILE" "$vdir/Caddyfile"
+  cp "$snippet" "$vdir/axpm-upstream.caddy"
+  if ! (cd "$vdir" && caddy validate --config "$vdir/Caddyfile") >/tmp/axpm-caddy-validate.log 2>&1; then
+    log "Caddy validate failed for new axpm-upstream.caddy:"
     cat /tmp/axpm-caddy-validate.log >&2
+    rm -rf "$vdir"
+    return 1
+  fi
+  rm -rf "$vdir"
+  return 0
+}
+
+# $1 = backend port (3001 or 3002). Edits only axpm-upstream.caddy.
+write_upstream() {
+  local backend="$1"
+  local tmp
+  valid_backend_port "$backend" || { log "invalid backend port ${backend}"; return 1; }
+  if ! caddyfile_has_upstream_import; then
+    log "Caddyfile does not import axpm-upstream.caddy; run: $0 --migrate-caddy"
+    return 1
+  fi
+  tmp="$(mktemp /tmp/axpm-upstream.XXXXXX)"
+  write_upstream_body "$backend" > "$tmp"
+  if ! validate_upstream_snippet "$tmp"; then
     rm -f "$tmp"
     return 1
   fi
-  if [[ -f "$CADDYFILE" ]]; then
-    cp -a "$CADDYFILE" "$CADDY_PREV"
+  if [[ -f "$CADDY_UPSTREAM" ]]; then
+    cp -a "$CADDY_UPSTREAM" "$CADDY_UPSTREAM_PREV"
   fi
-  mv "$tmp" "$CADDYFILE"
-  chmod 644 "$CADDYFILE"
+  mv "$tmp" "$CADDY_UPSTREAM"
+  chmod 644 "$CADDY_UPSTREAM"
+  chown root:root "$CADDY_UPSTREAM"
   CADDY_WRITTEN=1
   if ! systemctl reload caddy; then
-    log "caddy reload failed; restoring previous Caddyfile"
-    if [[ -f "$CADDY_PREV" ]]; then
-      cp -a "$CADDY_PREV" "$CADDYFILE"
-      systemctl reload caddy || true
-    fi
+    log "caddy reload failed; restoring previous axpm-upstream.caddy"
+    restore_caddy_prev
     return 1
   fi
-  log "Caddy reloaded; upstream 127.0.0.1:${backend} bind_front=${bind_front}"
+  log "Caddy reloaded; upstream 127.0.0.1:${backend}"
 }
 
 restore_caddy_prev() {
   if [[ "$CADDY_WRITTEN" != "1" ]]; then
     return 0
   fi
-  if [[ -f "$CADDY_PREV" ]]; then
-    cp -a "$CADDY_PREV" "$CADDYFILE"
+  if [[ -f "$CADDY_UPSTREAM_PREV" ]]; then
+    cp -a "$CADDY_UPSTREAM_PREV" "$CADDY_UPSTREAM"
     systemctl reload caddy || true
     CADDY_WRITTEN=0
-    log "restored previous Caddyfile"
+    log "restored previous axpm-upstream.caddy"
   fi
+}
+
+caddy_adapt_fingerprint() {
+  local config="$1"
+  local dir
+  dir="$(dirname "$config")"
+  (cd "$dir" && caddy adapt --config "$config") 2>/tmp/axpm-caddy-adapt.err | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+servers = data.get("apps", {}).get("http", {}).get("servers", {})
+items = []
+for s in servers.values():
+    items.append({
+        "listen": s.get("listen"),
+        "automatic_https": s.get("automatic_https"),
+        "routes": s.get("routes"),
+    })
+items.sort(key=lambda x: json.dumps(x["listen"], sort_keys=True))
+json.dump(items, sys.stdout, sort_keys=True, separators=(",", ":"))
+'
+}
+
+# One-time restructure: move the reverse_proxy target into axpm-upstream.caddy
+# and leave site blocks / comments in the main Caddyfile. Aborts unless
+# `caddy adapt` fingerprints of the old and new layouts match.
+migrate_caddy_layout() {
+  local backend="$1"
+  local ts dest vdir old_fp new_fp
+  ensure_state_dir
+  if caddyfile_has_upstream_import && [[ -f "$CADDY_UPSTREAM" ]]; then
+    log "Caddyfile already imports ${CADDY_UPSTREAM}; nothing to migrate"
+    return 0
+  fi
+  if [[ -z "$backend" ]]; then
+    if [[ -n "$CURRENT_PORT" ]] && valid_backend_port "$CURRENT_PORT"; then
+      backend="$CURRENT_PORT"
+    else
+      log "cannot migrate Caddy: no valid backend port in state"
+      return 1
+    fi
+  fi
+  valid_backend_port "$backend" || { log "cannot migrate Caddy: invalid backend ${backend}"; return 1; }
+
+  ts="$(date +%Y%m%dT%H%M%S)"
+  dest="/root/axpm-backups/pre-caddy-import-${ts}"
+  mkdir -p "$dest"
+  cp -a "$CADDYFILE" "$dest/Caddyfile"
+  [[ -f "$CADDY_UPSTREAM" ]] && cp -a "$CADDY_UPSTREAM" "$dest/"
+  cp -a "$CADDYFILE" "${CADDYFILE}.pre-import-${ts}"
+  log "backed up Caddyfile to ${dest} and ${CADDYFILE}.pre-import-${ts}"
+
+  old_fp="$(caddy_adapt_fingerprint "$CADDYFILE")" || {
+    log "caddy adapt of current Caddyfile failed"
+    cat /tmp/axpm-caddy-adapt.err >&2 || true
+    return 1
+  }
+
+  vdir="$(mktemp -d /tmp/axpm-caddy-migrate.XXXXXX)"
+  write_upstream_body "$backend" > "$vdir/axpm-upstream.caddy"
+  cat > "$vdir/Caddyfile" <<'EOF'
+# Site blocks for axpm-ops. The backend port lives in axpm-upstream.caddy
+# and is updated by /usr/local/sbin/axpm-rebuild-zdt.sh. Do not put
+# reverse_proxy targets here.
+import axpm-upstream.caddy
+
+http://:80 {
+	import axpm_backend
+}
+
+# Stable local port for cron (approvals-tick / cron-tick) and health probes.
+# http:// is required: a bare 127.0.0.1:3000 site makes Caddy enable auto-HTTPS,
+# after which HTTP probes and cron get "Client sent an HTTP request to an HTTPS server".
+http://127.0.0.1:3000 {
+	bind 127.0.0.1
+	import axpm_backend
+}
+
+# After Kayden points talent.kaydenchiew.com to this droplet (DNS only / grey cloud first),
+# add a site block that imports the same axpm_backend snippet (do not point it
+# at 127.0.0.1:3000; Caddy itself listens on that address).
+EOF
+
+  if ! (cd "$vdir" && caddy validate --config "$vdir/Caddyfile") >/tmp/axpm-caddy-validate.log 2>&1; then
+    log "migrated Caddy layout failed validate:"
+    cat /tmp/axpm-caddy-validate.log >&2
+    rm -rf "$vdir"
+    return 1
+  fi
+  new_fp="$(caddy_adapt_fingerprint "$vdir/Caddyfile")" || {
+    log "caddy adapt of migrated layout failed"
+    cat /tmp/axpm-caddy-adapt.err >&2 || true
+    rm -rf "$vdir"
+    return 1
+  }
+  if [[ "$old_fp" != "$new_fp" ]]; then
+    log "caddy adapt fingerprint mismatch; refusing to migrate (served config would change)"
+    printf '%s\n' "$old_fp" > /tmp/axpm-caddy-fp-old.json
+    printf '%s\n' "$new_fp" > /tmp/axpm-caddy-fp-new.json
+    python3 -c 'import sys; from pathlib import Path
+print("OLD:", Path("/tmp/axpm-caddy-fp-old.json").read_text()[:2000])
+print("NEW:", Path("/tmp/axpm-caddy-fp-new.json").read_text()[:2000])' >&2 || true
+    rm -rf "$vdir"
+    return 1
+  fi
+  log "caddy adapt fingerprints match; installing import layout"
+
+  cp "$vdir/axpm-upstream.caddy" "$CADDY_UPSTREAM"
+  chmod 644 "$CADDY_UPSTREAM"
+  chown root:root "$CADDY_UPSTREAM"
+  cp "$vdir/Caddyfile" "$CADDYFILE"
+  chmod 644 "$CADDYFILE"
+  chown root:root "$CADDYFILE"
+  rm -rf "$vdir"
+
+  if ! systemctl reload caddy; then
+    log "caddy reload after migrate failed; restoring pre-import Caddyfile"
+    cp -a "${CADDYFILE}.pre-import-${ts}" "$CADDYFILE"
+    rm -f "$CADDY_UPSTREAM"
+    systemctl reload caddy || true
+    return 1
+  fi
+  if ! assert_healthy "${PUBLIC_URL}${HEALTH_PATH}" "public after caddy migrate"; then
+    log "health failed after migrate; restoring pre-import Caddyfile"
+    cp -a "${CADDYFILE}.pre-import-${ts}" "$CADDYFILE"
+    rm -f "$CADDY_UPSTREAM"
+    systemctl reload caddy || true
+    return 1
+  fi
+  if ! assert_healthy "${LOCAL_URL}${HEALTH_PATH}" "local :3000 after caddy migrate"; then
+    log "health failed after migrate; restoring pre-import Caddyfile"
+    cp -a "${CADDYFILE}.pre-import-${ts}" "$CADDYFILE"
+    rm -f "$CADDY_UPSTREAM"
+    systemctl reload caddy || true
+    return 1
+  fi
+  log "Caddy import layout is live; upstream 127.0.0.1:${backend}"
 }
 
 # --- iptables bridge for the first cutover only ---
@@ -395,6 +660,16 @@ free_mem() {
 }
 
 # --- begin ---
+if [[ "$MIGRATE_CADDY" == "1" ]]; then
+  # Do not use the deploy rollback trap for a layout-only change.
+  trap - EXIT ERR INT TERM
+  log "migrating Caddyfile to import ${CADDY_UPSTREAM}"
+  load_state
+  migrate_caddy_layout "${CURRENT_PORT}"
+  log "migrate-caddy finished"
+  exit 0
+fi
+
 log "zero-downtime rebuild starting"
 log "memory $(free_mem)"
 load_state
@@ -427,8 +702,9 @@ if ss -lptn | grep -q "127.0.0.1:${NEW_PORT}"; then
   exit 1
 fi
 
-mkdir -p "$RELEASES" "$STATE_DIR"
-chown "${APP_USER}:${APP_USER}" "$RELEASES" "$STATE_DIR"
+mkdir -p "$RELEASES"
+chown "${APP_USER}:${APP_USER}" "$RELEASES"
+ensure_state_dir
 
 # Memory sampler for the build window
 MEM_LOG="${STATE_DIR}/memory-${BUILD_ID}.log"
@@ -522,7 +798,7 @@ if [[ "$MODE" == "legacy" ]]; then
   assert_healthy "${LOCAL_URL}${HEALTH_PATH}" "local :3000 after bridge" || exit 1
 
   # Point Caddy :80 directly at the new backend (still do not bind :3000 yet).
-  write_caddyfile "$NEW_PORT" 0
+  write_upstream "$NEW_PORT"
   sleep 0.2
   assert_healthy "${PUBLIC_URL}${HEALTH_PATH}" "public after caddy :80 flip" || exit 1
   assert_healthy "${LOCAL_URL}${HEALTH_PATH}" "local :3000 (bridge)" || exit 1
@@ -550,7 +826,7 @@ if [[ "$MODE" == "legacy" ]]; then
   fi
 
   PHASE="proxied_pending"
-  write_caddyfile "$NEW_PORT" 1
+  write_upstream "$NEW_PORT"
   sleep 0.2
   assert_healthy "${PUBLIC_URL}${HEALTH_PATH}" "public after caddy binds :3000" || exit 1
   assert_healthy "${LOCAL_URL}${HEALTH_PATH}" "local :3000 after caddy bind" || exit 1
@@ -561,7 +837,7 @@ if [[ "$MODE" == "legacy" ]]; then
   MODE="proxied"
 else
   # Already proxied: Caddy owns :80 and :3000. Just swap the upstream.
-  write_caddyfile "$NEW_PORT" 1
+  write_upstream "$NEW_PORT"
   sleep 0.2
   assert_healthy "${PUBLIC_URL}${HEALTH_PATH}" "public after upstream swap" || exit 1
   assert_healthy "${LOCAL_URL}${HEALTH_PATH}" "local :3000 after upstream swap" || exit 1
