@@ -35,6 +35,7 @@ export function useGoldLiveBars(
   } | null>(null);
   const [clock, setClock] = useState(0);
   const [flashKey, setFlashKey] = useState(0);
+  const [refreshEpoch, setRefreshEpoch] = useState(0);
   const prevBarSigRef = useRef("");
   const prevPriceRef = useRef<number | null>(null);
   const hadBarsRef = useRef(false);
@@ -169,7 +170,10 @@ export function useGoldLiveBars(
     spreadLive,
     flashKey,
     clock,
+    /** Bumps when the desk refresh button runs, so the order-flow book refetches. */
+    refreshEpoch,
     reload: () => {
+      setRefreshEpoch((n) => n + 1);
       void loadBars();
       void loadQuote();
     },

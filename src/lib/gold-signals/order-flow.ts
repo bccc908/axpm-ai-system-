@@ -111,6 +111,33 @@ function barFootprintCells(bar: GoldOhlcBar, tick: number): Map<number, { buy: n
   return cells;
 }
 
+/** Volume at bar close only — no high/low smear. DOM ladder uses this for metals. */
+export function aggregateCloseFlow(
+  bars: GoldOhlcBar[],
+  tick = 0.5,
+): PriceLevelFlow[] {
+  const map = new Map<number, PriceLevelFlow>();
+  for (const bar of bars) {
+    if (bar.volume <= 0 || !Number.isFinite(bar.close)) continue;
+    const price = roundTick(bar.close, tick);
+    const { buyVol, sellVol } = barBuySellVolume(bar);
+    const row = map.get(price) ?? {
+      price,
+      buyVol: 0,
+      sellVol: 0,
+      barCount: 0,
+      lastSide: "buy" as OrderSide,
+      inEntryZone: false,
+    };
+    row.buyVol += buyVol;
+    row.sellVol += sellVol;
+    row.barCount += 1;
+    row.lastSide = buyVol >= sellVol ? "buy" : "sell";
+    map.set(price, row);
+  }
+  return [...map.values()].sort((a, b) => b.price - a.price);
+}
+
 export function aggregateFlowByPrice(
   bars: GoldOhlcBar[],
   entryLo: number | null,
