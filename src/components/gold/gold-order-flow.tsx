@@ -1,34 +1,52 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Crosshair, Info, Loader2 } from "lucide-react";
+import { Crosshair, Loader2 } from "lucide-react";
 import { useLocale } from "@/components/providers/locale-provider";
 import { useGoldDesk } from "@/components/gold/gold-desk-context";
+import { useDeskBookDepth } from "@/components/gold/use-gold-book-depth";
 import {
+  aggregateCloseFlow,
   aggregateFlowByPrice,
   barBuySellVolume,
   buildBarFlowFromBars,
   cumulativeDelta,
-  footprintGrid,
-  footprintStableRange,
   type BarFlowRow,
 } from "@/lib/gold-signals/order-flow";
+import { formatLots, tapeLotVolume } from "@/lib/gold-signals/lot-size";
 import { buildLadderItems } from "@/lib/gold-signals/ladder-display";
-import { VIZ } from "@/lib/gold-signals/viz-colors";
 import { cn } from "@/lib/utils";
 import type { DeskSignal } from "@/lib/market-signals/instruments";
 
-const BG = VIZ.bg;
-
-function formatBarTime(ts: number, locale: string) {
-  return new Date(ts * 1000).toLocaleTimeString(locale === "zh" ? "zh-CN" : "en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function formatVol(n: number) {
   if (Math.abs(n) >= 1000) return `${(n / 1000).toFixed(1)}k`;
+  return String(Math.round(n));
+}
+
+function formatDomVol(n: number) {
+  if (n <= 0) return "";
+  if (n >= 1000) {
+    const k = n / 1000;
+    return `${k >= 10 ? k.toFixed(0) : k.toFixed(k >= 2 ? 1 : 3).replace(/0+$/, "").replace(/\.$/, "")}K`;
+  }
+  return String(Math.round(n));
+}
+
+function snapTick(price: number, tick: number) {
+  return Math.round(price / tick) * tick;
+}
+
+function formatPx(n: number, tick: number) {
+  if (tick >= 10) return n.toFixed(0);
+  if (tick >= 1) return n.toFixed(1);
+  if (tick >= 0.01) return n.toFixed(2);
+  return n.toFixed(3);
+}
+
+function formatDepthUsd(n: number) {
+  if (!(n > 0)) return "";
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}k`;
   return String(Math.round(n));
 }
 
@@ -39,6 +57,39 @@ function secondsAgo(updatedAt: string | null, clock: number) {
   return sec;
 }
 
+function isMetalDesk(instrument: string) {
+  return instrument === "gold" || instrument === "xag" || instrument === "xau" || instrument === "spread";
+}
+
+function sameBookBars<T extends { close: number; high: number; low: number }>(
+  bars: T[],
+  instrument: string,
+  spot?: number | null,
+): T[] {
+  if (!isMetalDesk(instrument) || bars.length < 4) return bars;
+  const body = bars.slice(0, -1);
+  const mid = body
+    .map((b) => b.close)
+    .slice(-20)
+    .sort((a, b) => a - b)[Math.floor(Math.min(20, body.length) / 2)];
+  if (!Number.isFinite(mid)) return bars;
+  const anchor =
+    spot != null && Number.isFinite(spot) && Math.abs(spot - mid) < 90 ? spot : mid;
+  const kept = bars.filter(
+    (b) =>
+      Math.abs(b.close - anchor) < 90 &&
+      Math.abs(b.high - anchor) < 110 &&
+      Math.abs(b.low - anchor) < 110,
+  );
+  return kept.length >= 4 ? kept : bars;
+}
+
+const DOM_COLS =
+  "grid grid-cols-[minmax(72px,1fr)_52px_68px_54px_34px_34px_54px_40px_28px_70px_62px_88px] items-center";
+const DOM_ROW_H = 16;
+const DOM_MIN_ROWS = 80;
+const DOM_MAX_ROWS = 400;
+
 export function GoldOrderFlowViz({
   signal,
   className,
@@ -46,44 +97,132 @@ export function GoldOrderFlowViz({
   signal: DeskSignal | null;
   className?: string;
 }) {
-  const { t, locale } = useLocale();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const pulseRef = useRef(0);
-  const rangeRef = useRef({ anchor: "", priceMin: 0, priceMax: 0 });
-  const { structureBars, loading, error, source, stale, updatedAt, livePrice, structureLastBar, flashKey, clock, reload, priceTick } =
-    useGoldDesk();
+  const { t } = useLocale();
+  const {
+    structureBars,
+    liveBars,
+    loading,
+    error,
+    updatedAt,
+    livePrice,
+    clock,
+    flashKey,
+    reload,
+    instrument,
+    priceTick,
+    source,
+    dataSource,
+    refreshEpoch,
+  } = useGoldDesk();
+  const { book, error: l2Error, prints: spotPrints } = useDeskBookDepth(instrument, true, refreshEpoch);
+  void signal;
 
-  const entryLo = signal?.entry_zone?.low ?? null;
-  const entryHi = signal?.entry_zone?.high ?? null;
+  const tapeBars = useMemo(
+    () => sameBookBars(liveBars.length >= 4 ? liveBars : structureBars, instrument, livePrice),
+    [liveBars, structureBars, instrument, livePrice],
+  );
+  const tapeAnchor = useMemo(() => {
+    const closes = tapeBars.slice(-20).map((b) => b.close).filter(Number.isFinite);
+    if (!closes.length) return null;
+    return [...closes].sort((a, b) => a - b)[Math.floor(closes.length / 2)] ?? null;
+  }, [tapeBars]);
+  const liveBand =
+    tapeAnchor == null
+      ? 8
+      : isMetalDesk(instrument)
+        ? 90
+        : Math.max(priceTick * 12, tapeAnchor * 0.02);
+  const markOnTape =
+    livePrice != null && (tapeAnchor == null || Math.abs(livePrice - tapeAnchor) < liveBand)
+      ? livePrice
+      : (tapeBars.at(-1)?.close ?? tapeAnchor ?? livePrice);
+  const newestPrint = spotPrints[0];
+  const quoteMs = updatedAt ? Date.parse(updatedAt) : 0;
+  const printIsNewer =
+    newestPrint != null &&
+    Number.isFinite(newestPrint.px) &&
+    Number.isFinite(quoteMs) &&
+    newestPrint.time > quoteMs + 200;
+  const shownPx = printIsNewer ? newestPrint.px : (livePrice ?? newestPrint?.px ?? markOnTape);
+  const bookMark = shownPx ?? livePrice ?? markOnTape;
 
-  const stableRange = useMemo(() => {
-    const last = structureBars.at(-1);
-    const anchor = `${structureBars.length}-${last?.time ?? 0}-${signal?.id ?? ""}`;
-    if (anchor === rangeRef.current.anchor) {
-      return { priceMin: rangeRef.current.priceMin, priceMax: rangeRef.current.priceMax, anchor };
+  const tick = isMetalDesk(instrument)
+    ? priceTick >= 0.1
+      ? 0.25
+      : Math.max(priceTick, 0.01)
+    : Math.max(priceTick, 0.01);
+
+  const hitsRef = useRef(new Map<number, { buy: number; sell: number; at: number; last: number; side: "buy" | "sell" }>());
+  const prevPxRef = useRef<number | null>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const lastRowRef = useRef<HTMLDivElement>(null);
+  const userScrolledRef = useRef(false);
+  const didCenterRef = useRef(false);
+  const [ladder, setLadder] = useState<{ min: number; max: number } | null>(null);
+  const [hitRev, setHitRev] = useState(0);
+  const [bodyH, setBodyH] = useState(720);
+  const [liveTicks, setLiveTicks] = useState<
+    Array<{ id: string; time: number; close: number; volume: number; delta: number; side: "buy" | "sell" }>
+  >([]);
+
+  useEffect(() => {
+    if (shownPx == null) return;
+    const prev = prevPxRef.current;
+    prevPxRef.current = shownPx;
+    if (prev == null || Math.abs(shownPx - prev) < 0.001) return;
+    const key = snapTick(shownPx, tick);
+    const up = shownPx >= prev;
+    const size = Math.max(1, Math.round((Math.abs(shownPx - prev) / tick) * 6));
+    const cur = hitsRef.current.get(key) ?? { buy: 0, sell: 0, at: 0, last: shownPx, side: "buy" as const };
+    if (up) cur.buy += size;
+    else cur.sell += size;
+    cur.at = Date.now();
+    cur.last = shownPx;
+    cur.side = up ? "buy" : "sell";
+    hitsRef.current.set(key, cur);
+    if (hitsRef.current.size > 80) {
+      const oldest = [...hitsRef.current.entries()].sort((a, b) => a[1].at - b[1].at)[0];
+      if (oldest) hitsRef.current.delete(oldest[0]);
     }
-    const next = footprintStableRange(structureBars, {
-      entryLo,
-      entryHi,
-      stop: signal?.stop_loss ?? null,
-      targets: signal?.take_profit ?? [],
-    });
-    rangeRef.current = { anchor, priceMin: next.priceMin, priceMax: next.priceMax };
-    return { ...next, anchor };
-  }, [structureBars, entryLo, entryHi, signal?.id, signal?.stop_loss, signal?.take_profit]);
+    setLiveTicks((rows) =>
+      [
+        {
+          id: `lt-${cur.at}-${key}`,
+          time: cur.at,
+          close: shownPx,
+          volume: size,
+          delta: up ? size : -size,
+          side: (up ? "buy" : "sell") as "buy" | "sell",
+        },
+        ...rows,
+      ].slice(0, 120),
+    );
+    setHitRev((n) => n + 1);
+  }, [shownPx, tick]);
+
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (!el) return;
+    const sync = () => setBodyH(el.clientHeight || 720);
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const barFlow = useMemo(() => {
-    const rows = buildBarFlowFromBars(structureBars);
-    if (rows.length === 0 || livePrice == null || structureLastBar == null) return rows;
-    if (rows[0].time !== structureLastBar.time) return rows;
-    const raw = structureLastBar;
-    const patched = { ...raw, close: livePrice };
+    const rows = buildBarFlowFromBars(tapeBars);
+    if (rows.length === 0 || markOnTape == null) return rows;
+    if (Math.abs(markOnTape - rows[0].close) < tick * 0.5) return rows;
+    const lastBar = tapeBars.at(-1);
+    if (!lastBar) return rows;
+    const patched = { ...lastBar, close: markOnTape };
     const { buyVol, sellVol } = barBuySellVolume(patched);
     const delta = buyVol - sellVol;
     return [
       {
         ...rows[0],
-        close: livePrice,
+        close: markOnTape,
         buyVol,
         sellVol,
         delta,
@@ -91,191 +230,199 @@ export function GoldOrderFlowViz({
       },
       ...rows.slice(1),
     ];
-  }, [structureBars, livePrice, structureLastBar]);
+  }, [tapeBars, markOnTape, tick]);
 
   const cumDelta = useMemo(() => cumulativeDelta(barFlow), [barFlow]);
-  const byPrice = useMemo(
-    () => aggregateFlowByPrice(structureBars, entryLo, entryHi),
-    [structureBars, entryLo, entryHi],
+  const tapeLots = useMemo(
+    () => tapeLotVolume(instrument, tapeBars, source ?? dataSource),
+    [instrument, tapeBars, source, dataSource],
   );
-  const clusters = useMemo(() => {
-    const maxVol = Math.max(1, ...byPrice.map((r) => r.buyVol + r.sellVol));
-    return byPrice
-      .filter((r) => (r.buyVol + r.sellVol) / maxVol > 0.35 || r.barCount >= 3)
-      .slice(0, 8);
-  }, [byPrice]);
-
+  const last = barFlow.find((r) => r.volume > 0) ?? barFlow[0] ?? null;
+  const tapePrints = useMemo(() => {
+    const em = spotPrints.map((p, i) => ({
+      id: `p-${p.time}-${p.px}-${i}`,
+      time: p.time,
+      close: p.px,
+      volume: p.sz,
+      delta: p.side === "buy" ? p.sz : -p.sz,
+      side: p.side,
+    }));
+    const seen = new Set<string>();
+    const merged = [...liveTicks, ...em].sort((a, b) => b.time - a.time);
+    const out = merged.filter((row) => {
+      const key = `${row.time}-${row.close}-${row.side}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    if (out.length) return out.slice(0, 120);
+    return barFlow.slice(0, 40);
+  }, [spotPrints, liveTicks, barFlow]);
   const ago = secondsAgo(updatedAt, clock);
 
-  const draw = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || structureBars.length < 4) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    const w = Math.max(400, rect.width);
-    const h = Math.max(260, rect.height);
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-    const cols = 28;
-    const { colTimes, cells } = footprintGrid(structureBars, cols, stableRange);
-    const { priceMin, priceMax } = stableRange;
-    if (colTimes.length === 0) return;
-
-    const tick = priceTick;
-    const rows = Math.ceil((priceMax - priceMin) / tick);
-
-    const left = 44;
-    const top = 28;
-    const chartW = w - left - 8;
-    const chartH = h - top - 16;
-    const cellW = chartW / colTimes.length;
-    const cellH = chartH / rows;
-    const priceToRow = (p: number) => Math.round((p - priceMin) / tick);
-
-    ctx.fillStyle = BG;
-    ctx.fillRect(0, 0, w, h);
-
-    if (entryLo != null && entryHi != null) {
-      const y1 = top + chartH - priceToRow(entryHi) * cellH;
-      const y2 = top + chartH - priceToRow(entryLo) * cellH;
-      ctx.fillStyle = "rgba(255, 204, 0, 0.14)";
-      ctx.fillRect(left, y1, chartW, y2 - y1);
-      ctx.strokeStyle = "rgba(255, 204, 0, 0.55)";
-      ctx.setLineDash([4, 3]);
-      ctx.strokeRect(left, y1, chartW, y2 - y1);
-      ctx.setLineDash([]);
-    }
-
-    let maxCell = 1;
-    for (const vol of cells.values()) {
-      maxCell = Math.max(maxCell, vol.buy + vol.sell);
-    }
-
-    const lastCol = colTimes.length - 1;
-
-    for (const [key, vol] of cells) {
-      const [colStr, rowStr] = key.split(":");
-      const col = Number(colStr);
-      const row = priceToRow(Number(rowStr));
-      const x = left + col * cellW;
-      const y = top + chartH - (row + 1) * cellH;
-      const total = vol.buy + vol.sell;
-      if (total < 0.5) continue;
-
-      const intensity = Math.min(1, total / maxCell);
-      const isLiveCol = col === lastCol;
-      const pulse = pulseRef.current;
-      if (vol.buy >= vol.sell) {
-        const a = 0.22 + intensity * 0.58 + (isLiveCol ? pulse * 0.12 : 0);
-        ctx.fillStyle = `rgba(0, 255, 136, ${Math.min(0.95, a)})`;
-      } else {
-        const a = 0.22 + intensity * 0.58 + (isLiveCol ? pulse * 0.12 : 0);
-        ctx.fillStyle = `rgba(255, 51, 85, ${Math.min(0.95, a)})`;
+  useEffect(() => {
+    const px = shownPx ?? markOnTape;
+    if (px == null) return;
+    const last = snapTick(px, tick);
+    const half = Math.max(40, Math.floor(bodyH / DOM_ROW_H / 2));
+    setLadder((prev) => {
+      if (!prev) {
+        return {
+          max: Math.round((last + half * tick) * 100) / 100,
+          min: Math.round((last - half * tick) * 100) / 100,
+        };
       }
-      ctx.fillRect(x + 0.5, y + 0.5, cellW - 1, cellH - 1);
+      let { min, max } = prev;
+      const edge = 4 * tick;
+      if (last > max - edge) max = Math.round((last + half * tick) * 100) / 100;
+      if (last < min + edge) min = Math.round((last - half * tick) * 100) / 100;
+      const span = Math.round((max - min) / tick);
+      if (span > DOM_MAX_ROWS) {
+        if (last - min > max - last) min = Math.round((max - DOM_MAX_ROWS * tick) * 100) / 100;
+        else max = Math.round((min + DOM_MAX_ROWS * tick) * 100) / 100;
+      }
+      if (min === prev.min && max === prev.max) return prev;
+      return { min, max };
+    });
+  }, [shownPx, markOnTape, tick, bodyH]);
 
-      if (cellH >= 10 && cellW >= 12 && total >= maxCell * 0.08) {
-        ctx.font = "7px ui-monospace, monospace";
-        ctx.textAlign = "center";
-        if (vol.buy > 0) {
-          ctx.fillStyle = VIZ.cyanBright;
-          ctx.fillText(formatVol(vol.buy), x + cellW * 0.3, y + cellH * 0.55);
-        }
-        if (vol.sell > 0) {
-          ctx.fillStyle = "#ff8899";
-          ctx.fillText(formatVol(vol.sell), x + cellW * 0.72, y + cellH * 0.85);
-        }
-        ctx.textAlign = "left";
+  const levels = useMemo(() => {
+    if (markOnTape == null) return [];
+    const flow = isMetalDesk(instrument)
+      ? aggregateCloseFlow(tapeBars, tick)
+      : aggregateFlowByPrice(tapeBars, null, null, tick);
+    const rawMax = Math.max(1, ...flow.map((r) => r.buyVol + r.sellVol));
+    const scale = rawMax < 40 ? 100 : rawMax < 400 ? 10 : 1;
+
+    const lastTick = snapTick((shownPx ?? bookMark ?? markOnTape) as number, tick);
+    const fillRows = Math.max(36, Math.floor(bodyH / DOM_ROW_H));
+    let priceMax = ladder?.max ?? lastTick + Math.floor(fillRows / 2) * tick;
+    let priceMin = ladder?.min ?? lastTick - (fillRows - Math.floor(fillRows / 2) - 1) * tick;
+    let visible = Math.round((priceMax - priceMin) / tick) + 1;
+    if (visible > DOM_MAX_ROWS) {
+      priceMax = lastTick + Math.floor(DOM_MAX_ROWS / 2) * tick;
+      priceMin = lastTick - (DOM_MAX_ROWS - Math.floor(DOM_MAX_ROWS / 2) - 1) * tick;
+      visible = DOM_MAX_ROWS;
+    }
+    if (visible < DOM_MIN_ROWS) {
+      const extra = DOM_MIN_ROWS - visible;
+      priceMax += Math.ceil(extra / 2) * tick;
+      priceMin -= Math.floor(extra / 2) * tick;
+      visible = Math.round((priceMax - priceMin) / tick) + 1;
+    }
+    const prices: number[] = [];
+    for (let i = 0; i < visible; i++) {
+      prices.push(Math.round((priceMax - i * tick) * 100) / 100);
+    }
+
+    const flowAt = new Map(flow.map((r) => [snapTick(r.price, tick), r]));
+    const prints = new Map<number, { time: number; close: number; side: "buy" | "sell" }>();
+    for (const bar of tapeBars.slice(-360)) {
+      const key = snapTick(bar.close, tick);
+      const { buyVol, sellVol } = barBuySellVolume(bar);
+      const prev = prints.get(key);
+      if (!prev || bar.time >= prev.time) {
+        prints.set(key, {
+          time: bar.time,
+          close: bar.close,
+          side: buyVol >= sellVol ? "buy" : "sell",
+        });
+      }
+    }
+    for (const p of spotPrints) {
+      const key = snapTick(p.px, tick);
+      const prev = prints.get(key);
+      if (!prev || p.time >= prev.time) {
+        prints.set(key, { time: p.time, close: p.px, side: p.side });
       }
     }
 
-    const levels: Array<{ p: number; label: string; color: string }> = [];
-    if (signal?.stop_loss) levels.push({ p: signal.stop_loss, label: "STOP", color: VIZ.sell });
-    if (entryLo) levels.push({ p: entryLo, label: "ENTRY", color: VIZ.buy });
-    if (entryHi) levels.push({ p: entryHi, label: "ENTRY", color: VIZ.buy });
-    signal?.take_profit.forEach((p, i) => levels.push({ p, label: `TP${i + 1}`, color: VIZ.gold }));
-
-    for (const lv of levels) {
-      const row = priceToRow(lv.p);
-      const y = top + chartH - row * cellH;
-      ctx.strokeStyle = lv.color;
-      ctx.globalAlpha = 0.7;
-      ctx.setLineDash([3, 3]);
-      ctx.beginPath();
-      ctx.moveTo(left, y);
-      ctx.lineTo(left + chartW, y);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = lv.color;
-      ctx.font = "bold 7px ui-monospace, monospace";
-      ctx.fillText(lv.label, 4, y - 2);
+    const offset = book && bookMark != null ? bookMark - book.mid : 0;
+    const bids = new Map<number, number>();
+    const asks = new Map<number, number>();
+    if (book) {
+      for (const lvl of book.bids) {
+        const key = snapTick(lvl.px + offset, tick);
+        bids.set(key, (bids.get(key) ?? 0) + lvl.usd);
+      }
+      for (const lvl of book.asks) {
+        const key = snapTick(lvl.px + offset, tick);
+        asks.set(key, (asks.get(key) ?? 0) + lvl.usd);
+      }
     }
 
-    const spot = livePrice ?? signal?.spot_price;
-    if (spot) {
-      const y = top + chartH - priceToRow(spot) * cellH;
-      const pulse = pulseRef.current;
-      ctx.strokeStyle = `rgba(0, 229, 255, ${0.55 + pulse * 0.45})`;
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([]);
-      ctx.beginPath();
-      ctx.moveTo(left, y);
-      ctx.lineTo(left + chartW, y);
-      ctx.stroke();
-      ctx.lineWidth = 1;
-      ctx.fillStyle = VIZ.cyanBright;
-      ctx.font = "bold 8px ui-monospace, monospace";
-      ctx.fillText(spot.toFixed(2), left + chartW - 44, y - 3);
-    }
+    void hitRev;
+    const rows = prices.map((price) => {
+      const key = snapTick(price, tick);
+      const f = flowAt.get(key);
+      const buy = Math.round((f?.buyVol ?? 0) * scale);
+      const sell = Math.round((f?.sellVol ?? 0) * scale);
+      const bookBid = bids.get(key) ?? 0;
+      const bookAsk = asks.get(key) ?? 0;
+      const hit = hitsRef.current.get(key);
+      const buyN = buy + (hit?.buy ?? 0);
+      const sellN = sell + (hit?.sell ?? 0);
+      const volN = buyN + sellN;
+      const print = hit
+        ? { time: hit.at, close: hit.last, side: hit.side }
+        : (prints.get(key) ?? null);
+      return { price, vol: volN, buy: buyN, sell: sellN, bid: bookBid, ask: bookAsk, delta: buyN - sellN, print };
+    });
 
-    ctx.strokeStyle = "rgba(56, 100, 140, 0.12)";
-    for (let c = 0; c <= colTimes.length; c++) {
-      const x = left + c * cellW;
-      ctx.beginPath();
-      ctx.moveTo(x, top);
-      ctx.lineTo(x, top + chartH);
-      ctx.stroke();
-    }
+    const maxVol = Math.max(1, ...rows.map((r) => r.vol));
+    const maxBid = Math.max(1, ...rows.map((r) => r.bid));
+    const maxAsk = Math.max(1, ...rows.map((r) => r.ask));
+    const poc = rows.reduce((best, r) => (r.vol > best.vol ? r : best), rows[0]);
+    const sessionVol = rows.reduce((s, r) => s + r.vol, 0) || 1;
 
-    ctx.fillStyle = VIZ.cyan;
-    ctx.font = "bold 9px ui-monospace, monospace";
-    ctx.fillText("FOOTPRINT · 1M BAR DELTA", left, 12);
-
-    ctx.fillStyle = "rgba(140, 175, 210, 0.55)";
-    ctx.font = "8px ui-monospace, monospace";
-    ctx.textAlign = "right";
-    for (let i = 0; i <= 5; i++) {
-      const p = priceMax - (i / 5) * (priceMax - priceMin);
-      const y = top + chartH - priceToRow(p) * cellH;
-      ctx.fillText(p.toFixed(1), left - 4, y + 3);
-    }
-    ctx.textAlign = "left";
-  }, [structureBars, stableRange, signal, entryLo, entryHi, livePrice]);
+    return rows.map((r) => ({
+      ...r,
+      maxVol,
+      maxBid,
+      maxAsk,
+      poc: poc != null && Math.abs(r.price - poc.price) < tick * 0.26,
+      hvn: r.vol >= maxVol * 0.72 && r.vol > 0,
+      share: Math.round((r.vol / sessionVol) * 100),
+      lastRow: Math.abs(r.price - lastTick) < tick * 0.26,
+    }));
+  }, [tapeBars, markOnTape, bookMark, shownPx, tick, book, hitRev, bodyH, spotPrints, instrument, ladder]);
 
   useEffect(() => {
-    let raf: number;
-    const loop = () => {
-      pulseRef.current = (Math.sin(performance.now() / 380) + 1) / 2;
-      draw();
-      raf = requestAnimationFrame(loop);
+    const body = bodyRef.current;
+    if (!body) return;
+    const mark = () => {
+      userScrolledRef.current = true;
     };
-    raf = requestAnimationFrame(loop);
-    const ro = new ResizeObserver(draw);
-    const el = canvasRef.current;
-    if (el) ro.observe(el);
+    body.addEventListener("wheel", mark, { passive: true });
+    body.addEventListener("touchmove", mark, { passive: true });
     return () => {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
+      body.removeEventListener("wheel", mark);
+      body.removeEventListener("touchmove", mark);
     };
-  }, [draw]);
+  }, [levels.length]);
 
-  if (loading && structureBars.length === 0) {
+  useEffect(() => {
+    if (didCenterRef.current || userScrolledRef.current) return;
+    const row = lastRowRef.current;
+    const body = bodyRef.current;
+    if (!row || !body) return;
+    const rowTop = row.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop;
+    body.scrollTop = Math.max(0, rowTop - body.clientHeight / 2 + row.clientHeight / 2);
+    didCenterRef.current = true;
+  }, [levels.length]);
+
+  const hasDesk = livePrice != null || Boolean(book) || tapeBars.length >= 4;
+  const [loadWaited, setLoadWaited] = useState(false);
+  useEffect(() => {
+    if (hasDesk || !loading) {
+      setLoadWaited(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setLoadWaited(true), 8_000);
+    return () => window.clearTimeout(timer);
+  }, [hasDesk, loading]);
+
+  if (loading && !hasDesk && !loadWaited) {
     return (
       <div className={cn("flex h-full items-center justify-center gap-2 text-sm text-muted", className)}>
         <Loader2 className="h-4 w-4 animate-spin text-sky-400" />
@@ -284,12 +431,12 @@ export function GoldOrderFlowViz({
     );
   }
 
-  if (!loading && structureBars.length < 4) {
+  if (!hasDesk) {
     return (
       <div className={cn("flex h-full flex-col items-center justify-center gap-3 px-6 text-center", className)}>
         <p className="text-sm text-muted">{t("goldSignals.orderFlowNoData")}</p>
         {error ? (
-          <p className="max-w-md text-[11px] text-danger/80">{t("goldSignals.orderFlowError")}</p>
+          <p className="max-w-md text-[11px] text-rose-300/80">{t("goldSignals.orderFlowError")}</p>
         ) : null}
         <button
           type="button"
@@ -303,78 +450,293 @@ export function GoldOrderFlowViz({
   }
 
   return (
-    <div className={cn("flex h-full min-h-0 flex-col", className)}>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[#262d3d] bg-[#171c2a] px-3 py-1.5">
-        <span className="inline-flex items-center gap-1.5 rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-          </span>
-          <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-success">
-            {t("goldSignals.orderFlowLive")}
-          </span>
+    <div className={cn("flex h-full min-h-0 flex-col bg-black text-[11px] text-zinc-300", className)}>
+      <div className="flex h-7 shrink-0 items-center gap-3 border-b border-white/[0.08] bg-[#07090c] px-2 font-mono tabular-nums">
+        <span className="flex items-center gap-1.5 text-emerald-400">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+          {t("goldSignals.orderFlowLive")}
         </span>
-        {livePrice != null ? (
-          <span className="font-mono text-[11px] font-semibold tabular-nums text-sky-200">
-            {livePrice.toFixed(2)}
+        {shownPx != null ? (
+          <span className="font-semibold text-zinc-100">{formatPx(shownPx, 0.01)}</span>
+        ) : null}
+        {last ? (
+          <span className={last.delta >= 0 ? "text-emerald-400" : "text-rose-400"}>
+            Δ {last.delta >= 0 ? "+" : ""}
+            {formatVol(last.delta)}
           </span>
         ) : null}
-        {ago != null ? (
-          <span className="text-[10px] text-muted">
-            {t("goldSignals.orderFlowUpdated", { sec: String(ago) })}
-          </span>
-        ) : null}
-        <Info className="h-3.5 w-3.5 shrink-0 text-amber-400/90" />
-        <p className="min-w-[120px] flex-1 text-[10px] leading-snug text-amber-200/75">
-          {stale ? t("goldSignals.orderFlowStaleDisclaimer") : t("goldSignals.orderFlowDisclaimer")}
-          {source ? ` · ${source}` : ""}
-        </p>
-        <span
-          className={cn(
-            "shrink-0 rounded border px-2 py-0.5 font-mono text-[10px] font-semibold tabular-nums transition-colors duration-300",
-            cumDelta >= 0
-              ? "border-emerald-500/35 bg-emerald-500/10 text-success"
-              : "border-rose-500/35 bg-rose-500/10 text-danger",
-          )}
-        >
-          Δ {cumDelta >= 0 ? "+" : ""}
+        <span className={cumDelta >= 0 ? "text-emerald-400" : "text-rose-400"}>
+          CVD {cumDelta >= 0 ? "+" : ""}
           {formatVol(cumDelta)}
         </span>
+        <span className="text-amber-200">
+          {t("goldSignals.orderFlowVol")} {formatVol(tapeLots.raw)}
+        </span>
+        {tapeLots.lots != null ? (
+          <span className="text-sky-300">
+            {tapeLots.unit === "gc" ? t("goldSignals.gcVolChip") : t("goldSignals.tapeLots")}{" "}
+            {formatLots(tapeLots.lots)}
+          </span>
+        ) : null}
+        {book ? (
+          <span className="text-blue-300">
+            BID {formatDepthUsd(book.depth_10bp_bid_usd)}
+          </span>
+        ) : null}
+        {book ? (
+          <span className="text-rose-300">
+            ASK {formatDepthUsd(book.depth_10bp_ask_usd)}
+          </span>
+        ) : l2Error ? (
+          <span className="text-zinc-600">{t("goldSignals.orderFlowL2None")}</span>
+        ) : null}
+        <span className="truncate text-[10px] text-amber-200/80">{t("goldSignals.orderFlowEstimate")}</span>
+        {book?.source ? <span className="truncate text-[10px] text-zinc-500">{book.source}</span> : null}
+        {ago != null ? <span className="ml-auto text-zinc-600">{ago}s</span> : null}
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <div className="relative min-h-[240px] flex-1">
-          <canvas ref={canvasRef} className="h-full w-full" style={{ background: BG, display: "block" }} />
-          {clusters.length > 0 ? (
-            <div className="absolute bottom-2 left-2 flex flex-wrap gap-1.5">
-              {clusters.map((c) => (
+      <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div
+        className={cn(
+          DOM_COLS,
+          "h-6 shrink-0 border-b border-white/[0.08] bg-[#07090c] px-1 font-mono text-[9px] uppercase tracking-wider",
+        )}
+      >
+        <span className="pl-1 text-sky-400">Profile</span>
+        <span className="text-right text-amber-300">Volume</span>
+        <span className="text-right text-zinc-300">Price</span>
+        <span className="text-center text-blue-400">Bid</span>
+        <span className="text-center text-rose-400">Sell</span>
+        <span className="text-center text-emerald-400">Buy</span>
+        <span className="text-center text-red-400">Ask</span>
+        <span className="text-right text-yellow-300">Δ</span>
+        <span className="text-right text-cyan-400">%</span>
+        <span className="pr-1 text-right text-zinc-400">Time</span>
+        <span className="pr-1 text-right text-zinc-400">Price</span>
+        <span className="pr-1 text-right text-sky-300">{t("goldSignals.orderFlowL2")}</span>
+      </div>
+
+      <div ref={bodyRef} className="min-h-0 flex-1 overflow-auto font-mono tabular-nums">
+        {levels.map((row, i) => {
+          const barW = Math.max(row.vol > 0 ? 8 : 0, (row.vol / row.maxVol) * 100);
+          const sellShare = row.vol > 0 ? row.sell / row.vol : 0.5;
+          const sellW = barW * sellShare;
+          const buyW = barW - sellW;
+          const heat = row.vol / row.maxVol;
+          const bidFill = row.bid > 0 ? 0.42 + (row.bid / row.maxBid) * 0.58 : 0;
+          const askFill = row.ask > 0 ? 0.42 + (row.ask / row.maxAsk) * 0.58 : 0;
+          const printAt = row.print
+            ? new Date(row.print.time > 1e12 ? row.print.time : row.print.time * 1000)
+            : null;
+          const showAt = row.lastRow ? new Date() : printAt;
+          const hitSide = row.lastRow ? row.print?.side : null;
+          const mark = bookMark ?? markOnTape;
+          const above = mark != null && row.price > mark + tick * 0.01;
+          const l2Usd = row.lastRow ? Math.max(row.bid, row.ask) : above ? row.ask : row.bid;
+          const l2Side = row.lastRow ? (row.ask >= row.bid ? "ask" : "bid") : above ? "ask" : "bid";
+          const l2W = l2Usd > 0 ? Math.max(8, (l2Usd / Math.max(1, row.maxBid, row.maxAsk)) * 100) : 0;
+          return (
+            <div
+              key={`${row.price}-${i}`}
+              ref={row.lastRow ? lastRowRef : undefined}
+              className={cn(
+                DOM_COLS,
+                "h-4 px-0.5",
+                row.lastRow && "bg-amber-400/15",
+                !row.lastRow && above && "bg-rose-500/[0.06]",
+                !row.lastRow && !above && "bg-blue-500/[0.05]",
+                row.lastRow && flashKey > 0 && "gold-dom-hit-last",
+              )}
+            >
+              <div className="relative h-full overflow-hidden bg-[#0c1016] pr-1">
+                <div
+                  className="absolute inset-y-[1px] left-0"
+                  style={{
+                    width: `${sellW}%`,
+                    background: `linear-gradient(90deg, #7f1d1d, #ef4444 ${Math.round(40 + heat * 60)}%)`,
+                  }}
+                />
+                <div
+                  className="absolute inset-y-[1px]"
+                  style={{
+                    left: `${sellW}%`,
+                    width: `${buyW}%`,
+                    background: `linear-gradient(90deg, #16a34a, #4ade80)`,
+                  }}
+                />
+              </div>
+              <span
+                className={cn(
+                  "mx-0.5 text-right",
+                  row.poc
+                    ? "bg-[#f5d76e] px-0.5 font-bold text-black"
+                    : row.hvn
+                      ? "bg-[#fb923c] px-0.5 font-semibold text-black"
+                      : heat > 0.45
+                        ? "text-cyan-300"
+                        : "text-zinc-400",
+                )}
+              >
+                {formatDomVol(row.vol)}
+              </span>
+              <span
+                className={cn(
+                  "pr-1 text-right",
+                  row.lastRow ? "bg-[#f5d76e] font-bold text-black" : "text-zinc-100",
+                )}
+              >
+                {row.lastRow && shownPx != null ? formatPx(shownPx, 0.01) : formatPx(row.price, tick)}
+              </span>
+              <span
+                className="text-center font-semibold text-white"
+                style={{
+                  background:
+                    row.bid > 0 ? `rgba(59, 130, 246, ${bidFill})` : "transparent",
+                  boxShadow: row.poc && row.bid > 0 ? "inset 0 0 0 1px #f5d76e" : undefined,
+                }}
+              >
+                {row.bid > 0 ? formatDepthUsd(row.bid) : ""}
+              </span>
+              <span
+                key={`s-${row.price}-${row.sell}`}
+                className={cn(
+                  "text-center font-semibold text-[#fb7185]",
+                  row.sell > 0 && "bg-rose-500/15",
+                  row.lastRow && hitSide === "sell" && "gold-dom-hit-sell",
+                )}
+              >
+                {row.sell > 0 ? row.sell : ""}
+              </span>
+              <span
+                key={`b-${row.price}-${row.buy}`}
+                className={cn(
+                  "text-center font-semibold text-[#4ade80]",
+                  row.buy > 0 && "bg-emerald-500/15",
+                  row.lastRow && hitSide === "buy" && "gold-dom-hit-buy",
+                )}
+              >
+                {row.buy > 0 ? row.buy : ""}
+              </span>
+              <span
+                className="text-center font-semibold text-white"
+                style={{
+                  background:
+                    row.ask > 0 ? `rgba(239, 68, 68, ${askFill})` : "transparent",
+                  boxShadow: row.hvn && row.ask > 0 ? "inset 0 0 0 1px #f5d76e" : undefined,
+                }}
+              >
+                {row.ask > 0 ? formatDepthUsd(row.ask) : ""}
+              </span>
+              <span
+                className={cn(
+                  "pr-1 text-right font-semibold",
+                  row.delta > 0 ? "text-[#4ade80]" : row.delta < 0 ? "text-[#fb7185]" : "text-zinc-600",
+                )}
+              >
+                {row.delta !== 0 ? String(row.delta) : ""}
+              </span>
+              <span
+                className={cn(
+                  "pr-1 text-right",
+                  row.share >= 8 ? "text-cyan-300" : "text-zinc-500",
+                )}
+              >
+                {row.share > 0 ? row.share : ""}
+              </span>
+              <span className="pr-1 text-right text-zinc-500">
+                {showAt
+                  ? showAt.toLocaleTimeString("en-GB", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                    })
+                  : ""}
+              </span>
+              <span
+                className={cn(
+                  "pr-1 text-right",
+                  (row.lastRow ? (hitSide ?? row.print?.side) : row.print?.side) === "sell"
+                    ? "text-rose-400"
+                    : "text-emerald-400",
+                )}
+              >
+                {row.lastRow && markOnTape != null
+                  ? formatPx(markOnTape, tick)
+                  : row.print
+                    ? formatPx(row.print.close, tick)
+                    : ""}
+              </span>
+              <div className="relative h-full overflow-hidden border-l border-white/[0.06] bg-[#07090c]">
+                {l2Usd > 0 ? (
+                  <div
+                    className={cn(
+                      "absolute inset-y-[1px]",
+                      l2Side === "ask" ? "right-0 bg-rose-500/45" : "left-0 bg-blue-500/45",
+                    )}
+                    style={{ width: `${l2W}%` }}
+                  />
+                ) : null}
                 <span
-                  key={c.price}
                   className={cn(
-                    "rounded border px-1.5 py-0.5 font-mono text-[9px] transition-all duration-300",
-                    c.inEntryZone
-                      ? "border-amber-500/40 bg-amber-500/15 text-amber-200"
-                      : c.lastSide === "buy"
-                        ? "border-sky-500/30 bg-sky-500/10 text-sky-300"
-                        : "border-rose-500/30 bg-rose-500/10 text-danger",
+                    "relative z-[1] block pr-1 text-right tabular-nums",
+                    l2Side === "ask" ? "text-rose-200" : "text-sky-200",
+                    row.lastRow && "font-semibold text-amber-200",
                   )}
                 >
-                  {c.price.toFixed(2)} · {c.lastSide === "buy" ? "B" : "S"}{" "}
-                  {formatVol(c.buyVol + c.sellVol)}
+                  {l2Usd > 0 ? formatDepthUsd(l2Usd) : ""}
                 </span>
-              ))}
+              </div>
             </div>
-          ) : null}
+          );
+        })}
+      </div>
         </div>
-
-        <BarFlowTape
-          rows={barFlow.slice(0, 60)}
-          locale={locale}
-          entryLo={entryLo}
-          entryHi={entryHi}
-          flashKey={flashKey}
-          formingBarTime={structureLastBar?.time ?? null}
-        />
+        <div className="flex w-[228px] shrink-0 flex-col border-l border-white/[0.08] bg-[#07090c]">
+          <div className="grid h-6 shrink-0 grid-cols-[68px_62px_40px_40px] items-center border-b border-white/[0.08] px-1.5 font-mono text-[9px] uppercase tracking-wider text-zinc-500">
+            <span>{t("goldSignals.orderFlowTime")}</span>
+            <span className="text-right">{t("goldSignals.orderFlowTimeSales")}</span>
+            <span className="text-right">{t("goldSignals.orderFlowSize")}</span>
+            <span className="text-right">{t("goldSignals.orderFlowDelta")}</span>
+          </div>
+          <div className="min-h-0 flex-1 overflow-auto font-mono tabular-nums">
+            {tapePrints.length === 0 ? (
+              <p className="px-2 py-6 text-center text-[10px] text-zinc-600">{t("goldSignals.orderFlowNoData")}</p>
+            ) : (
+              tapePrints.slice(0, 120).map((row, i) => {
+                const at = new Date(row.time > 1e12 ? row.time : row.time * 1000);
+                const hh = String(at.getHours()).padStart(2, "0");
+                const mm = String(at.getMinutes()).padStart(2, "0");
+                const ss = String(at.getSeconds()).padStart(2, "0");
+                return (
+                  <div
+                    key={row.id}
+                    className={cn(
+                      "grid h-[17px] grid-cols-[68px_62px_40px_40px] items-center px-1.5 text-[11px]",
+                      row.side === "sell" ? "text-rose-400" : "text-emerald-400",
+                      i === 0 && "bg-amber-400/12 font-semibold",
+                    )}
+                  >
+                    <span className={cn("text-zinc-400", i === 0 && "text-amber-200")}>
+                      {hh}:{mm}:{ss}
+                    </span>
+                    <span className="text-right font-semibold">{formatPx(row.close, tick)}</span>
+                    <span className="text-right text-zinc-200">{row.volume}</span>
+                    <span
+                      className={cn(
+                        "text-right",
+                        row.delta >= 0 ? "text-emerald-400" : "text-rose-400",
+                      )}
+                    >
+                      {row.delta >= 0 ? "+" : ""}
+                      {row.delta}
+                    </span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -570,91 +932,6 @@ export function GoldOrderFlowByPrice({ signal }: { signal: DeskSignal | null }) 
                     {t("goldSignals.orderFlowSell")} {formatVol(row.sellVol)}
                   </span>
                 </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
-  );
-}
-
-function BarFlowTape({
-  rows,
-  locale,
-  entryLo,
-  entryHi,
-  flashKey,
-  formingBarTime,
-}: {
-  rows: BarFlowRow[];
-  locale: string;
-  entryLo: number | null;
-  entryHi: number | null;
-  flashKey: number;
-  formingBarTime: number | null;
-}) {
-  const { t } = useLocale();
-
-  return (
-    <div className="flex max-h-[45%] min-h-0 w-full shrink-0 flex-col border-t border-[#262d3d] bg-[#171c2a] lg:max-h-none lg:w-[220px] lg:border-l lg:border-t-0">
-      <div className="border-b border-[#262d3d] px-3 py-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-300/90">
-          {t("goldSignals.orderFlowTape")}
-        </p>
-        <p className="mt-0.5 text-[9px] text-muted">{t("goldSignals.orderFlowHint")}</p>
-      </div>
-      <div className="grid shrink-0 grid-cols-[auto_1fr_auto_auto] gap-x-2 border-b border-[#262d3d] px-2 py-1.5 font-mono text-[8px] uppercase tracking-wider text-muted">
-        <span>{t("goldSignals.orderFlowTime")}</span>
-        <span>{t("goldSignals.orderFlowDelta")}</span>
-        <span className="text-right">{t("goldSignals.price")}</span>
-        <span className="text-right">{t("goldSignals.orderFlowVol")}</span>
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto font-mono text-[10px]" data-testid="orderflow-tape-scroll">
-        {rows.length === 0 ? (
-          <p className="p-4 text-center text-muted">—</p>
-        ) : (
-          rows.map((r, idx) => {
-            const inEntry =
-              entryLo != null && entryHi != null && r.close >= entryLo && r.close <= entryHi;
-            const bullish = r.close >= r.open;
-            const isForming = r.time === formingBarTime;
-            const isFresh = idx === 0 && flashKey > 0;
-            return (
-              <div
-                key={r.id}
-                className={cn(
-                  "grid grid-cols-[auto_1fr_auto_auto] gap-x-2 border-b border-white/[0.03] px-2 py-1 transition-colors duration-500",
-                  inEntry && "bg-amber-500/8",
-                  isForming && "bg-sky-500/10",
-                  isFresh && "animate-[gold-tape-flash_0.8s_ease-out]",
-                )}
-              >
-                <span className="text-muted">
-                  {formatBarTime(r.time, locale)}
-                  {isForming ? (
-                    <span className="ml-1 text-[8px] text-sky-400">●</span>
-                  ) : null}
-                </span>
-                <span
-                  className={cn(
-                    "font-semibold",
-                    r.delta >= 0 ? "text-[#2ebd85]" : "text-[#ef5350]",
-                  )}
-                >
-                  {r.delta >= 0 ? "+" : ""}
-                  {formatVol(r.delta)}
-                </span>
-                <span
-                  className={cn(
-                    "text-right tabular-nums",
-                    inEntry && "font-bold text-amber-200",
-                    !inEntry && (bullish ? "text-success/90" : "text-danger/90"),
-                  )}
-                >
-                  {r.close.toFixed(2)}
-                </span>
-                <span className="text-right tabular-nums text-foreground/70">{formatVol(r.volume)}</span>
               </div>
             );
           })

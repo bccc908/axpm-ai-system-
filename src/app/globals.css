@@ -244,6 +244,25 @@ body {
   }
 }
 
+@keyframes gold-dom-hit-last {
+  0% { background-color: rgba(245, 215, 110, 0.55); }
+  100% { background-color: rgba(245, 215, 110, 0.15); }
+}
+
+@keyframes gold-dom-flash-sell {
+  0% { background-color: rgba(251, 113, 133, 0.55); }
+  100% { background-color: transparent; }
+}
+
+@keyframes gold-dom-flash-buy {
+  0% { background-color: rgba(74, 222, 128, 0.55); }
+  100% { background-color: transparent; }
+}
+
+.gold-dom-hit-last { animation: gold-dom-hit-last 0.45s ease-out; }
+.gold-dom-hit-sell { animation: gold-dom-flash-sell 0.45s ease-out; }
+.gold-dom-hit-buy { animation: gold-dom-flash-buy 0.45s ease-out; }
+
 .gold-ticker-strip {
   background: var(--surface);
   border: 1px solid var(--card-border);
