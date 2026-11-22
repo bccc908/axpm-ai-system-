@@ -23,6 +23,7 @@ export const PATH_MODULE: Array<{ prefix: string; module: AuthModule }> = [
   { prefix: "/dashboard/usdt", module: "finance" },
   { prefix: "/dashboard/fortune", module: "fortune" },
   { prefix: "/dashboard/my-assistant", module: "assistant" },
+  { prefix: "/dashboard/knowledge", module: "knowledge" },
   { prefix: "/dashboard/todos", module: "todos" },
   { prefix: "/dashboard", module: "overview" },
 ];
@@ -45,15 +46,16 @@ const ALL_MODULES: AuthModule[] = [
   "settings",
   "account",
   "ops",
+  "knowledge",
 ];
 
 const ROLE_MODULES: Record<UserRole, AuthModule[]> = {
   owner: ALL_MODULES,
   admin: ALL_MODULES,
-  sales: ["overview", "todos", "crm", "conversations", "reminders", "email", "whatsapp", "team"],
-  finance: ["overview", "todos", "finance", "email", "whatsapp"],
+  sales: ["overview", "todos", "crm", "conversations", "reminders", "email", "whatsapp", "team", "knowledge"],
+  finance: ["overview", "todos", "finance", "email", "whatsapp", "knowledge"],
   personal: ["overview", "todos", "assistant", "fortune"],
-  viewer: ["overview", "crm", "conversations"],
+  viewer: ["overview", "crm", "conversations", "knowledge"],
   customer: ["overview", "fortune", "account"],
 };
 
@@ -102,6 +104,7 @@ export const NAV_MODULE: Record<string, AuthModule> = {
   "/dashboard/account": "account",
   "/dashboard/settings": "settings",
   "/dashboard/ops-floor": "ops",
+  "/dashboard/knowledge": "knowledge",
 };
 
 export const ROLE_LABELS: Record<UserRole, { zh: string; en: string }> = {

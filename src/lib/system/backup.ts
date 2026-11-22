@@ -19,6 +19,7 @@ export const BACKUP_JSON_FILES = [
   "email-log.json",
   "reply-agent-knowledge.json",
   "market-knowledge.json",
+  "knowledge-base.json",
   "market-diary.json",
   "market-chat.json",
   "users.json",

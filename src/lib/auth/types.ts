@@ -17,7 +17,8 @@ export type AuthModule =
   | "team"
   | "settings"
   | "account"
-  | "ops";
+  | "ops"
+  | "knowledge";
 
 export interface AuthUser {
   id: string;
