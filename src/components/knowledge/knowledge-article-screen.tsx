@@ -8,6 +8,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { useLocale } from "@/components/providers/locale-provider";
 import { KnowledgeEditor } from "@/components/knowledge/knowledge-editor";
 import { KnowledgeMarkdown } from "@/components/knowledge/knowledge-markdown";
+import { KnowledgeSourceLine } from "@/components/knowledge/knowledge-source-line";
 import { KnowledgeStatusBadge } from "@/components/knowledge/knowledge-status-badge";
 import { canApproveKnowledge, canEditKnowledge } from "@/lib/knowledge-base/access";
 import { formatDateLocalized } from "@/lib/i18n";
@@ -95,6 +96,7 @@ export function KnowledgeArticleScreen({ id }: { id: string }) {
         mode="edit"
         article={article}
         onCancel={() => setEditing(false)}
+        onArticleChange={(saved) => setArticle(saved)}
         onSaved={(saved, demoted) => {
           setArticle(saved);
           setEditing(false);
@@ -169,6 +171,16 @@ export function KnowledgeArticleScreen({ id }: { id: string }) {
       </div>
       {notice ? <p className="mt-3 text-sm text-foreground">{notice}</p> : null}
       {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
+
+      <KnowledgeSourceLine
+        source={article.source}
+        links={article.links}
+        attachments={article.attachments}
+        articleId={article.id}
+        sourceLabel={t("knowledge.sourceLabel")}
+        manualLabel={t("knowledge.manualSource")}
+        downloadLabel={t("knowledge.download")}
+      />
 
       <div className="mt-6">
         <KnowledgeMarkdown source={article.body} />

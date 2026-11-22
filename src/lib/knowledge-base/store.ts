@@ -3,19 +3,25 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { ZodError } from "zod";
 import { canApproveKnowledge, canEditKnowledge } from "@/lib/knowledge-base/access";
+import { removeArticleFiles } from "@/lib/knowledge-base/files";
+import { parseStaffSourceLink } from "@/lib/knowledge-base/links";
+import { normalizeStoredArticle } from "@/lib/knowledge-base/normalize";
 import {
   KNOWLEDGE_SECTIONS,
   type KnowledgeSectionId,
   type KnowledgeStatus,
 } from "@/lib/knowledge-base/sections";
-import { createArticleSchema, updateArticleSchema } from "@/lib/knowledge-base/schema";
-import { articleMatchesQuery, toArticleSummary } from "@/lib/knowledge-base/search";
+import { createArticleSchema, sourceLinkSchema, updateArticleSchema } from "@/lib/knowledge-base/schema";
+import { articleMatchesOrigin, articleMatchesQuery, toArticleSummary } from "@/lib/knowledge-base/search";
 import { loadSeedArticles } from "@/lib/knowledge-base/seed";
+import type { z } from "zod";
 import type {
   KnowledgeActor,
   KnowledgeArticle,
   KnowledgeArticleSummary,
   KnowledgeData,
+  KnowledgeOriginFilter,
+  KnowledgeSourceLink,
 } from "@/lib/knowledge-base/types";
 
 /**
@@ -29,7 +35,7 @@ export class KnowledgeError extends Error {
   constructor(
     message: string,
     readonly status: number,
-    readonly code: "forbidden" | "approve_required" | "invalid" | "not_found",
+    readonly code: "forbidden" | "approve_required" | "invalid" | "not_found" | "not_connected",
   ) {
     super(message);
     this.name = "KnowledgeError";
@@ -71,7 +77,8 @@ async function ensure(): Promise<KnowledgeData> {
   } catch {
     throw new KnowledgeError("知识库文件无法读取", 500, "invalid");
   }
-  return { articles: Array.isArray(parsed.articles) ? parsed.articles : [] };
+  const articles = Array.isArray(parsed.articles) ? parsed.articles : [];
+  return { articles: articles.flatMap((item) => normalizeStoredArticle(item) ?? []) };
 }
 
 async function write(data: KnowledgeData) {
@@ -113,7 +120,31 @@ function sortArticles(articles: KnowledgeArticle[], query: string): KnowledgeArt
 export interface KnowledgeQuery {
   section?: KnowledgeSectionId;
   status?: KnowledgeStatus;
+  origin?: KnowledgeOriginFilter;
   q?: string;
+}
+
+type IncomingLink = z.infer<typeof sourceLinkSchema>;
+
+function acceptLinks(links: IncomingLink[] | undefined): KnowledgeSourceLink[] {
+  if (!links) return [];
+  return links.map((link) => {
+    const parsed = parseStaffSourceLink(link.url, link.kind);
+    if (!parsed.ok || parsed.link.kind !== link.kind) {
+      throw new KnowledgeError("链接不是 Google Drive 或 Obsidian 链接", 400, "invalid");
+    }
+    const id = link.id && /^[A-Za-z0-9][A-Za-z0-9_-]{7,80}$/.test(link.id) ? link.id : randomUUID();
+    return {
+      id,
+      kind: parsed.link.kind,
+      url: parsed.link.url,
+      label: link.label.trim() || parsed.link.label,
+    };
+  });
+}
+
+function linkSignature(links: KnowledgeSourceLink[]) {
+  return JSON.stringify(links.map((link) => [link.kind, link.url, link.label]));
 }
 
 export async function listKnowledgeArticles(query: KnowledgeQuery = {}): Promise<{
@@ -126,6 +157,7 @@ export async function listKnowledgeArticles(query: KnowledgeQuery = {}): Promise
     const q = query.q?.trim() ?? "";
     const matched = data.articles.filter((article) => {
       if (query.status && article.status !== query.status) return false;
+      if (query.origin && query.origin !== "all" && !articleMatchesOrigin(article, query.origin)) return false;
       return articleMatchesQuery(article, q);
     });
     const visible = query.section ? matched.filter((article) => article.section === query.section) : matched;
@@ -166,6 +198,7 @@ export async function createKnowledgeArticle(input: unknown, actor: KnowledgeAct
   if (status === "approved") {
     await assertApprovedBodyIsNotATemplate(parsed.data.body);
   }
+  const links = acceptLinks(parsed.data.links);
 
   return exclusive(async () => {
     const data = await ensure();
@@ -181,6 +214,10 @@ export async function createKnowledgeArticle(input: unknown, actor: KnowledgeAct
       createdAt: now,
       updatedAt: now,
       updatedBy: actor.name,
+      source: "manual",
+      externalKey: null,
+      links,
+      attachments: [],
     };
     data.articles.unshift(article);
     await write(data);
@@ -202,24 +239,28 @@ export async function updateKnowledgeArticle(
   if (patch.status && patch.status !== "draft" && !canApproveKnowledge(actor.role)) {
     throw new KnowledgeError("只有所有者或管理员可以把文档标为模板或已批准", 403, "approve_required");
   }
+  const nextLinks = patch.links === undefined ? undefined : acceptLinks(patch.links);
 
   return exclusive(async () => {
     const data = await ensure();
     const article = data.articles.find((item) => item.id === id);
     if (!article) throw new KnowledgeError("找不到文档", 404, "not_found");
 
+    const linksChanged = nextLinks !== undefined && linkSignature(nextLinks) !== linkSignature(article.links);
     const unchanged =
       (patch.title === undefined || patch.title === article.title) &&
       (patch.body === undefined || patch.body === article.body) &&
       (patch.section === undefined || patch.section === article.section) &&
       (patch.ownerName === undefined || patch.ownerName === article.ownerName) &&
-      (patch.status === undefined || patch.status === article.status);
+      (patch.status === undefined || patch.status === article.status) &&
+      !linksChanged;
     if (unchanged) return { article, demoted: false };
 
     const contentChanged =
       (patch.title !== undefined && patch.title !== article.title) ||
       (patch.body !== undefined && patch.body !== article.body) ||
-      (patch.section !== undefined && patch.section !== article.section);
+      (patch.section !== undefined && patch.section !== article.section) ||
+      linksChanged;
 
     let status = patch.status ?? article.status;
     let demoted = false;
@@ -239,6 +280,7 @@ export async function updateKnowledgeArticle(
     article.section = patch.section ?? article.section;
     article.body = patch.body ?? article.body;
     article.ownerName = patch.ownerName ?? article.ownerName;
+    if (nextLinks) article.links = nextLinks;
     article.status = status;
     article.updatedAt = new Date().toISOString();
     article.updatedBy = actor.name;
@@ -253,12 +295,20 @@ export async function deleteKnowledgeArticle(id: string, actor: KnowledgeActor):
   }
   return exclusive(async () => {
     const data = await ensure();
-    const next = data.articles.filter((article) => article.id !== id);
-    if (next.length === data.articles.length) {
-      throw new KnowledgeError("找不到文档", 404, "not_found");
-    }
-    data.articles = next;
+    const removed = data.articles.find((article) => article.id === id);
+    if (!removed) throw new KnowledgeError("找不到文档", 404, "not_found");
+    data.articles = data.articles.filter((article) => article.id !== id);
     await write(data);
+    await removeArticleFiles(removed.id);
+  });
+}
+
+export function withKnowledgeData<T>(
+  fn: (ctx: { data: KnowledgeData; save: () => Promise<void> }) => Promise<T>,
+): Promise<T> {
+  return exclusive(async () => {
+    const data = await ensure();
+    return fn({ data, save: () => write(data) });
   });
 }
 

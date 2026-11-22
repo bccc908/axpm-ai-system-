@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { knowledgeErrorResponse, knowledgeFlags, requireKnowledgeReader } from "@/lib/knowledge-base/api-guard";
 import { isKnowledgeSection, isKnowledgeStatus } from "@/lib/knowledge-base/sections";
+import { isKnowledgeOrigin } from "@/lib/knowledge-base/types";
 import { createKnowledgeArticle, listKnowledgeArticles } from "@/lib/knowledge-base/store";
 
 export const dynamic = "force-dynamic";
@@ -12,14 +13,19 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const sectionParam = url.searchParams.get("section");
   const statusParam = url.searchParams.get("status");
+  const originParam = url.searchParams.get("origin");
   const q = url.searchParams.get("q") ?? "";
   const section = !sectionParam ? undefined : isKnowledgeSection(sectionParam) ? sectionParam : null;
   const status = !statusParam ? undefined : isKnowledgeStatus(statusParam) ? statusParam : null;
+  const origin = !originParam || originParam === "all" ? undefined : isKnowledgeOrigin(originParam) ? originParam : null;
   if (section === null) {
     return NextResponse.json({ error: "未知栏目" }, { status: 400 });
   }
   if (status === null) {
     return NextResponse.json({ error: "未知状态" }, { status: 400 });
+  }
+  if (origin === null) {
+    return NextResponse.json({ error: "未知来源" }, { status: 400 });
   }
   if (q.trim().length > 200) {
     return NextResponse.json({ error: "搜索过长" }, { status: 400 });
@@ -29,6 +35,7 @@ export async function GET(request: Request) {
     const result = await listKnowledgeArticles({
       section,
       status,
+      origin,
       q,
     });
     return NextResponse.json({ ...result, ...knowledgeFlags(auth.actor) });

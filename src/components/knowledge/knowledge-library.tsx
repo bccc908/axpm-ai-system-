@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { BookOpen, Plus, Search } from "lucide-react";
+import { BookOpen, FolderInput, Plus, Search, Upload } from "lucide-react";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useLocale } from "@/components/providers/locale-provider";
+import { KnowledgeImportDialog } from "@/components/knowledge/knowledge-import-dialog";
+import { KnowledgeSourceLine } from "@/components/knowledge/knowledge-source-line";
 import { KnowledgeStatusBadge } from "@/components/knowledge/knowledge-status-badge";
 import { canEditKnowledge } from "@/lib/knowledge-base/access";
 import { formatDateLocalized } from "@/lib/i18n";
@@ -14,7 +16,7 @@ import {
   type KnowledgeSectionId,
   type KnowledgeStatus,
 } from "@/lib/knowledge-base/sections";
-import type { KnowledgeArticleSummary } from "@/lib/knowledge-base/types";
+import type { KnowledgeArticleSummary, KnowledgeOriginFilter } from "@/lib/knowledge-base/types";
 import { cn } from "@/lib/utils";
 
 type LibraryResponse = {
@@ -25,12 +27,16 @@ type LibraryResponse = {
 };
 
 const STATUS_FILTERS: Array<KnowledgeStatus | "all"> = ["all", "template", "draft", "approved"];
+const ORIGIN_FILTERS: KnowledgeOriginFilter[] = ["all", "uploaded", "google_drive", "obsidian"];
 
 export function KnowledgeLibrary() {
   const { t, locale } = useLocale();
   const { user } = useAuth();
   const [section, setSection] = useState<KnowledgeSectionId | "all">("all");
   const [status, setStatus] = useState<KnowledgeStatus | "all">("all");
+  const [origin, setOrigin] = useState<KnowledgeOriginFilter>("all");
+  const [importTab, setImportTab] = useState<"google_drive" | "obsidian" | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [data, setData] = useState<LibraryResponse | null>(null);
@@ -48,6 +54,7 @@ export function KnowledgeLibrary() {
     const params = new URLSearchParams();
     if (section !== "all") params.set("section", section);
     if (status !== "all") params.set("status", status);
+    if (origin !== "all") params.set("origin", origin);
     if (debouncedQuery.trim()) params.set("q", debouncedQuery.trim());
 
     setLoading(true);
@@ -76,11 +83,18 @@ export function KnowledgeLibrary() {
       cancelled = true;
       controller.abort();
     };
-  }, [section, status, debouncedQuery, t]);
+  }, [section, status, origin, debouncedQuery, refreshKey, t]);
 
   const canEdit = data?.canEdit ?? (user ? canEditKnowledge(user.role) : false);
   const sections = data?.sections ?? KNOWLEDGE_SECTIONS.map((item) => ({ ...item, count: 0 }));
   const articles = data?.articles ?? [];
+
+  function originLabel(value: KnowledgeOriginFilter) {
+    if (value === "uploaded") return t("knowledge.sourceUploaded");
+    if (value === "google_drive") return t("knowledge.sourceDrive");
+    if (value === "obsidian") return t("knowledge.sourceObsidian");
+    return t("knowledge.sourceAll");
+  }
 
   function statusLabel(value: KnowledgeStatus | "all") {
     if (value === "all") return t("knowledge.allStatuses");
@@ -103,6 +117,7 @@ export function KnowledgeLibrary() {
             {t("knowledge.title")}
           </h1>
           <p className="mt-1.5 text-sm leading-relaxed text-muted">{t("knowledge.subtitle")}</p>
+          <p className="mt-1.5 text-sm leading-relaxed text-muted">{t("knowledge.libraryImportLine")}</p>
           {data ? (
             <p className="mt-2 text-[13px] text-foreground/80">
               {t("knowledge.countLine", {
@@ -113,13 +128,31 @@ export function KnowledgeLibrary() {
           ) : null}
         </div>
         {canEdit ? (
-          <Link
-            href={"/dashboard/knowledge/new" as Route}
-            className="btn-premium inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm"
-          >
-            <Plus className="h-4 w-4" />
-            {t("knowledge.newArticle")}
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setImportTab("google_drive")}
+              className="inline-flex items-center gap-1.5 rounded-md border border-card-border px-3 py-2 text-sm text-foreground hover:border-border-strong"
+            >
+              <FolderInput className="h-4 w-4 text-accent" />
+              {t("knowledge.importDrive")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setImportTab("obsidian")}
+              className="inline-flex items-center gap-1.5 rounded-md border border-card-border px-3 py-2 text-sm text-foreground hover:border-border-strong"
+            >
+              <Upload className="h-4 w-4 text-secondary" />
+              {t("knowledge.importObsidian")}
+            </button>
+            <Link
+              href={"/dashboard/knowledge/new" as Route}
+              className="btn-premium inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm"
+            >
+              <Plus className="h-4 w-4" />
+              {t("knowledge.newArticle")}
+            </Link>
+          </div>
         ) : null}
       </header>
 
@@ -170,7 +203,7 @@ export function KnowledgeLibrary() {
         </aside>
 
         <section className="min-w-0">
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="mb-4 flex flex-col gap-3">
             <label className="relative min-w-0 flex-1">
               <span className="sr-only">{t("knowledge.searchLabel")}</span>
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
@@ -186,6 +219,24 @@ export function KnowledgeLibrary() {
                 className="input-premium w-full rounded-md py-2 pl-9 pr-3 text-sm"
               />
             </label>
+            <div className="flex flex-wrap gap-1.5">
+              {ORIGIN_FILTERS.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={origin === value}
+                  onClick={() => setOrigin(value)}
+                  className={cn(
+                    "rounded-md border px-2.5 py-1.5 text-[12px]",
+                    origin === value
+                      ? "border-secondary bg-secondary/10 text-secondary"
+                      : "border-card-border text-muted hover:text-foreground",
+                  )}
+                >
+                  {originLabel(value)}
+                </button>
+              ))}
+            </div>
             <div className="flex flex-wrap gap-1.5">
               {STATUS_FILTERS.map((value) => (
                 <button
@@ -211,9 +262,13 @@ export function KnowledgeLibrary() {
 
           {!loading && articles.length === 0 ? (
             <div className="glass-panel rounded-lg px-4 py-8 text-sm text-muted">
-              {debouncedQuery.trim() || status !== "all" ? (
+              {debouncedQuery.trim() || status !== "all" || origin !== "all" ? (
                 <>
-                  <p>{t("knowledge.noMatches")}</p>
+                  <p>
+                    {origin !== "all" && !debouncedQuery.trim() && status === "all"
+                      ? t("knowledge.emptyOrigin")
+                      : t("knowledge.noMatches")}
+                  </p>
                   {section !== "all" && sections.some((item) => item.id !== section && item.count > 0) ? (
                     <p className="mt-2">{t("knowledge.matchesElsewhere")}</p>
                   ) : null}
@@ -262,6 +317,15 @@ export function KnowledgeLibrary() {
                       {article.excerpt ? (
                         <p className="mt-2 line-clamp-2 text-[13px] leading-5 text-muted">{article.excerpt}</p>
                       ) : null}
+                      <KnowledgeSourceLine
+                        plain
+                        source={article.source}
+                        links={article.links}
+                        attachments={article.attachments}
+                        sourceLabel={t("knowledge.sourceLabel")}
+                        manualLabel={t("knowledge.manualSource")}
+                        downloadLabel=""
+                      />
                     </Link>
                   </li>
                 );
@@ -270,6 +334,13 @@ export function KnowledgeLibrary() {
           )}
         </section>
       </div>
+      {importTab ? (
+        <KnowledgeImportDialog
+          tab={importTab}
+          onClose={() => setImportTab(null)}
+          onImported={() => setRefreshKey((value) => value + 1)}
+        />
+      ) : null}
     </div>
   );
 }
