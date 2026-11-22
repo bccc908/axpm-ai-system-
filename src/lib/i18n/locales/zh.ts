@@ -2,7 +2,8 @@ import type { TranslationDict } from "../types";
 
 export const zh: TranslationDict = {
   auth: {
-    loginTitle: "登录 AXPM",
+    loginKicker: "运营系统",
+    loginTitle: "员工登录",
     loginDesc: "登录后只能看到你有权限使用的功能。",
     setupTitle: "创建所有者账号",
     setupDesc: "首次使用请创建你的管理员账号（仅一次）。",
@@ -11,6 +12,8 @@ export const zh: TranslationDict = {
     password: "密码",
     loginBtn: "登录",
     secureNote: "仅限授权员工访问",
+    customerNote: "客户账号与员工登录分开。",
+    customerLink: "创建客户账号",
     setupBtn: "创建并进入",
     logout: "退出登录",
     failed: "登录失败，请检查邮箱和密码",
