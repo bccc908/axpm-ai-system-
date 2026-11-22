@@ -9,6 +9,7 @@ import {
   Camera,
   CreditCard,
   CheckSquare,
+  BookOpen,
   FolderOpen,
   Hexagon,
   Kanban,
@@ -49,6 +50,7 @@ const navSections: NavSection[] = [
     items: [
       { href: "/dashboard", labelKey: "nav.overview", icon: LayoutDashboard },
       { href: "/dashboard/ops-floor", labelKey: "nav.opsFloor", icon: Building2 },
+      { href: "/dashboard/knowledge", labelKey: "nav.knowledge", icon: BookOpen },
       { href: "/dashboard/todos", labelKey: "nav.todos", icon: CheckSquare },
       { href: "/dashboard/my-assistant", labelKey: "nav.myAssistant", icon: NotebookPen },
       { href: "/dashboard/finance", labelKey: "nav.finance", icon: Wallet },

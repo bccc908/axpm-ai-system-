@@ -7,6 +7,7 @@ import { useLocale } from "@/components/providers/locale-provider";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
 import { AgentKnowledgeUpload } from "@/components/ai/agent-knowledge-upload";
+import { ApprovedKnowledgeLookup } from "@/components/knowledge/approved-knowledge-lookup";
 import { VoiceTextarea } from "@/components/ui/voice-field";
 import type { Channel } from "@/types/database";
 
@@ -350,6 +351,9 @@ export function CustomerReplyAgent({
             placeholder={t("ai.customerQuestionPlaceholder")}
             className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted/60 min-h-[88px] resize-y"
           />
+          <div className="mt-3">
+            <ApprovedKnowledgeLookup query={customerQuestion} />
+          </div>
         </div>
 
         {!compact && (
