@@ -49,6 +49,10 @@ export async function loadSeedArticles(): Promise<KnowledgeArticle[]> {
       createdAt: SEED_UPDATED_AT,
       updatedAt: SEED_UPDATED_AT,
       updatedBy: null,
+      source: "manual",
+      externalKey: null,
+      links: [],
+      attachments: [],
     });
   }
   return articles;

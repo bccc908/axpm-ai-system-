@@ -20,6 +20,8 @@ export const BACKUP_JSON_FILES = [
   "reply-agent-knowledge.json",
   "market-knowledge.json",
   "knowledge-base.json",
+  "knowledge-drive.json",
+  "knowledge-obsidian.json",
   "market-diary.json",
   "market-chat.json",
   "users.json",
