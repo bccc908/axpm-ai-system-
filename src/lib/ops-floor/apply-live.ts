@@ -74,29 +74,8 @@ export function applyOpsFloorSnapshot(
   memory: ApplyMemory,
   options: ApplyOptions = {},
 ) {
-  if (!summary?.live) {
-    nexus.setDemo(true);
-    if (!memory.demoHeld) {
-      nexus.setStats({
-        mode: "demo",
-        agents: "15",
-        uptime: "87h",
-        cost: "$1.08",
-        agentsLabel: labels?.agents,
-        uptimeLabel: labels?.uptime,
-        costLabel: labels?.cost,
-        breakdownTpl: labels?.breakdown,
-      });
-      memory.demoHeld = true;
-    } else if (labels) {
-      nexus.setStats({
-        mode: "demo",
-        agentsLabel: labels.agents,
-        uptimeLabel: labels.uptime,
-        costLabel: labels.cost,
-        breakdownTpl: labels.breakdown,
-      });
-    }
+  if (!summary?.agents) {
+    nexus.setDemo(false);
     nexus.updateLabels?.(labels);
     memory.primed = false;
     return;

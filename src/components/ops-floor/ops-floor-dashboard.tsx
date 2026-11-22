@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { OpsFloorPanels, RemindersPanel, SystemsPanel, TipsPanel } from "@/components/ops-floor/ops-floor-panels";
+import { DailyWorkPanel, OpsFloorPanels, RemindersPanel, SystemsPanel, TipsPanel } from "@/components/ops-floor/ops-floor-panels";
 import { useLocale } from "@/components/providers/locale-provider";
 import type { OpsFloorLabels } from "@/lib/ops-floor/apply-live";
 import type { OpsFloorSummary } from "@/lib/ops-floor/types";
@@ -16,7 +16,9 @@ type NexusHandle = {
       getLocale?: () => string;
       getLabels?: () => OpsFloorLabels | null;
       onSummary?: (summary: OpsFloorSummary) => void;
+      onFocus?: (id: string | null) => void;
     }) => (() => void) | void;
+    focusById?: (id: string | null) => void;
   };
   dispose: () => void;
   reapplyLocale: () => void;
@@ -29,8 +31,9 @@ export function OpsFloorDashboard() {
   const localeRef = useRef(locale);
   const labelsRef = useRef<OpsFloorLabels | null>(null);
   const [summary, setSummary] = useState<OpsFloorSummary | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sceneError, setSceneError] = useState<string | null>(null);
-  const [slots, setSlots] = useState<{ health: HTMLElement; tips: HTMLElement; reminders: HTMLElement } | null>(null);
+  const [slots, setSlots] = useState<{ health: HTMLElement; tips: HTMLElement; reminders: HTMLElement; daily: HTMLElement } | null>(null);
 
   const labels: OpsFloorLabels = {
     brand: "AXPM",
@@ -82,7 +85,8 @@ export function OpsFloorDashboard() {
         const health = rootRef.current.querySelector<HTMLElement>("#ops-health");
         const tips = rootRef.current.querySelector<HTMLElement>("#ops-tips");
         const reminders = rootRef.current.querySelector<HTMLElement>("#ops-reminders");
-        if (health && tips && reminders) setSlots({ health, tips, reminders });
+        const daily = rootRef.current.querySelector<HTMLElement>("#ops-daily");
+        if (health && tips && reminders && daily) setSlots({ health, tips, reminders, daily });
         const stop = handle.nexus.connectLiveData({
           url: "/api/ops-floor/summary",
           intervalMs: 10_000,
@@ -90,6 +94,9 @@ export function OpsFloorDashboard() {
           getLabels: () => labelsRef.current,
           onSummary: (next) => {
             if (!disposed) setSummary(next);
+          },
+          onFocus: (id) => {
+            if (!disposed) setSelectedId(id);
           },
         });
         cleanup = () => {
@@ -122,14 +129,27 @@ export function OpsFloorDashboard() {
     };
   }, []);
 
+  function selectStaff(id: string | null) {
+    setSelectedId(id);
+    handleRef.current?.nexus.focusById?.(id);
+  }
+
   return (
     <div className="flex min-h-full flex-1 flex-col pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:h-full md:min-h-0 md:pb-0">
       <div ref={rootRef} className="ops-floor flex min-h-[70vh] flex-1 flex-col md:min-h-0" />
       {sceneError ? (
         <div className="ops-floor border-t border-[#1a2440] px-4 py-4">
           <p className="ops-empty">{t("opsFloor.sceneError")}</p>
-          <OpsFloorPanels summary={summary} />
+          <OpsFloorPanels summary={summary} selectedId={selectedId} onSelect={selectStaff} />
         </div>
+      ) : null}
+      {slots ? createPortal(
+        <DailyWorkPanel
+          summary={summary}
+          selectedId={selectedId}
+          onSelect={selectStaff}
+        />,
+        slots.daily,
       ) : null}
       {slots ? createPortal(<SystemsPanel summary={summary} />, slots.health) : null}
       {slots ? createPortal(<TipsPanel summary={summary} />, slots.tips) : null}

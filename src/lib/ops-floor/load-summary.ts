@@ -1,23 +1,30 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import { buildOpsFloorSummary, emptyOpsFloorSources } from "@/lib/ops-floor/build-summary";
+import { isCurrentTip } from "@/lib/ops-floor/daily-work";
 import type {
   BillLite,
   OpsTickerPrice,
   BridgePoll,
   CrmReminderLite,
+  DeckLite,
+  DiaryLite,
   FollowUpLite,
   GroktagonLite,
   InboxLite,
   JobLite,
   MarketMessageLite,
   OpsFloorSummary,
+  PlanLite,
   ReceiptLite,
+  ReplyDraftLite,
   SignalDeskId,
   SignalLite,
   SocialPostLite,
+  SupportMessageLite,
   TeamTaskLite,
   TodoLite,
+  WorkLogLite,
 } from "@/lib/ops-floor/types";
 
 const DESK_FILES: Record<SignalDeskId, string> = {
@@ -52,6 +59,8 @@ export async function loadOpsFloorSummary(options: LoadOptions = {}): Promise<Op
     const personal = asRecord(await readJson(dataDir, "personal-assistant.json"));
     sources.todos = readTodos(personal?.todos);
     sources.jobs = readJobs(personal?.jobs);
+    sources.plans = readPlans(personal?.plans);
+    sources.workLogs = readWorkLogs(personal?.workLogs);
 
     const crm = asRecord(await readJson(dataDir, "crm.json"));
     sources.followUps = readFollowUps(crm?.followUps);
@@ -72,6 +81,13 @@ export async function loadOpsFloorSummary(options: LoadOptions = {}): Promise<Op
 
     const market = asRecord(await readJson(dataDir, "market-chat.json"));
     sources.marketMessages = readMarket(market?.messages);
+    const diary = asRecord(await readJson(dataDir, "market-diary.json"));
+    sources.diary = readDiary(diary?.entries);
+    const decks = asRecord(await readJson(dataDir, "market-outputs/index.json"));
+    sources.decks = readDecks(decks?.outputs);
+
+    sources.supportMessages = readSupportMessages(await readJson(dataDir, "conversations.json"));
+    sources.replyDrafts = readReplyDrafts(await readJson(dataDir, "reply-drafts.json"));
 
     sources.groktagon = readGroktagon(await readJson(dataDir, "groktagon-autopilot.json"));
     sources.bridgePolls = readPolls(await readJson(dataDir, "bridge-polls.json"));
@@ -82,7 +98,15 @@ export async function loadOpsFloorSummary(options: LoadOptions = {}): Promise<Op
     sources.telegramReady = Boolean(env.TELEGRAM_BOT_TOKEN?.trim() && env.TELEGRAM_CHAT_ID?.trim());
     sources.localApiKeyConfigured = Boolean(env.LOCAL_API_KEY?.trim());
     sources.socialConfiguredCount = countSocial(env);
-    sources.prices = await resolveTickerPrices(sources.signals, options.skipQuotes === true);
+    const nowMs = now.getTime();
+    sources.prices = await resolveTickerPrices(
+      {
+        gold: sources.signals.gold.filter((row) => isCurrentTip(row, nowMs)),
+        btc: sources.signals.btc.filter((row) => isCurrentTip(row, nowMs)),
+        eth: sources.signals.eth.filter((row) => isCurrentTip(row, nowMs)),
+      },
+      options.skipQuotes === true,
+    );
 
     return buildOpsFloorSummary(sources);
   } catch {
@@ -143,6 +167,8 @@ function readSignals(value: unknown): SignalLite[] {
         take_profit: asArray(item.take_profit).map(numOrNull).filter((n): n is number => n != null),
         thesis: strOrNull(item.thesis),
         expires_at: strOrNull(item.expires_at),
+        approval_status: approvalStatus(asRecord(item.approval)?.status),
+        approval_at: strOrNull(asRecord(item.approval)?.decided_at) ?? strOrNull(asRecord(item.approval)?.requested_at),
       };
       return signal;
     })
@@ -176,6 +202,7 @@ function readJobs(value: unknown): JobLite[] {
         id: str(item.id) || str(item.title),
         title: str(item.title),
         status: str(item.status) || "todo",
+        category: str(item.category),
         due_at: strOrNull(item.due_at),
         completed_at: strOrNull(item.completed_at),
         updated_at: str(item.updated_at) || str(item.created_at) || new Date(0).toISOString(),
@@ -350,10 +377,128 @@ function readMarket(value: unknown): MarketMessageLite[] {
         content: str(item.content),
         created_at: str(item.created_at),
         fallback: Boolean(item.fallback),
+        mode: strOrNull(item.mode),
       };
       return message;
     })
     .filter((row): row is MarketMessageLite => row !== null);
+}
+
+function approvalStatus(value: unknown): SignalLite["approval_status"] {
+  if (value === "pending" || value === "approved" || value === "rejected") return value;
+  return null;
+}
+
+function readPlans(value: unknown): PlanLite[] {
+  return asArray(value)
+    .map((row) => {
+      const item = asRecord(row);
+      if (!item || !str(item.plan_date)) return null;
+      const plan: PlanLite = {
+        id: str(item.id) || str(item.plan_date),
+        title: str(item.title) || "Plan",
+        plan_date: str(item.plan_date),
+        period: str(item.period) || "daily",
+        items: asArray(item.items)
+          .map((entry) => {
+            const row = asRecord(entry);
+            if (!row || !str(row.text)) return null;
+            return { id: str(row.id) || str(row.text), text: str(row.text), done: Boolean(row.done) };
+          })
+          .filter((entry): entry is PlanLite["items"][number] => entry !== null),
+      };
+      return plan;
+    })
+    .filter((row): row is PlanLite => row !== null);
+}
+
+function readWorkLogs(value: unknown): WorkLogLite[] {
+  return asArray(value)
+    .map((row) => {
+      const item = asRecord(row);
+      if (!item || !str(item.title) || !str(item.logged_at)) return null;
+      const log: WorkLogLite = {
+        id: str(item.id) || str(item.title),
+        title: str(item.title),
+        category: str(item.category),
+        logged_at: str(item.logged_at),
+      };
+      return log;
+    })
+    .filter((row): row is WorkLogLite => row !== null);
+}
+
+function readDiary(value: unknown): DiaryLite[] {
+  return asArray(value)
+    .map((row) => {
+      const item = asRecord(row);
+      if (!item || !str(item.created_at)) return null;
+      const entry: DiaryLite = {
+        id: str(item.id) || str(item.created_at),
+        question: str(item.question),
+        mode: str(item.mode) || "market",
+        fallback: Boolean(item.fallback),
+        created_at: str(item.created_at),
+      };
+      return entry;
+    })
+    .filter((row): row is DiaryLite => row !== null);
+}
+
+function readDecks(value: unknown): DeckLite[] {
+  return asArray(value)
+    .map((row) => {
+      const item = asRecord(row);
+      if (!item || !str(item.created_at)) return null;
+      const deck: DeckLite = {
+        id: str(item.id) || str(item.created_at),
+        title: str(item.title) || "Slide deck",
+        kind: str(item.kind) || "ppt",
+        created_at: str(item.created_at),
+      };
+      return deck;
+    })
+    .filter((row): row is DeckLite => row !== null);
+}
+
+function readSupportMessages(value: unknown): SupportMessageLite[] {
+  const record = asRecord(value);
+  return asArray(record?.messages)
+    .map((row) => {
+      const item = asRecord(row);
+      const at = str(item?.sent_at) || str(item?.created_at);
+      const direction = str(item?.direction);
+      if (!item || !at || (direction !== "inbound" && direction !== "outbound")) return null;
+      const message: SupportMessageLite = {
+        id: str(item.id) || at,
+        channel: str(item.channel) || "web",
+        client_name: str(item.client_name) || "Client",
+        direction,
+        at,
+      };
+      return message;
+    })
+    .filter((row): row is SupportMessageLite => row !== null);
+}
+
+function readReplyDrafts(value: unknown): ReplyDraftLite[] {
+  const record = asRecord(value);
+  const rows = Array.isArray(value) ? value : asArray(record?.drafts);
+  return rows
+    .map((row) => {
+      const item = asRecord(row);
+      if (!item || !str(item.createdAt) && !str(item.created_at)) return null;
+      const draft: ReplyDraftLite = {
+        id: str(item.id) || str(item.createdAt) || str(item.created_at),
+        channel: str(item.channel) || "web",
+        client_name: str(item.clientName) || str(item.client_name) || "Client",
+        status: str(item.status) || "pending_approval",
+        created_at: str(item.createdAt) || str(item.created_at),
+        decided_at: strOrNull(item.decidedAt) ?? strOrNull(item.decided_at),
+      };
+      return draft;
+    })
+    .filter((row): row is ReplyDraftLite => row !== null);
 }
 
 function readGroktagon(value: unknown): GroktagonLite | null {
