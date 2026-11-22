@@ -2208,6 +2208,13 @@ export const zh: TranslationDict = {
     sourceFollowUp: "跟进",
     sourceTeam: "团队任务",
     sourceBill: "账单",
+    today: "今日工作",
+    allStaff: "全部同事",
+    inProgress: "进行中",
+    doneTodayLabel: "已完成",
+    waiting: "等待",
+    noWork: "今天没有记录",
+    notCurrent: "不是当前提示",
   },
   riskReview: {
     title: "风控审核",

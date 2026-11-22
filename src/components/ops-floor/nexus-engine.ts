@@ -10,6 +10,7 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { applyOpsFloorSnapshot } from "@/lib/ops-floor/apply-live";
+import { OPS_ROSTER } from "@/lib/ops-floor/roster";
 
 export function mountNexus(root, initialLabels) {
   let pollTimer = null;
@@ -49,6 +50,7 @@ export function mountNexus(root, initialLabels) {
     <div class="stat"><div class="label" id="stat-label-agents">AGENTS</div><div class="value cyan" id="stat-agents">15</div><div class="sub" id="stat-breakdown"></div></div>
     <div class="stat"><div class="label" id="stat-label-uptime">UPTIME</div><div class="value green" id="stat-uptime">87h</div><div class="sub"><span class="live"></span><span id="stat-uptime-sub">live</span></div></div>
     <div class="stat"><div class="label" id="stat-label-cost">COST</div><div class="value" id="stat-cost">$1.08</div><div class="sub" id="stat-cost-sub">+$0.0000 this session</div></div>
+    <div id="ops-daily"></div>
     <h2 id="activity-heading" style="margin-top:8px">LIVE ACTIVITY</h2>
     <ul id="feed"></ul>
     <div id="ops-health"></div>
@@ -59,39 +61,32 @@ export function mountNexus(root, initialLabels) {
   const qs = (id) => root.querySelector("#" + id);
 
 
-const NEXUS_BUILD = 'v5-axpm-broker';
-// DEMO_MODE simulates status changes, errors and finished tasks so the office feels alive.
-// Set to false (or call connectLiveData) once real data drives the hooks below.
-const DEMO_MODE = true;
+const NEXUS_BUILD = 'v6-axpm-departments';
+// Status and tasks come from /api/ops-floor/summary. The office still animates,
+// but it does not invent busy work, errors, or finished tasks.
+const DEMO_MODE = false;
 let demoEnabled = DEMO_MODE;
+let onFocus = null;
 
 /* ============================================================
- * DATA — replace with real bot data later.
- * Each agent: id, name, role, task, floor (0-4), x/z spawn hint, status.
- * x/z is snapped to the nearest free spot (desk, plant, etc.) on that floor.
- * Status colors map below; add more statuses as needed.
+ * Roster comes from OPS_ROSTER so a new department is a real figure.
+ * x/z is only a spawn hint; each agent snaps to a free spot on that floor.
  * ============================================================ */
 const STATUS_COLORS = { working: 0x4ff0ff, idle: 0x8a97b3, busy: 0xb07cff, error: 0xff4f6d };
-const NAMES = ['Atlas', 'Nova', 'Orion', 'Lyra', 'Vega', 'Echo', 'Juno', 'AH BAO', 'Pixel', 'Sage', 'Bolt', 'Iris', 'Rex', 'Zed', 'Mira'];
-const ROLES = ['Planner', 'Coder', 'Researcher', 'Reviewer', 'Ops', 'Data Analyst', 'Support', 'Designer', 'QA', 'Writer'];
-const TASKS = ['Refactor auth module', 'Summarize tickets', 'Index knowledge base', 'Review PR #42', 'Train embeddings',
-  'Draft weekly report', 'Triage alerts', 'Sync CRM records', 'Run test suite', 'Optimize SQL query',
-  'Design landing hero', 'Answer support chat', 'Scrape pricing data', 'Deploy staging build', 'Tag dataset batch'];
 const FLOOR_NAMES = ['Lobby', 'Ops', 'Studio', 'Data Center', 'Research'];
-const AGENTS = Array.from({ length: 15 }, (_, i) => ({
-  id: `agent-${i + 1}`,
-  name: NAMES[i],
-  role: ROLES[i % ROLES.length],
-  task: TASKS[i],
-  floor: i % 5,
-  // Spawn hint in the aisle between desk rows / near the right room
-  x: [-4, -2.4, -0.8, 2.2, 3.8][Math.floor(i / 5) + (i % 3)] ?? 0,
+const AGENTS = OPS_ROSTER.map((slot, i) => ({
+  id: slot.id,
+  name: slot.name,
+  role: slot.role_en,
+  task: 'Waiting for recorded work',
+  floor: slot.floor,
+  x: [-4, -2.4, -0.8, 2.2, 3.8][i % 5],
   z: i % 2 ? -0.35 : 2.4,
-  status: i === 11 ? 'error' : ['working', 'idle', 'busy', 'working'][i % 4],
+  status: 'idle',
 }));
 
 /* STATS — shown in the right panel. Call setStats({...}) to update. */
-const STATS = { agents: 15, uptime: '87h', cost: '$1.08', agentsLabel: 'AGENTS', uptimeLabel: 'UPTIME', costLabel: 'COST', uptimeSub: '', costSub: '', breakdown: '', breakdownTpl: '' };
+const STATS = { agents: AGENTS.length, uptime: '0', cost: '0', agentsLabel: 'AGENTS', uptimeLabel: 'UPTIME', costLabel: 'COST', uptimeSub: '', costSub: '', breakdown: '', breakdownTpl: '' };
 
 /* ---------- Scene setup ---------- */
 const container = qs('scene');
@@ -321,9 +316,9 @@ function tickCharts(dt) {
 }
 
 const tickerPrices = {
-  XAUUSD: { price: 2650.4, change: 0.18 },
-  BTCUSD: { price: 68420, change: -0.42 },
-  ETHUSD: { price: 3420, change: 0.11 },
+  XAUUSD: { price: null, change: null, known: false },
+  BTCUSD: { price: null, change: null, known: false },
+  ETHUSD: { price: null, change: null, known: false },
 };
 const tickerCanvas = document.createElement('canvas');
 tickerCanvas.width = 2048; tickerCanvas.height = 160;
@@ -332,6 +327,7 @@ const tickerTex = new THREE.CanvasTexture(tickerCanvas);
 tickerTex.colorSpace = THREE.SRGBColorSpace;
 tickerTex.wrapS = THREE.RepeatWrapping;
 function formatTickerPx(symbol, row) {
+  if (!row?.known || !Number.isFinite(row.price)) return `${symbol}  —`;
   const digits = symbol === 'BTCUSD' ? 0 : 2;
   const px = row.price.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
   const sign = row.change > 0 ? '+' : '';
@@ -356,9 +352,16 @@ function paintTicker() {
 paintTicker();
 function setPrices(list) {
   if (!Array.isArray(list)) return;
+  for (const key of Object.keys(tickerPrices)) {
+    tickerPrices[key].known = false;
+    tickerPrices[key].price = null;
+    tickerPrices[key].change = null;
+  }
   for (const row of list) {
-    if (!row || !tickerPrices[row.symbol] || !Number.isFinite(Number(row.price))) continue;
+    if (!row || !tickerPrices[row.symbol] || row.source === 'demo') continue;
+    if (!Number.isFinite(Number(row.price))) continue;
     tickerPrices[row.symbol].price = Number(row.price);
+    tickerPrices[row.symbol].known = true;
     if (row.change_pct != null && Number.isFinite(Number(row.change_pct))) tickerPrices[row.symbol].change = Number(row.change_pct);
   }
   paintTicker();
@@ -825,10 +828,8 @@ function startRide(a) {
   a.pendingFloor = null;
   Object.assign(a, { state: 'ride', rideFrom: a.floor, rideTo: to, rideT: 0, rideDur: 1.2 + Math.abs(to - a.floor) * 0.9, yawGoal: Math.PI / 4 });
 }
-function finishTask(a) {
-  logActivity(`${a.name} finished “${a.task}”`, '#5dff9e');
-  counters.costAdd += 0.0006;
-  let next; do { next = pick(TASKS); } while (next === a.task); a.task = next;
+function finishTask() {
+  // Recorded work replaces tasks. The floor does not invent the next assignment.
 }
 
 /* ---------- Activity feed + stats counters ---------- */
@@ -875,18 +876,24 @@ for (const a of AGENTS) {
   agentMeshes.set(a.id, a.root); agentById.set(a.id, a);
   const row = document.createElement('div'); row.className = 'ag';
   const d = document.createElement('span'); d.className = 'dot';
-  const nm = document.createElement('span'); nm.textContent = a.name;
+  const who = document.createElement('span'); who.className = 'who';
+  const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = a.name;
+  const role = document.createElement('span'); role.className = 'role'; role.textContent = a.role;
+  who.append(nm, role);
   const fl = document.createElement('span'); fl.className = 'fl';
-  row.append(d, nm, fl); listEl.append(row); a.listEl = row; a.floorEl = fl;
+  row.append(d, who, fl); listEl.append(row); a.listEl = row; a.floorEl = fl; a.roleEl = role;
   row.addEventListener('click', () => focusOn(a));
   // Snap to the nearest free spot on its floor
   const nav = NAV[a.floor];
   const free = nav.spots.filter(s => !s.taken).sort((p, q) =>
     Math.hypot(nav.nodes[p.node].x - a.x, nav.nodes[p.node].z - a.z) - Math.hypot(nav.nodes[q.node].x - a.x, nav.nodes[q.node].z - a.z));
-  const s = free[0]; s.taken = a; a.spot = s; a.node = s.node;
-  a.root.position.set(nav.nodes[s.node].x, a.floor * FLOOR_H + SLAB_TOP, nav.nodes[s.node].z);
-  a.yaw = a.yawGoal = s.face;
-  a.state = a.status === 'error' ? 'error' : (s.kind === 'desk' ? 'work' : 'idle');
+  const s = free[0];
+  if (s) { s.taken = a; a.spot = s; a.node = s.node; }
+  else a.node = nav.cab;
+  const spotNode = s ? s.node : nav.cab;
+  a.root.position.set(nav.nodes[spotNode].x, a.floor * FLOOR_H + SLAB_TOP, nav.nodes[spotNode].z);
+  a.yaw = a.yawGoal = s ? s.face : 0;
+  a.state = a.status === 'error' ? 'error' : (s?.kind === 'desk' ? 'work' : 'idle');
   a.timer = rand(0.5, 4);
   fl.textContent = `F${a.floor + 1}`;
   setStatusVisual(a);
@@ -966,7 +973,12 @@ function updateLabels(labels) {
 
 // Set what an agent is working on (shown in the hover tooltip)
 function setAgentTask(id, task) { const a = agentById.get(id); if (a && task) a.task = task; }
-function setAgentRole(id, role) { const a = agentById.get(id); if (a && role) a.role = role; }
+function setAgentRole(id, role) {
+  const a = agentById.get(id);
+  if (!a || !role) return;
+  a.role = role;
+  if (a.roleEl) a.roleEl.textContent = role;
+}
 function setFloorNames(names) {
   if (!Array.isArray(names)) return;
   names.forEach((name, index) => { if (typeof name === 'string' && name) FLOOR_NAMES[index] = name; });
@@ -993,6 +1005,7 @@ function connectLiveData(opts) {
   opts = opts || {};
   if (typeof opts.getLocale === 'function') getLocale = opts.getLocale;
   if (typeof opts.getLabels === 'function') getLabels = opts.getLabels;
+  if (typeof opts.onFocus === 'function') onFocus = opts.onFocus;
   if (pollTimer) clearInterval(pollTimer);
   const url = opts.url || '/api/ops-floor/summary';
   const every = Number(opts.intervalMs) > 0 ? Number(opts.intervalMs) : 10000;
@@ -1000,7 +1013,6 @@ function connectLiveData(opts) {
     try {
       const res = await fetch(url, { credentials: 'include', cache: 'no-store' });
       if (!res.ok) {
-        if (!liveMemory.primed) demoEnabled = true;
         if (typeof opts.onError === 'function') opts.onError(new Error(String(res.status)));
         return;
       }
@@ -1010,7 +1022,6 @@ function connectLiveData(opts) {
       applyOpsFloorSnapshot(window.nexus, data, locale, getLabels(), liveMemory);
       if (typeof opts.onSummary === 'function') opts.onSummary(data);
     } catch (err) {
-      if (!liveMemory.primed) demoEnabled = true;
       if (typeof opts.onError === 'function') opts.onError(err);
     }
   };
@@ -1023,12 +1034,16 @@ function reapplyLocale() {
   if (!lastSummary) { updateLabels(labels); return; }
   applyOpsFloorSnapshot(window.nexus, lastSummary, getLocale() === 'zh' ? 'zh' : 'en', labels, liveMemory, { quietStatus: true, resetFeed: true });
 }
-window.nexus = { updateAgentStatus, setStats, connectLiveData, setAgentTask, setAgentRole, setFloorNames, moveAgentToFloor, logActivity, clearActivity, getAgents, updateLabels, reapplyLocale, setPrices, build: NEXUS_BUILD,
+function focusById(id) {
+  if (!id) { unfocus(); return; }
+  const a = agentById.get(id);
+  if (a) focusOn(a);
+}
+window.nexus = { updateAgentStatus, setStats, connectLiveData, setAgentTask, setAgentRole, setFloorNames, moveAgentToFloor, logActivity, clearActivity, getAgents, updateLabels, reapplyLocale, setPrices, focusById, build: NEXUS_BUILD,
   setDemo: on => { demoEnabled = !!on; } };
 
 setStats({});
-logActivity('AXPM online · 15 agents across 5 floors', '#4ff0ff');
-logActivity(`${AGENTS[11].name} hit an error on “${AGENTS[11].task}”`, '#ff4f6d');
+logActivity(`AXPM online · ${AGENTS.length} staff across 5 floors`, '#ff6a32');
 
 /* ---------- Interaction: hover tooltip, click to follow, toolbar ---------- */
 const tipEl = qs('tip');
@@ -1083,18 +1098,23 @@ cleanups.push(() => window.removeEventListener('keydown', onKey));
 let focusAgent = null, camMode = null, zoomT = 0;
 const HOME = new THREE.Vector3(0, 6, 0);
 const chip = qs('focus-chip');
+function emitFocus(id) {
+  if (typeof onFocus === 'function') onFocus(id);
+}
 function focusOn(a) {
   focusAgent = a; camMode = 'follow'; zoomT = 1.5;
   chip.style.display = 'flex'; qs('focus-name').textContent = `◉ ${followPrefix} ${a.name}`;
   AGENTS.forEach(x => x.listEl.classList.toggle('sel', x === a));
+  emitFocus(a.id);
 }
 function unfocus() {
   if (!focusAgent && !camMode) return;
   focusAgent = null; camMode = 'home'; zoomT = 1.5; chip.style.display = 'none';
   AGENTS.forEach(x => x.listEl.classList.remove('sel'));
+  emitFocus(null);
 }
 qs('focus-x').onclick = unfocus;
-qs('btn-reset').onclick = () => { focusAgent = null; camMode = 'home'; zoomT = 1.5; chip.style.display = 'none'; AGENTS.forEach(x => x.listEl.classList.remove('sel')); };
+qs('btn-reset').onclick = () => { focusAgent = null; camMode = 'home'; zoomT = 1.5; chip.style.display = 'none'; AGENTS.forEach(x => x.listEl.classList.remove('sel')); emitFocus(null); };
 const btnRotate = qs('btn-rotate'), btnGlow = qs('btn-glow');
 btnRotate.onclick = () => { controls.autoRotate = !controls.autoRotate; btnRotate.classList.toggle('on', controls.autoRotate); };
 btnGlow.onclick = () => { bloom.enabled = !bloom.enabled; btnGlow.classList.toggle('on', bloom.enabled); };

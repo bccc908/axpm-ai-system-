@@ -7,7 +7,7 @@
 
 .ops-floor-app {
   display: grid;
-  grid-template-columns: 188px minmax(0, 1fr) 312px;
+  grid-template-columns: 214px minmax(0, 1fr) 312px;
   height: 100%;
   min-height: 0;
   background: #070a12;
@@ -47,19 +47,46 @@
 
 .ops-floor .ag {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
-  padding: 4px 8px;
+  padding: 6px 8px;
   font-size: 12px;
   color: #8a97b3;
   border-radius: 5px;
   cursor: pointer;
 }
 
+.ops-floor .ag .who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.ops-floor .ag .nm {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ops-floor .ag .role {
+  color: #ff6a32;
+  font-size: 9px;
+  letter-spacing: 0.2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 148px;
+}
+
 .ops-floor .ag:hover,
 .ops-floor .ag.sel {
-  background: #121b33;
+  background: #111521;
   color: #e8f0ff;
+}
+
+.ops-floor .ag.sel {
+  box-shadow: inset 2px 0 0 #ff6a32;
 }
 
 .ops-floor .ag .fl {
@@ -270,6 +297,43 @@
 }
 
 .ops-floor .ops-panel { margin-top: 16px; }
+.ops-floor .ops-daily-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow: auto;
+}
+.ops-floor .ops-daily-row {
+  text-align: left;
+  background: #111521;
+  border: 1px solid #1a2440;
+  border-radius: 8px;
+  padding: 8px;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+.ops-floor .ops-daily-row.on,
+.ops-floor .ops-daily-row:hover { border-color: #ff6a32; }
+.ops-floor .ops-daily-row .role { color: #ff6a32; font-size: 10px; }
+.ops-floor .ops-daily-row strong { display: block; color: #e8f0ff; font-size: 12px; }
+.ops-floor .ops-daily-row p { margin-top: 3px; color: #9aa7c2; font-size: 11px; }
+.ops-floor .ops-back {
+  background: transparent;
+  color: #ff6a32;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  padding: 0 0 8px;
+}
+.ops-floor .work-label {
+  margin: 8px 0 4px;
+  color: #ff6a32;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
 .ops-floor .ops-card {
   background: #0f1629;
   border: 1px solid #1a2440;

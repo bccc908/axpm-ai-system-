@@ -1,3 +1,5 @@
+import { collectDailyWork, isBuildWork, isCurrentTip, taskFromWork, type DailyContext } from "@/lib/ops-floor/daily-work";
+import { OPS_ROSTER } from "@/lib/ops-floor/roster";
 import type {
   AgentStatus,
   OpsFloorSummary,
@@ -24,8 +26,6 @@ import type {
 } from "@/lib/ops-floor/types";
 
 const TZ = "Asia/Hong_Kong";
-const FRESH_MS = 18 * 60 * 60 * 1000;
-const STALE_MS = 36 * 60 * 60 * 1000;
 const LIST_CAP = 12;
 const ACTIVITY_CAP = 16;
 
@@ -58,46 +58,7 @@ const DESKS: Array<{
   { id: "hl", name_en: "Hyperliquid", name_zh: "Hyperliquid", tab: "hl", symbol: "BTC-PERP" },
 ];
 
-const ROSTER: Array<{
-  id: string;
-  name: string;
-  floor: number;
-  module:
-    | "gold"
-    | "xau"
-    | "bridges"
-    | "btc"
-    | "eth"
-    | "grok"
-    | "followups"
-    | "reminders"
-    | "inbox"
-    | "bills"
-    | "usdt"
-    | "receipts"
-    | "market"
-    | "social"
-    | "todos";
-  role_en: string;
-  role_zh: string;
-  href: string;
-}> = [
-  { id: "agent-1", name: "Atlas", floor: 1, module: "gold", role_en: "Gold signals", role_zh: "黄金信号", href: "/dashboard/gold-signals?tab=gold" },
-  { id: "agent-2", name: "Nova", floor: 1, module: "xau", role_en: "XAUUSDT desk", role_zh: "XAUUSDT 交易台", href: "/dashboard/gold-signals?tab=xau" },
-  { id: "agent-3", name: "Orion", floor: 1, module: "bridges", role_en: "MT5 · ATAS · Bookmap", role_zh: "MT5 · ATAS · Bookmap", href: "/dashboard/gold-signals?tab=gold" },
-  { id: "agent-4", name: "Lyra", floor: 2, module: "btc", role_en: "BTC signals", role_zh: "BTC 信号", href: "/dashboard/gold-signals?tab=btc" },
-  { id: "agent-5", name: "Vega", floor: 2, module: "eth", role_en: "ETH signals", role_zh: "ETH 信号", href: "/dashboard/gold-signals?tab=eth" },
-  { id: "agent-6", name: "Echo", floor: 2, module: "grok", role_en: "Groktagon / Hyperliquid", role_zh: "Groktagon / Hyperliquid", href: "/dashboard/groktagon" },
-  { id: "agent-7", name: "Juno", floor: 3, module: "followups", role_en: "CRM follow-ups", role_zh: "客户跟进", href: "/dashboard/crm" },
-  { id: "agent-8", name: "AH BAO", floor: 3, module: "reminders", role_en: "CRM reminders", role_zh: "客户提醒", href: "/dashboard/reminders" },
-  { id: "agent-9", name: "Pixel", floor: 0, module: "inbox", role_en: "Inbox & reply", role_zh: "收件箱与回复", href: "/dashboard/conversations" },
-  { id: "agent-10", name: "Sage", floor: 4, module: "bills", role_en: "Bill reminders", role_zh: "账单提醒", href: "/dashboard/finance" },
-  { id: "agent-11", name: "Bolt", floor: 4, module: "usdt", role_en: "USDT checker", role_zh: "USDT 查询", href: "/dashboard/usdt" },
-  { id: "agent-12", name: "Iris", floor: 4, module: "receipts", role_en: "Receipts", role_zh: "收据", href: "/dashboard/finance?tab=receipts" },
-  { id: "agent-13", name: "Rex", floor: 0, module: "market", role_en: "Market AI", role_zh: "市场 AI", href: "/dashboard/market-ai" },
-  { id: "agent-14", name: "Zed", floor: 0, module: "social", role_en: "Social publisher", role_zh: "社媒发布", href: "/dashboard/social-media" },
-  { id: "agent-15", name: "Mira", floor: 3, module: "todos", role_en: "Todos & assistant", role_zh: "待办与助理", href: "/dashboard/todos" },
-];
+const ROSTER = OPS_ROSTER;
 
 export function emptyOpsFloorSources(now = new Date()): OpsFloorSources {
   return {
@@ -113,6 +74,12 @@ export function emptyOpsFloorSources(now = new Date()): OpsFloorSources {
     inbox: [],
     socialPosts: [],
     marketMessages: [],
+    diary: [],
+    decks: [],
+    plans: [],
+    workLogs: [],
+    supportMessages: [],
+    replyDrafts: [],
     groktagon: null,
     hyperliquidConfigured: false,
     telegramReady: false,
@@ -190,12 +157,7 @@ function latestSignal(rows: SignalLite[]) {
 }
 
 function isOpenSignal(signal: SignalLite | null, now: number) {
-  if (!signal) return false;
-  const bias = signal.bias.toLowerCase();
-  if (bias !== "long" && bias !== "short") return false;
-  const expires = timeMs(signal.expires_at);
-  if (expires != null && expires <= now) return false;
-  return true;
+  return isCurrentTip(signal, now);
 }
 
 function signalLine(signal: SignalLite) {
@@ -211,16 +173,23 @@ function signalLine(signal: SignalLite) {
 
 function signalStatus(signal: SignalLite | null, now: number): { status: AgentStatus; en: string; zh: string } {
   if (!signal) return { status: "idle", en: "No signal yet", zh: "暂无信号" };
-  const line = signalLine(signal);
-  const created = timeMs(signal.created_at);
-  const age = created == null ? Infinity : now - created;
-  const expired = timeMs(signal.expires_at);
-  if (expired != null && expired <= now) {
-    return { status: "busy", en: clip(`Expired · ${line.en}`), zh: clip(`已过期 · ${line.zh}`) };
+  if (isCurrentTip(signal, now)) {
+    const line = signalLine(signal);
+    const pending = signal.approval_status === "pending";
+    return {
+      status: "working",
+      en: clip(pending ? `Awaiting approval · ${line.en}` : line.en),
+      zh: clip(pending ? `等待批准 · ${line.zh}` : line.zh),
+    };
   }
-  if (age <= FRESH_MS) return { status: "working", en: clip(line.en), zh: clip(line.zh) };
-  if (age <= STALE_MS) return { status: "busy", en: clip(`Stale · ${line.en}`), zh: clip(`信号变旧 · ${line.zh}`) };
-  return { status: "idle", en: clip(`No fresh signal · ${line.en}`), zh: clip(`无新信号 · ${line.zh}`) };
+  const expired = timeMs(signal.expires_at);
+  if (signal.approval_status === "rejected") {
+    return { status: "idle", en: "Waiting · signal rejected", zh: "等待 · 信号已拒绝" };
+  }
+  if (expired != null && expired <= now) {
+    return { status: "idle", en: "Waiting · last signal expired", zh: "等待 · 上一条信号已过期" };
+  }
+  return { status: "idle", en: "Waiting · no fresh signal", zh: "等待 · 没有新信号" };
 }
 
 function ago(iso: string | null, now: number) {
@@ -411,6 +380,7 @@ export function buildOpsFloorSummary(sources: OpsFloorSources): OpsFloorSummary 
 
   const signals: OpsSignalTip[] = DESKS.map((desk) => {
     const row = latest[desk.id];
+    const current = isCurrentTip(row, now);
     return {
       id: row?.id ?? desk.id,
       desk: desk.id,
@@ -418,11 +388,12 @@ export function buildOpsFloorSummary(sources: OpsFloorSources): OpsFloorSummary 
       name_zh: desk.name_zh,
       symbol: row?.symbol || desk.symbol,
       bias: row?.bias ?? "wait",
-      entry: row ? formatEntry(row) : null,
-      stop_loss: row?.stop_loss ?? null,
-      take_profit: row?.take_profit ?? [],
+      entry: current && row ? formatEntry(row) : null,
+      stop_loss: current ? row?.stop_loss ?? null : null,
+      take_profit: current ? row?.take_profit ?? [] : [],
       time: row?.created_at ?? null,
-      thesis: row?.thesis ? clip(row.thesis, 220) : null,
+      thesis: current && row?.thesis ? clip(row.thesis, 220) : null,
+      current,
       href: `/dashboard/gold-signals?tab=${desk.tab}`,
     };
   });
@@ -483,8 +454,44 @@ export function buildOpsFloorSummary(sources: OpsFloorSources): OpsFloorSummary 
   const inboxLast = newest(sources.inbox, (row) => row.last_message_at)[0] ?? null;
   const socialLast = newest(sources.socialPosts, (row) => row.published_at || row.updated_at)[0] ?? null;
 
+  const utcDay = sources.now.slice(0, 10);
+  const dailyCtx: DailyContext = {
+    now,
+    today: today ?? utcDay,
+    planDates: new Set([today, utcDay].filter((value): value is string => Boolean(value))),
+    signals: latest,
+    lines: {
+      gold: latest.gold ? signalLine(latest.gold) : null,
+      xau: latest.xau ? signalLine(latest.xau) : null,
+      spread: latest.spread ? signalLine(latest.spread) : null,
+      btc: latest.btc ? signalLine(latest.btc) : null,
+      eth: latest.eth ? signalLine(latest.eth) : null,
+      hl: latest.hl ? signalLine(latest.hl) : null,
+    },
+    todos: sources.todos,
+    jobs: sources.jobs,
+    followUps: sources.followUps,
+    reminders: sources.reminders,
+    tasks: sources.tasks,
+    bills: sources.bills,
+    receipts: sources.receipts,
+    inbox: sources.inbox,
+    socialPosts: sources.socialPosts,
+    marketMessages: sources.marketMessages,
+    diary: sources.diary,
+    decks: sources.decks,
+    plans: sources.plans,
+    workLogs: sources.workLogs,
+    supportMessages: sources.supportMessages,
+    replyDrafts: sources.replyDrafts,
+    bridgePolls: sources.bridgePolls,
+    groktagon: sources.groktagon,
+    overdueBills,
+    dueBills,
+  };
+
   const agents = ROSTER.map((slot) => {
-    const state = moduleState(slot.module, {
+    const moduleCtx: ModuleContext = {
       latest,
       now,
       nowDate,
@@ -510,7 +517,12 @@ export function buildOpsFloorSummary(sources: OpsFloorSources): OpsFloorSummary 
       receiptLast,
       inboxLast,
       socialLast,
-    });
+      daily: dailyCtx,
+      href: slot.href,
+    };
+    const work_today = collectDailyWork(slot.module, dailyCtx, slot.href);
+    let state = moduleState(slot.module, moduleCtx);
+    if (state.status === "idle") state = taskFromWork(work_today, state);
     return {
       id: slot.id,
       name: slot.name,
@@ -521,6 +533,7 @@ export function buildOpsFloorSummary(sources: OpsFloorSources): OpsFloorSummary 
       floor: slot.floor,
       status: state.status,
       href: slot.href,
+      work_today,
     } satisfies OpsAgent;
   });
 
@@ -616,6 +629,12 @@ function hasLiveRecords(sources: OpsFloorSources) {
     sources.inbox.length > 0 ||
     sources.socialPosts.length > 0 ||
     sources.marketMessages.length > 0 ||
+    sources.diary.length > 0 ||
+    sources.decks.length > 0 ||
+    sources.plans.length > 0 ||
+    sources.workLogs.length > 0 ||
+    sources.supportMessages.length > 0 ||
+    sources.replyDrafts.length > 0 ||
     Boolean(sources.groktagon?.last_run_at) ||
     Object.values(sources.bridgePolls).some((poll) => Boolean(poll?.at))
   );
@@ -694,6 +713,8 @@ type ModuleContext = {
   receiptLast: ReceiptLite | null;
   inboxLast: InboxLite | null;
   socialLast: SocialPostLite | null;
+  daily: DailyContext;
+  href: string;
 };
 
 function moduleState(module: (typeof ROSTER)[number]["module"], ctx: ModuleContext): { status: AgentStatus; en: string; zh: string } {
@@ -716,7 +737,12 @@ function moduleState(module: (typeof ROSTER)[number]["module"], ctx: ModuleConte
   if (module === "receipts") return receiptState(ctx);
   if (module === "market") return marketState(ctx);
   if (module === "social") return socialState(ctx);
-  return todoState(ctx);
+  if (module === "todos") return todoState(ctx);
+  return taskFromWork(collectDailyWork(module, ctx.daily, ctx.href), {
+    status: "idle",
+    en: "Nothing recorded today",
+    zh: "今天没有记录",
+  });
 }
 
 function grokState(ctx: ModuleContext): { status: AgentStatus; en: string; zh: string } {
@@ -818,14 +844,16 @@ function receiptState(ctx: ModuleContext): { status: AgentStatus; en: string; zh
 }
 
 function marketState(ctx: ModuleContext): { status: AgentStatus; en: string; zh: string } {
-  if (!ctx.marketLast) return { status: "idle", en: "Market AI idle", zh: "市场 AI 空闲" };
-  const text = clip(ctx.marketLast.content, 90);
-  const age = ctx.now - (timeMs(ctx.marketLast.created_at) ?? ctx.now);
-  if (ctx.marketLast.fallback) return { status: "busy", en: clip(`Fallback reply · ${text}`), zh: clip(`回退回复 · ${text}`) };
-  if (age <= 24 * 60 * 60 * 1000 && ctx.marketLast.role === "assistant") {
-    return { status: "working", en: text, zh: text };
+  const research = [...ctx.sources.marketMessages]
+    .filter((row) => row.role === "assistant" && row.mode !== "ppt")
+    .sort((a, b) => (timeMs(b.created_at) ?? 0) - (timeMs(a.created_at) ?? 0))[0];
+  if (!research) return { status: "idle", en: "Research idle", zh: "研究空闲" };
+  const today = dayKey(research.created_at) === ctx.daily.today;
+  if (research.fallback && today) {
+    const text = clip(research.content, 90);
+    return { status: "busy", en: clip(`Fallback reply · ${text}`), zh: clip(`回退回复 · ${text}`) };
   }
-  return { status: "idle", en: text, zh: text };
+  return { status: "idle", en: "Research idle", zh: "研究空闲" };
 }
 
 function socialState(ctx: ModuleContext): { status: AgentStatus; en: string; zh: string } {
@@ -844,14 +872,21 @@ function socialState(ctx: ModuleContext): { status: AgentStatus; en: string; zh:
   return { status: "idle", en: configured, zh: configuredZh };
 }
 
+function isStaffJob(job: JobLite) {
+  return !isBuildWork(job.title, job.category);
+}
+
 function todoState(ctx: ModuleContext): { status: AgentStatus; en: string; zh: string } {
-  const next = ctx.overdueTodos[0] ?? ctx.overdueJobs[0] ?? ctx.openTodos[0] ?? ctx.openJobs[0] ?? null;
-  if (!next && ctx.sources.todos.length + ctx.sources.jobs.length === 0) {
+  const jobs = ctx.openJobs.filter(isStaffJob);
+  const overdueJobs = ctx.overdueJobs.filter(isStaffJob);
+  const staffJobs = ctx.sources.jobs.filter((job) => job.status !== "cancelled" && isStaffJob(job));
+  const next = ctx.overdueTodos[0] ?? overdueJobs[0] ?? ctx.openTodos[0] ?? jobs[0] ?? null;
+  if (!next && ctx.sources.todos.length + staffJobs.length === 0) {
     return { status: "idle", en: "No todos or assistant jobs", zh: "没有待办或助理任务" };
   }
   if (!next) return { status: "idle", en: "Todos and jobs are done", zh: "待办和助理任务都完成了" };
   const title = "title" in next ? next.title : "Task";
-  if (ctx.overdueTodos.length || ctx.overdueJobs.length) {
+  if (ctx.overdueTodos.length || overdueJobs.length) {
     return { status: "busy", en: clip(`Overdue · ${title}`), zh: clip(`逾期 · ${title}`) };
   }
   return { status: "working", en: clip(title), zh: clip(title) };
@@ -1093,13 +1128,26 @@ function buildActivity(input: {
       tone: input.inboxLast.unread_count > 0 ? "info" : "ok",
     });
   }
-  if (input.marketLast && input.marketLast.role === "assistant") {
+  const research = [...input.sources.marketMessages]
+    .filter((row) => row.role === "assistant" && row.mode !== "ppt")
+    .sort((a, b) => (timeMs(b.created_at) ?? 0) - (timeMs(a.created_at) ?? 0))[0];
+  if (research) {
     pushActivity(events, {
-      id: `market:${input.marketLast.id}`,
-      at: input.marketLast.created_at,
-      text_en: `Market AI · ${clip(input.marketLast.content, 80)}`,
-      text_zh: `市场 AI · ${clip(input.marketLast.content, 80)}`,
-      tone: input.marketLast.fallback ? "error" : "info",
+      id: `market:${research.id}`,
+      at: research.created_at,
+      text_en: `Research · ${clip(research.content, 80)}`,
+      text_zh: `研究 · ${clip(research.content, 80)}`,
+      tone: research.fallback ? "error" : "info",
+    });
+  }
+  for (const deck of input.sources.decks) {
+    if (deck.kind !== "ppt") continue;
+    pushActivity(events, {
+      id: `deck:${deck.id}`,
+      at: deck.created_at,
+      text_en: `Slide deck · ${clip(deck.title || "saved", 80)}`,
+      text_zh: `幻灯片 · ${clip(deck.title || "已保存", 80)}`,
+      tone: "ok",
     });
   }
   for (const [name, poll] of Object.entries(input.sources.bridgePolls)) {

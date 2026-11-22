@@ -121,7 +121,36 @@ describe("ops floor summary", () => {
       open_signals: 0,
       due_reminders: 0,
     });
-    expect(summary.agents).toHaveLength(15);
+    expect(summary.agents).toHaveLength(19);
+    expect(summary.agents.map((agent) => agent.name)).toEqual([
+      "Atlas",
+      "Nova",
+      "Orion",
+      "Lyra",
+      "Vega",
+      "Echo",
+      "Juno",
+      "AH BAO",
+      "Pixel",
+      "Sage",
+      "Bolt",
+      "Iris",
+      "Rex",
+      "Zed",
+      "Mira",
+      "Chief",
+      "Signals",
+      "Builder",
+      "Presentation",
+    ]);
+    const roles = Object.fromEntries(summary.agents.map((agent) => [agent.name, agent.role_en]));
+    expect(roles.Pixel).toBe("Support Manager");
+    expect(roles.Rex).toBe("Research");
+    expect(roles.Chief).toBe("Chief of Staff");
+    expect(roles.Signals).toBe("Signals Manager");
+    expect(roles.Builder).toBe("Builder");
+    expect(roles.Presentation).toBe("Presentation");
+    expect(summary.agents.every((agent) => agent.work_today.length > 0)).toBe(true);
     expect(summary.signals.map((row) => row.desk)).toEqual(["gold", "xau", "spread", "btc", "eth", "hl"]);
     expect(summary.signals.every((row) => row.time == null)).toBe(true);
   });
@@ -148,7 +177,10 @@ describe("ops floor summary", () => {
     expect(byId["agent-1"]).toMatchObject({ status: "working", floor: 1 });
     expect(byId["agent-1"].task_en).toContain("XAUUSD");
     expect(byId["agent-1"].task_en).toContain("2,648");
-    expect(byId["agent-4"].status).toBe("busy");
+    expect(byId["agent-1"].work_today.some((row) => row.state === "in_progress")).toBe(true);
+    expect(byId["agent-4"].status).toBe("idle");
+    expect(byId["agent-4"].task_en.toLowerCase()).not.toMatch(/68,?000|66,?000/);
+    expect(byId["agent-4"].work_today.every((row) => !/68,?000|66,?000/.test(row.title_en + row.detail_en))).toBe(true);
     expect(byId["agent-3"].status).toBe("working");
     expect(byId["agent-6"].status).toBe("error");
     expect(byId["agent-10"].status).toBe("busy");
@@ -162,7 +194,15 @@ describe("ops floor summary", () => {
       stop_loss: 2635,
       href: "/dashboard/gold-signals?tab=gold",
     });
+    expect(gold?.current).toBe(true);
     expect(gold?.take_profit).toEqual([2665, 2680]);
+    const btc = summary.signals.find((row) => row.desk === "btc");
+    expect(btc?.current).toBe(false);
+    expect(btc?.entry).toBeNull();
+    expect(btc?.take_profit).toEqual([]);
+    expect(byId["agent-19"].work_today[0]).toMatchObject({ state: "waiting", placeholder: true });
+    expect(byId["agent-18"].task_en).toMatch(/code or app work/i);
+    expect(byId["agent-16"].task_en).toMatch(/plan or work log/i);
     expect(summary.reminders.overdue.some((item) => item.title === "Call the IB desk")).toBe(true);
     expect(summary.reminders.done.some((item) => item.title === "File the morning note")).toBe(true);
     expect(summary.reminders.pending.some((item) => item.href === "/dashboard/todos")).toBe(true);
@@ -170,6 +210,75 @@ describe("ops floor summary", () => {
     expect(summary.integrations.find((row) => row.id === "mt5")?.status).toBe("ok");
     expect(summary.integrations.find((row) => row.id === "telegram")?.status).toBe("ok");
     expect(summary.integrations.find((row) => row.id === "hyperliquid")?.status).toBe("idle");
+  });
+});
+
+describe("department daily work", () => {
+  it("reads decks, plans, build jobs, and support drafts without inventing a send", () => {
+    const sources = emptyOpsFloorSources(new Date(NOW));
+    sources.decks = [
+      { id: "deck-1", title: "Monday desk", kind: "ppt", created_at: "2026-11-10T01:00:00.000Z" },
+    ];
+    sources.plans = [
+      {
+        id: "plan-1",
+        title: "Monday",
+        plan_date: "2026-11-10",
+        period: "daily",
+        items: [
+          { id: "a", text: "Review the floor", done: false },
+          { id: "b", text: "File the note", done: true },
+        ],
+      },
+    ];
+    sources.jobs = [
+      {
+        id: "job-build",
+        title: "Fix the ops floor roster",
+        status: "in_progress",
+        category: "build",
+        due_at: null,
+        completed_at: null,
+        updated_at: "2026-11-10T01:10:00.000Z",
+      },
+    ];
+    sources.replyDrafts = [
+      {
+        id: "draft-1",
+        channel: "whatsapp",
+        client_name: "North client",
+        status: "pending_approval",
+        created_at: "2026-11-10T01:05:00.000Z",
+        decided_at: null,
+      },
+    ];
+    sources.signals.gold = [
+      {
+        id: "gold-old",
+        created_at: "2026-11-08T00:00:00.000Z",
+        symbol: "XAUUSD",
+        bias: "long",
+        spot_price: 2400,
+        entry_zone: { low: 2390, high: 2410 },
+        stop_loss: 2300,
+        take_profit: [2500],
+        thesis: "Stale gold.",
+        expires_at: "2026-11-08T06:00:00.000Z",
+        approval_status: null,
+        approval_at: null,
+      },
+    ];
+    const summary = buildOpsFloorSummary(sources);
+    const byName = Object.fromEntries(summary.agents.map((agent) => [agent.name, agent]));
+    expect(byName.Presentation.work_today[0]).toMatchObject({ state: "done", title_en: "Monday desk" });
+    expect(byName.Chief.work_today.map((row) => row.state).sort()).toEqual(["done", "waiting"]);
+    expect(byName.Builder.work_today[0]).toMatchObject({ state: "in_progress", title_en: "Fix the ops floor roster" });
+    expect(byName.Mira.work_today.some((row) => row.title_en.includes("ops floor"))).toBe(false);
+    expect(byName.Pixel.work_today[0]).toMatchObject({ state: "in_progress" });
+    expect(byName.Pixel.work_today[0].detail_en.toLowerCase()).toContain("does not send");
+    expect(byName.Signals.task_en.toLowerCase()).not.toMatch(/2,?400|2,?300|2,?500/);
+    expect(byName.Atlas.task_en.toLowerCase()).not.toMatch(/2,?400|2,?300|2,?500/);
+    expect(summary.signals.find((row) => row.desk === "gold")?.current).toBe(false);
   });
 });
 
@@ -243,13 +352,14 @@ describe("applyOpsFloorSnapshot", () => {
     return { nexus, calls };
   }
 
-  it("keeps demo mode when the summary has no live records", () => {
+  it("does not simulate staff when every store is empty", () => {
     const { nexus, calls } = fakeNexus();
     const memory = { seen: new Set<string>(), primed: false, demoHeld: false };
     applyOpsFloorSnapshot(nexus, buildOpsFloorSummary(emptyOpsFloorSources(new Date(NOW))), "en", null, memory);
-    expect(calls).toContain("demo:true");
-    expect(calls).toContain("stats:demo:15");
-    expect(calls.some((call) => call.startsWith("status:"))).toBe(false);
+    expect(calls).toContain("demo:false");
+    expect(calls).toContain("stats:live:0");
+    expect(calls.some((call) => call.startsWith("role:agent-19:Presentation"))).toBe(true);
+    expect(calls.some((call) => call.startsWith("task:agent-1:No current gold signal"))).toBe(true);
   });
 
   it("drives robots once and does not replay the same activity", () => {

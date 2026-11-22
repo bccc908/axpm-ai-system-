@@ -2214,6 +2214,13 @@ export const en = {
     sourceFollowUp: "Follow-up",
     sourceTeam: "Team task",
     sourceBill: "Bill",
+    today: "Today",
+    allStaff: "All staff",
+    inProgress: "In progress",
+    doneTodayLabel: "Done",
+    waiting: "Waiting",
+    noWork: "Nothing recorded today",
+    notCurrent: "Not a current tip",
   },
   riskReview: {
     title: "Risk review",

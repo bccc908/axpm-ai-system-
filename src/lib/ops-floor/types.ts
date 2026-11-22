@@ -15,6 +15,9 @@ export type SignalLite = {
   take_profit: number[];
   thesis: string | null;
   expires_at: string | null;
+  /** Absent when the row was never sent to the approver. */
+  approval_status?: "pending" | "approved" | "rejected" | null;
+  approval_at?: string | null;
 };
 
 export type TodoLite = {
@@ -30,9 +33,57 @@ export type JobLite = {
   id: string;
   title: string;
   status: string;
+  category?: string;
   due_at: string | null;
   completed_at: string | null;
   updated_at: string;
+};
+
+export type WorkLogLite = {
+  id: string;
+  title: string;
+  category: string;
+  logged_at: string;
+};
+
+export type PlanLite = {
+  id: string;
+  title: string;
+  plan_date: string;
+  period: string;
+  items: { id: string; text: string; done: boolean }[];
+};
+
+export type DiaryLite = {
+  id: string;
+  question: string;
+  mode: string;
+  fallback: boolean;
+  created_at: string;
+};
+
+export type DeckLite = {
+  id: string;
+  title: string;
+  kind: string;
+  created_at: string;
+};
+
+export type SupportMessageLite = {
+  id: string;
+  channel: string;
+  client_name: string;
+  direction: "inbound" | "outbound";
+  at: string;
+};
+
+export type ReplyDraftLite = {
+  id: string;
+  channel: string;
+  client_name: string;
+  status: string;
+  created_at: string;
+  decided_at: string | null;
 };
 
 export type FollowUpLite = {
@@ -104,6 +155,7 @@ export type MarketMessageLite = {
   content: string;
   created_at: string;
   fallback?: boolean;
+  mode?: string | null;
 };
 
 export type GroktagonLite = {
@@ -136,6 +188,12 @@ export type OpsFloorSources = {
   inbox: InboxLite[];
   socialPosts: SocialPostLite[];
   marketMessages: MarketMessageLite[];
+  diary: DiaryLite[];
+  decks: DeckLite[];
+  plans: PlanLite[];
+  workLogs: WorkLogLite[];
+  supportMessages: SupportMessageLite[];
+  replyDrafts: ReplyDraftLite[];
   groktagon: GroktagonLite | null;
   hyperliquidConfigured: boolean;
   telegramReady: boolean;
@@ -156,7 +214,25 @@ export type OpsSignalTip = {
   take_profit: number[];
   time: string | null;
   thesis: string | null;
+  /** False when the latest row is expired, stale, rejected, or not a directional call. */
+  current: boolean;
   href: string;
+};
+
+export type WorkState = "in_progress" | "done" | "waiting";
+
+export type OpsWorkItem = {
+  id: string;
+  state: WorkState;
+  title_en: string;
+  title_zh: string;
+  detail_en: string;
+  detail_zh: string;
+  at: string | null;
+  href: string;
+  overdue?: boolean;
+  /** Filled in when nothing real was recorded, so the panel can say so. */
+  placeholder?: boolean;
 };
 
 export type ReminderSource =
@@ -206,6 +282,7 @@ export type OpsAgent = {
   floor: number;
   status: AgentStatus;
   href: string;
+  work_today: OpsWorkItem[];
 };
 
 export type OpsFloorSummary = {

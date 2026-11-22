@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { useLocale } from "@/components/providers/locale-provider";
-import type { IntegrationHealth, OpsFloorSummary, OpsReminderItem, OpsSignalTip } from "@/lib/ops-floor/types";
+import type { IntegrationHealth, OpsAgent, OpsFloorSummary, OpsReminderItem, OpsSignalTip, OpsWorkItem, WorkState } from "@/lib/ops-floor/types";
 
 function formatWhen(iso: string | null, locale: string) {
   if (!iso) return "";
@@ -23,13 +23,104 @@ function formatPx(value: number) {
   return value.toLocaleString("en-US", { maximumFractionDigits: digits });
 }
 
-export function OpsFloorPanels({ summary }: { summary: OpsFloorSummary | null }) {
+export function OpsFloorPanels({ summary, selectedId = null, onSelect }: { summary: OpsFloorSummary | null; selectedId?: string | null; onSelect?: (id: string | null) => void }) {
   return (
     <>
+      <DailyWorkPanel summary={summary} selectedId={selectedId} onSelect={onSelect} />
       <SystemsPanel summary={summary} />
       <TipsPanel summary={summary} />
       <RemindersPanel summary={summary} />
     </>
+  );
+}
+
+export function DailyWorkPanel({
+  summary,
+  selectedId,
+  onSelect,
+}: {
+  summary: OpsFloorSummary | null;
+  selectedId: string | null;
+  onSelect?: (id: string | null) => void;
+}) {
+  const { t, locale } = useLocale();
+  if (!summary) return <p className="ops-empty">{t("opsFloor.loading")}</p>;
+  const selected = summary.agents.find((agent) => agent.id === selectedId) ?? null;
+  return (
+    <section className="ops-panel" aria-label={t("opsFloor.today")}>
+      <h2>{t("opsFloor.today")}</h2>
+      {selected ? (
+        <>
+          <button type="button" className="ops-back" onClick={() => onSelect?.(null)}>
+            {t("opsFloor.allStaff")}
+          </button>
+          <StaffWork agent={selected} locale={locale} />
+        </>
+      ) : (
+        <div className="ops-daily-list">
+          {summary.agents.map((agent) => {
+            const lead = leadWork(agent);
+            const title = lead ? (locale === "zh" ? lead.title_zh : lead.title_en) : t("opsFloor.noWork");
+            return (
+              <button key={agent.id} type="button" className="ops-daily-row" onClick={() => onSelect?.(agent.id)}>
+                <span className="role">{locale === "zh" ? agent.role_zh : agent.role_en}</span>
+                <strong>{agent.name}</strong>
+                <p>{title}</p>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function StaffWork({ agent, locale }: { agent: OpsAgent; locale: string }) {
+  const { t } = useLocale();
+  const groups: { state: WorkState; label: string }[] = [
+    { state: "in_progress", label: t("opsFloor.inProgress") },
+    { state: "done", label: t("opsFloor.doneTodayLabel") },
+    { state: "waiting", label: t("opsFloor.waiting") },
+  ];
+  return (
+    <article className="ops-card">
+      <div className="kicker">
+        <span>{locale === "zh" ? agent.role_zh : agent.role_en}</span>
+        <span>{agent.name}</span>
+      </div>
+      {groups.map((group) => {
+        const rows = agent.work_today.filter((row) => row.state === group.state);
+        return (
+          <div key={group.state}>
+            <div className="work-label">{group.label}</div>
+            {rows.length ? rows.map((row) => <WorkRow key={row.id} row={row} locale={locale} />) : <p className="ops-empty">{t("opsFloor.none")}</p>}
+          </div>
+        );
+      })}
+    </article>
+  );
+}
+
+function WorkRow({ row, locale }: { row: OpsWorkItem; locale: string }) {
+  const title = locale === "zh" ? row.title_zh : row.title_en;
+  const detail = locale === "zh" ? row.detail_zh : row.detail_en;
+  return (
+    <Link href={row.href as Route} className="ops-link">
+      <div className="ops-card">
+        <strong>{title}</strong>
+        {detail && detail !== title ? <p>{detail}</p> : null}
+      </div>
+    </Link>
+  );
+}
+
+function leadWork(agent: OpsAgent) {
+  return (
+    agent.work_today.find((row) => row.state === "in_progress" && !row.placeholder) ??
+    agent.work_today.find((row) => row.state === "done" && !row.placeholder) ??
+    agent.work_today.find((row) => !row.placeholder) ??
+    agent.work_today[0] ??
+    null
   );
 }
 
@@ -102,9 +193,11 @@ function SignalCard({ signal, locale }: { signal: OpsSignalTip; locale: string }
         </div>
         <strong>
           {signal.symbol}{" "}
-          <span className={`bias-${signal.bias}`}>{signal.time ? t(biasKey) : t("opsFloor.tipsEmpty")}</span>
+          <span className={`bias-${signal.current ? signal.bias : "wait"}`}>
+            {signal.time && signal.current ? t(biasKey) : signal.time ? t("opsFloor.notCurrent") : t("opsFloor.tipsEmpty")}
+          </span>
         </strong>
-        {signal.time ? (
+        {signal.time && signal.current ? (
           <div className="ops-meta">
             <span>
               {t("opsFloor.entry")} {signal.entry ?? "—"}
@@ -117,7 +210,7 @@ function SignalCard({ signal, locale }: { signal: OpsSignalTip; locale: string }
             </span>
           </div>
         ) : null}
-        {signal.thesis ? <p>{signal.thesis}</p> : null}
+        {signal.current && signal.thesis ? <p>{signal.thesis}</p> : null}
       </article>
     </Link>
   );
