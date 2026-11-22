@@ -128,13 +128,11 @@ export function Sidebar() {
 
   return (
     <aside className="flex h-full w-60 flex-col border-r border-card-border bg-surface">
-      <div className="flex h-14 items-center gap-3 border-b border-card-border px-4">
-        <BrandLogo height={20} />
-        <div className="min-w-0">
-          <p className="truncate text-[11px] font-medium uppercase leading-4 tracking-[0.06em] text-muted">
-            {t("app.title").replace(t("app.brand"), "").replace(/^[\s·\-–—|]+/, "") || t("app.title")}
-          </p>
-        </div>
+      <div className="flex h-16 items-center gap-2.5 border-b border-card-border px-4">
+        <BrandLogo height={28} />
+        <p className="min-w-0 truncate text-[11px] font-medium uppercase leading-4 tracking-[0.04em] text-muted">
+          {t("app.title").replace(t("app.brand"), "").replace(/^[\s·\-–—|]+/, "") || t("app.title")}
+        </p>
       </div>
 
       <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-3">

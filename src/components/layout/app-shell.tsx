@@ -58,7 +58,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           />
           <div className="absolute left-0 top-0 flex h-full w-[min(280px,85vw)] flex-col border-r border-card-border bg-surface shadow-2xl">
             <div className="flex items-center justify-between border-b border-card-border px-4 py-3">
-              <BrandLogo height={16} />
+              <BrandLogo height={22} />
               <button type="button" onClick={() => setMenuOpen(false)} className="p-2 text-muted">
                 <X className="h-5 w-5" />
               </button>
@@ -83,7 +83,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <BrandLogo height={16} />
+          <BrandLogo height={22} />
           <LanguageSwitcher className="text-xs" />
         </header>
 

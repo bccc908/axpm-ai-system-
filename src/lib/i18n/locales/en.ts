@@ -1,6 +1,7 @@
 export const en = {
   auth: {
-    loginTitle: "Sign in to AXPM",
+    loginKicker: "Operations",
+    loginTitle: "Staff sign in",
     loginDesc: "You only see features your role is allowed to use.",
     setupTitle: "Create owner account",
     setupDesc: "First-time setup — create your admin account (once only).",
@@ -11,6 +12,8 @@ export const en = {
     setupBtn: "Create & enter",
     logout: "Sign out",
     secureNote: "Authorized staff access only",
+    customerNote: "Customer accounts are separate.",
+    customerLink: "Create a customer account",
     failed: "Sign in failed — check email and password",
     rolesHint: "Roles: Sales→CRM/Inbox · Finance→Finance · Personal→Fortune · Viewer→read-only",
     usersTitle: "Team accounts",
