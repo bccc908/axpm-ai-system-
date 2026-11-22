@@ -27,6 +27,7 @@ export async function POST(request: Request) {
       attempts: result.attempts,
     };
     // pm2 keeps stderr: this line is what explains a 502 later (409 conflict vs Telegram/network).
+    // TRIAL(approval-gate-logging): reversible marker only. No runtime effect. Remove this line to revert.
     console.error(`[approvals/poll] getUpdates failed ${JSON.stringify(body)}`);
     return NextResponse.json(body, { status: 502 });
   }
