@@ -5,13 +5,41 @@ import { useLocale } from "@/components/providers/locale-provider";
 import type { Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
-export function LanguageSwitcher({ className }: { className?: string }) {
+export function LanguageSwitcher({
+  className,
+  compact = false,
+}: {
+  className?: string;
+  compact?: boolean;
+}) {
   const { locale, setLocale, t } = useLocale();
 
   const options: { value: Locale; label: string }[] = [
     { value: "en", label: t("lang.en") },
     { value: "zh", label: t("lang.zh") },
   ];
+
+  if (compact) {
+    return (
+      <div className={cn("flex flex-col items-center gap-1", className)}>
+        {options.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => setLocale(opt.value)}
+            className={cn(
+              "rounded px-1 py-0.5 text-[10px] font-semibold",
+              locale === opt.value ? "text-accent" : "text-muted",
+            )}
+            aria-label={opt.label}
+            aria-pressed={locale === opt.value}
+          >
+            {opt.value === "zh" ? "中" : "EN"}
+          </button>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className={cn("flex items-center gap-2", className)}>

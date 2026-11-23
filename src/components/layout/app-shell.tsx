@@ -36,14 +36,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const mobileNav = bottomNav.filter(({ href }) => canHref(href));
   const immersive = pathname.startsWith("/dashboard/ops-floor");
   const goldDesk = pathname.startsWith("/dashboard/gold-signals");
-  const fillHeight = immersive || goldDesk;
+  const solanaDesk = pathname.startsWith("/dashboard/solana-bot");
+  const fillHeight = immersive || goldDesk || solanaDesk;
 
   return (
     <div className="premium-canvas flex h-[100dvh] overflow-hidden">
       {/* Desktop sidebar */}
       <div className="hidden md:flex md:shrink-0">
         <Suspense fallback={null}>
-          <Sidebar />
+          <Sidebar compact={solanaDesk} />
         </Suspense>
       </div>
 
@@ -90,20 +91,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main
           className={cn(
             "flex min-h-0 flex-1 flex-col",
-            immersive
-              ? "overflow-y-auto md:overflow-hidden"
-              : goldDesk
-                ? "overflow-y-auto pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0"
-              : "overflow-y-auto pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0",
+            solanaDesk
+              ? "relative overflow-hidden"
+              : immersive
+                ? "overflow-y-auto md:overflow-hidden"
+                : goldDesk
+                  ? "overflow-y-auto pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0"
+                  : "overflow-y-auto pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0",
           )}
         >
           <div
             className={cn(
-              immersive
-                ? "flex min-h-full flex-1 flex-col md:h-full md:min-h-0"
-                : goldDesk
-                  ? "flex min-w-0 flex-1 flex-col"
-                  : "mx-auto w-full max-w-7xl p-4 md:p-6 lg:p-8",
+              solanaDesk
+                ? "absolute inset-x-0 top-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] overflow-auto md:bottom-0"
+                : immersive
+                  ? "flex min-h-full flex-1 flex-col md:h-full md:min-h-0"
+                  : goldDesk
+                    ? "flex min-w-0 flex-1 flex-col"
+                    : "mx-auto w-full max-w-7xl p-4 md:p-6 lg:p-8",
             )}
           >
             {fillHeight ? null : <InstallAppBanner />}

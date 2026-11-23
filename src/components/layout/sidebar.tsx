@@ -17,6 +17,7 @@ import {
   LayoutDashboard,
   LogOut,
   NotebookPen,
+  Radar,
   Settings,
   Share2,
   Sparkles,
@@ -50,6 +51,7 @@ const navSections: NavSection[] = [
     items: [
       { href: "/dashboard", labelKey: "nav.overview", icon: LayoutDashboard },
       { href: "/dashboard/ops-floor", labelKey: "nav.opsFloor", icon: Building2 },
+      { href: "/dashboard/solana-bot", labelKey: "nav.solanaBot", icon: Radar },
       { href: "/dashboard/knowledge", labelKey: "nav.knowledge", icon: BookOpen },
       { href: "/dashboard/todos", labelKey: "nav.todos", icon: CheckSquare },
       { href: "/dashboard/my-assistant", labelKey: "nav.myAssistant", icon: NotebookPen },
@@ -91,7 +93,7 @@ const navSections: NavSection[] = [
   },
 ];
 
-export function Sidebar() {
+export function Sidebar({ compact = false }: { compact?: boolean }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { t, locale } = useLocale();
@@ -127,12 +129,26 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex h-full w-60 flex-col border-r border-card-border bg-surface">
-      <div className="flex h-16 items-center gap-2.5 border-b border-card-border px-4">
-        <BrandLogo height={28} />
-        <p className="min-w-0 truncate text-[11px] font-medium uppercase leading-4 tracking-[0.04em] text-muted">
-          {t("app.title").replace(t("app.brand"), "").replace(/^[\s·\-–—|]+/, "") || t("app.title")}
-        </p>
+    <aside
+      className={cn(
+        "flex h-full flex-col border-r border-card-border bg-surface",
+        compact ? "w-14" : "w-60",
+      )}
+    >
+      <div className={cn("flex h-16 items-center gap-2.5 border-b border-card-border", compact ? "justify-center px-1" : "px-4")}>
+        {compact ? (
+          <svg viewBox="0 0 22 22" className="h-[22px] w-[22px]" aria-hidden="true">
+            <rect x="0.6" y="0.6" width="20.8" height="20.8" fill="none" stroke="#6eefe0" strokeWidth="0.9" />
+            <path d="M11 3.2 L18.2 18.2 H14.8 L13.4 14.8 H8.6 L7.2 18.2 H3.8 Z M11 7.2 L9.3 12.2 H12.7 Z" fill="#6eefe0" />
+          </svg>
+        ) : (
+          <BrandLogo height={28} />
+        )}
+        {compact ? null : (
+          <p className="min-w-0 truncate text-[11px] font-medium uppercase leading-4 tracking-[0.04em] text-muted">
+            {t("app.title").replace(t("app.brand"), "").replace(/^[\s·\-–—|]+/, "") || t("app.title")}
+          </p>
+        )}
       </div>
 
       <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-3">
@@ -142,9 +158,13 @@ export function Sidebar() {
 
           return (
             <div key={section.labelKey}>
-              <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted/70">
-                {t(section.labelKey)}
-              </p>
+              {compact ? (
+                <div className="mx-2 mb-1 border-t border-card-border" />
+              ) : (
+                <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted/70">
+                  {t(section.labelKey)}
+                </p>
+              )}
               <div className="space-y-0.5">
                 {items.map(({ href, labelKey, icon: Icon }) => {
                   const active = isActive(href);
@@ -152,8 +172,11 @@ export function Sidebar() {
                     <Link
                       key={href}
                       href={href as Route}
+                      title={t(labelKey)}
+                      aria-label={t(labelKey)}
                       className={cn(
-                        "group relative flex items-center gap-2.5 rounded-md px-3 py-[7px] text-[13px] font-medium transition-colors duration-150",
+                        "group relative flex items-center gap-2.5 rounded-md py-[7px] text-[13px] font-medium transition-colors duration-150",
+                        compact ? "justify-center px-0" : "px-3",
                         active
                           ? "nav-pill-active"
                           : "text-muted hover:bg-surface-2 hover:text-foreground",
@@ -172,7 +195,7 @@ export function Sidebar() {
                         )}
                         strokeWidth={active ? 2 : 1.75}
                       />
-                      {t(labelKey)}
+                      {compact ? null : t(labelKey)}
                     </Link>
                   );
                 })}
@@ -184,29 +207,41 @@ export function Sidebar() {
 
       <div className="space-y-2 border-t border-card-border p-3">
         {user ? (
-          <div className="flex items-center gap-2.5 rounded-md border border-card-border bg-background px-2.5 py-2">
+          <div
+            className={cn(
+              "flex items-center gap-2.5 rounded-md border border-card-border bg-background",
+              compact ? "justify-center px-1 py-2" : "px-2.5 py-2",
+            )}
+            title={user.name}
+          >
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-3 text-xs font-semibold text-foreground">
               {user.name.slice(0, 1).toUpperCase()}
             </span>
-            <div className="min-w-0">
-            <p className="truncate text-[13px] font-medium leading-4 text-foreground">{user.name}</p>
-            <p className="truncate text-[11px] leading-4 text-muted">{user.email}</p>
-            <p className="text-[11px] font-medium text-muted">
-              {ROLE_LABELS[user.role][locale === "zh" ? "zh" : "en"]}
-            </p>
-            </div>
+            {compact ? null : (
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-medium leading-4 text-foreground">{user.name}</p>
+                <p className="truncate text-[11px] leading-4 text-muted">{user.email}</p>
+                <p className="text-[11px] font-medium text-muted">
+                  {ROLE_LABELS[user.role][locale === "zh" ? "zh" : "en"]}
+                </p>
+              </div>
+            )}
           </div>
         ) : null}
         <button
           type="button"
           onClick={() => void logout()}
-          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-[13px] text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
+          aria-label={t("auth.logout")}
+          className={cn(
+            "flex w-full items-center gap-2 rounded-md py-2 text-[13px] text-muted transition-colors hover:bg-surface-2 hover:text-foreground",
+            compact ? "justify-center px-0" : "px-3",
+          )}
         >
           <LogOut className="h-4 w-4" />
-          {t("auth.logout")}
+          {compact ? null : t("auth.logout")}
         </button>
-        <LanguageSwitcher />
-        <p className="px-3 text-[11px] text-muted/60">{t("app.version")}</p>
+        <LanguageSwitcher compact={compact} />
+        {compact ? null : <p className="px-3 text-[11px] text-muted/60">{t("app.version")}</p>}
       </div>
     </aside>
   );
