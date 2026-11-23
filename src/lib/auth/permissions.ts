@@ -3,6 +3,7 @@ import type { AuthModule, UserRole } from "@/lib/auth/types";
 /** Dashboard path prefix → permission module */
 export const PATH_MODULE: Array<{ prefix: string; module: AuthModule }> = [
   { prefix: "/dashboard/ops-floor", module: "ops" },
+  { prefix: "/dashboard/solana-bot", module: "solana" },
   { prefix: "/dashboard/account", module: "account" },
   { prefix: "/dashboard/settings", module: "settings" },
   { prefix: "/dashboard/team", module: "team" },
@@ -47,6 +48,7 @@ const ALL_MODULES: AuthModule[] = [
   "account",
   "ops",
   "knowledge",
+  "solana",
 ];
 
 const ROLE_MODULES: Record<UserRole, AuthModule[]> = {
@@ -104,6 +106,7 @@ export const NAV_MODULE: Record<string, AuthModule> = {
   "/dashboard/account": "account",
   "/dashboard/settings": "settings",
   "/dashboard/ops-floor": "ops",
+  "/dashboard/solana-bot": "solana",
   "/dashboard/knowledge": "knowledge",
 };
 

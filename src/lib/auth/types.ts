@@ -18,7 +18,8 @@ export type AuthModule =
   | "settings"
   | "account"
   | "ops"
-  | "knowledge";
+  | "knowledge"
+  | "solana";
 
 export interface AuthUser {
   id: string;
