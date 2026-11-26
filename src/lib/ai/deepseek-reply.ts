@@ -45,12 +45,12 @@ function mockReply(params: CustomerReplyInput): CustomerReplyResult {
     detectedLanguage: zh ? "zh" : "en",
     replies: zh
       ? [
-          `${params.clientName} 您好，感谢联系 AXPM。我会尽快为您核实并回复准确信息。`,
+          `${params.clientName} 您好，感谢联系 Kayden Chiew。我会尽快为您核实并回复准确信息。`,
           `${params.clientName} 您好，问题已收到。请问您方便提供注册邮箱以便我为您查询吗？`,
           `如有紧急需求请直接回复，我会优先处理。`,
         ]
       : [
-          `Hi ${params.clientName}, thank you for reaching out to AXPM. I'll verify the details and reply with accurate information shortly.`,
+          `Hi ${params.clientName}, thank you for reaching out to Kayden Chiew. I'll verify the details and reply with accurate information shortly.`,
           `Hi ${params.clientName}, noted — could you share your registered email so I can look this up for you?`,
           `Reply here anytime if anything is urgent and I'll prioritise it.`,
         ],

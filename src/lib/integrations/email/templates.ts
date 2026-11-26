@@ -16,7 +16,7 @@ function wrapHtml(title: string, body: string, locale: Locale) {
 <head><meta charset="utf-8"><title>${title}</title></head>
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#1a1a1a;max-width:640px;margin:0 auto;padding:24px;">
   <div style="border-bottom:3px solid #2563eb;padding-bottom:12px;margin-bottom:20px;">
-    <strong style="font-size:18px;color:#2563eb;">AXPM</strong>
+    <strong style="font-size:18px;color:#2563eb;">Kayden Chiew</strong>
     <span style="color:#666;margin-left:8px;">${title}</span>
   </div>
   ${body}
@@ -43,22 +43,22 @@ export function buildTestEmail(locale: Locale, timezone: string): EmailContent {
 
   if (locale === "zh") {
     return {
-      subject: "AXPM 邮件测试 — 连接成功",
-      text: `AXPM 邮件系统测试成功。\n\n时间：${now}\n时区：${timezone}\n\n如果您收到此邮件，说明 SMTP 配置正确。`,
+      subject: "Kayden Chiew 邮件测试 — 连接成功",
+      text: `Kayden Chiew 邮件系统测试成功。\n\n时间：${now}\n时区：${timezone}\n\n如果您收到此邮件，说明 SMTP 配置正确。`,
       html: wrapHtml(
         "邮件测试",
-        `<p>AXPM 邮件系统测试成功。</p><p><strong>时间：</strong>${now}<br><strong>时区：</strong>${timezone}</p><p>如果您收到此邮件，说明 SMTP 配置正确。</p>`,
+        `<p>Kayden Chiew 邮件系统测试成功。</p><p><strong>时间：</strong>${now}<br><strong>时区：</strong>${timezone}</p><p>如果您收到此邮件，说明 SMTP 配置正确。</p>`,
         locale,
       ),
     };
   }
 
   return {
-    subject: "AXPM Email Test — Connection Successful",
-    text: `AXPM email system test successful.\n\nTime: ${now}\nTimezone: ${timezone}\n\nIf you received this, SMTP is configured correctly.`,
+    subject: "Kayden Chiew Email Test — Connection Successful",
+    text: `Kayden Chiew email system test successful.\n\nTime: ${now}\nTimezone: ${timezone}\n\nIf you received this, SMTP is configured correctly.`,
     html: wrapHtml(
       "Email Test",
-      `<p>AXPM email system test successful.</p><p><strong>Time:</strong> ${now}<br><strong>Timezone:</strong> ${timezone}</p><p>If you received this, SMTP is configured correctly.</p>`,
+      `<p>Kayden Chiew email system test successful.</p><p><strong>Time:</strong> ${now}<br><strong>Timezone:</strong> ${timezone}</p><p>If you received this, SMTP is configured correctly.</p>`,
       locale,
     ),
   };
@@ -80,9 +80,9 @@ export function buildDailyDigestEmail(params: {
     const jobRows = pendingJobs.length
       ? pendingJobs.map((j) => `[${j.priority}] ${j.title}`)
       : ["暂无待办"];
-    const subject = `AXPM 每日摘要 — ${dateLabel}`;
+    const subject = `Kayden Chiew 每日摘要 — ${dateLabel}`;
     const text = [
-      "AXPM 每日摘要",
+      "Kayden Chiew 每日摘要",
       dateLabel,
       "",
       "我的助理",
@@ -116,9 +116,9 @@ export function buildDailyDigestEmail(params: {
   const jobRows = pendingJobs.length
     ? pendingJobs.map((j) => `[${j.priority}] ${j.title}`)
     : ["All clear"];
-  const subject = `AXPM Daily Digest — ${dateLabel}`;
+  const subject = `Kayden Chiew Daily Digest — ${dateLabel}`;
   const text = [
-    "AXPM Daily Digest",
+    "Kayden Chiew Daily Digest",
     dateLabel,
     "",
     "My Assistant",
@@ -196,9 +196,9 @@ export function buildDailyFortuneEmail(params: {
         : null;
 
   if (locale === "zh") {
-    const subject = `AXPM 每日决策简报 — ${dateLabel}`;
+    const subject = `Kayden Chiew 每日决策简报 — ${dateLabel}`;
     const text = [
-      "AXPM 每日决策简报",
+      "Kayden Chiew 每日决策简报",
       dateLabel,
       name ? `姓名：${name}` : null,
       "",
@@ -210,7 +210,7 @@ export function buildDailyFortuneEmail(params: {
       zodiac ? `生肖：${zodiac}` : null,
       luckyLine,
       "",
-      "仅供娱乐与个人反思 · AXPM Fortune",
+      "仅供娱乐与个人反思 · Kayden Chiew Fortune",
     ]
       .filter(Boolean)
       .join("\n");
@@ -235,9 +235,9 @@ export function buildDailyFortuneEmail(params: {
     };
   }
 
-  const subject = `AXPM Daily Fortune — ${dateLabel}`;
+  const subject = `Kayden Chiew Daily Fortune — ${dateLabel}`;
   const text = [
-    "AXPM Daily Fortune",
+    "Kayden Chiew Daily Fortune",
     dateLabel,
     "",
     title,
@@ -278,8 +278,8 @@ export function buildPaymentReminderEmail(params: {
   if (locale === "zh") {
     const dueRows = dueSoon.map((p) => `${p.title} — ${p.amount}（${p.when}）`);
     return {
-      subject: `AXPM 付款提醒 — ${dueSoon.length} 笔即将到期`,
-      text: ["AXPM 付款提醒", "", "本月财务", ...financeLines, "", "即将到期", ...dueRows.map((r) => `• ${r}`)].join("\n"),
+      subject: `Kayden Chiew 付款提醒 — ${dueSoon.length} 笔即将到期`,
+      text: ["Kayden Chiew 付款提醒", "", "本月财务", ...financeLines, "", "即将到期", ...dueRows.map((r) => `• ${r}`)].join("\n"),
       html: wrapHtml(
         "付款提醒",
         [
@@ -294,8 +294,8 @@ export function buildPaymentReminderEmail(params: {
 
   const dueRows = dueSoon.map((p) => `${p.title} — ${p.amount} (${p.when})`);
   return {
-    subject: `AXPM Payment Reminder — ${dueSoon.length} due soon`,
-    text: ["AXPM Payment Reminder", "", "Finance This Month", ...financeLines, "", "Due Soon", ...dueRows.map((r) => `• ${r}`)].join("\n"),
+    subject: `Kayden Chiew Payment Reminder — ${dueSoon.length} due soon`,
+    text: ["Kayden Chiew Payment Reminder", "", "Finance This Month", ...financeLines, "", "Due Soon", ...dueRows.map((r) => `• ${r}`)].join("\n"),
     html: wrapHtml(
       "Payment Reminder",
       [
@@ -318,7 +318,7 @@ export function buildFollowUpEmail(params: {
 
   if (locale === "zh") {
     return {
-      subject: `AXPM 客户跟进提醒 — ${clientName}`,
+      subject: `Kayden Chiew 客户跟进提醒 — ${clientName}`,
       text: [`客户跟进提醒`, `客户：${clientName}`, `到期：${dueAt}`, notes ? `备注：${notes}` : ""].filter(Boolean).join("\n"),
       html: wrapHtml(
         "客户跟进提醒",
@@ -329,7 +329,7 @@ export function buildFollowUpEmail(params: {
   }
 
   return {
-    subject: `AXPM Follow-Up Reminder — ${clientName}`,
+    subject: `Kayden Chiew Follow-Up Reminder — ${clientName}`,
     text: [`Follow-Up Reminder`, `Client: ${clientName}`, `Due: ${dueAt}`, notes ? `Notes: ${notes}` : ""].filter(Boolean).join("\n"),
     html: wrapHtml(
       "Follow-Up Reminder",

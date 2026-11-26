@@ -2,15 +2,14 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import type { Route } from "next";
-import { Loader2, Sparkles } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import { useLocale } from "@/components/providers/locale-provider";
+import { PUBLIC_BRAND } from "@/lib/brand/public-brand";
 import { localeFromQueryParam, type Locale } from "@/lib/i18n";
 
 function SignupForm() {
   const { t, locale, setLocale } = useLocale();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const refCode = searchParams.get("ref");
   const [name, setName] = useState("");
@@ -18,6 +17,7 @@ function SignupForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [sent, setSent] = useState(false);
   const [invitedBy, setInvitedBy] = useState<string | null>(null);
 
   useEffect(() => {
@@ -56,7 +56,7 @@ function SignupForm() {
         setError(data.error ?? t("account.signupFailed"));
         return;
       }
-      router.replace("/dashboard/account" as Route);
+      setSent(true);
     } catch {
       setError(t("account.signupFailed"));
     } finally {
@@ -84,10 +84,7 @@ function SignupForm() {
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-background to-accent/10 p-6">
       <div className="w-full max-w-md rounded-2xl border border-card-border bg-card p-8 shadow-lg">
         <div className="mb-6 flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2 text-accent">
-            <Sparkles className="h-5 w-5" />
-            <span className="text-sm font-semibold uppercase tracking-wider">{t("app.brand")}</span>
-          </div>
+          <p className="text-sm font-semibold tracking-wide text-foreground">{PUBLIC_BRAND}</p>
           <div className="flex shrink-0 gap-1.5">
             <LangButton code="zh" label={t("lang.zh")} />
             <LangButton code="en" label={t("lang.en")} />
@@ -101,6 +98,18 @@ function SignupForm() {
           </p>
         ) : null}
 
+        {sent ? (
+          <div className="mt-6 space-y-3 text-sm leading-6 text-foreground">
+            <p>
+              {locale === "zh"
+                ? "请查收确认邮件。确认邮箱之前无法登录。"
+                : "Check your inbox for a confirmation link. You cannot sign in until you confirm."}
+            </p>
+            <Link href="/verify-email" className="inline-block font-medium text-accent hover:underline">
+              {locale === "zh" ? "重新发送确认信" : "Resend confirmation"}
+            </Link>
+          </div>
+        ) : (
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <div>
             <label className="mb-1 block text-xs text-muted">{t("auth.name")}</label>
@@ -144,6 +153,7 @@ function SignupForm() {
             {t("account.signupBtn")}
           </button>
         </form>
+        )}
 
         <p className="mt-6 text-center text-sm text-muted">
           {t("account.haveAccount")}{" "}

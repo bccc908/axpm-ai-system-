@@ -24,7 +24,7 @@ export async function buildDailyDigestMessage(
   const totalItems = todayPlan?.items.length ?? 0;
 
   const lines = [
-    "📋 <b>AXPM Daily Digest</b>",
+    "📋 <b>Kayden Chiew Daily Digest</b>",
     `📅 ${new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}`,
     "",
     "<b>My Assistant</b>",

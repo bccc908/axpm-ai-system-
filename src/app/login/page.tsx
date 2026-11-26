@@ -4,10 +4,10 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
 import { Loader2 } from "lucide-react";
-import { BrandLogo } from "@/components/layout/brand-logo";
 import { LocaleProvider, useLocale } from "@/components/providers/locale-provider";
 import type { Locale } from "@/lib/i18n";
 import type { AuthModule, UserRole } from "@/lib/auth/types";
+import { PUBLIC_BRAND, publicCopy } from "@/lib/brand/public-brand";
 import { cn } from "@/lib/utils";
 
 function safeRedirectPath(raw: string | null): Route {
@@ -51,7 +51,8 @@ function LoginLocaleToggle({ className }: { className?: string }) {
 }
 
 function LoginForm() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
+  const copy = publicCopy(locale);
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = safeRedirectPath(searchParams.get("next"));
@@ -91,7 +92,7 @@ function LoginForm() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? t("auth.failed"));
+        setError(data.code === "email_unverified" ? copy.loginUnverified : (data.error ?? t("auth.failed")));
         return;
       }
       router.replace(next);
@@ -114,8 +115,7 @@ function LoginForm() {
     <main className="premium-canvas grid min-h-dvh grid-rows-[auto_1fr] bg-background md:grid-cols-[minmax(300px,5fr)_minmax(420px,6fr)] md:grid-rows-1">
       <section className="flex flex-col justify-center border-b border-card-border px-6 py-8 sm:px-10 md:border-b-0 md:border-r md:px-12 md:py-16 lg:px-16">
         <div className="flex items-start justify-between gap-4 md:block">
-          <BrandLogo height={40} priority className="md:hidden" />
-          <BrandLogo height={56} priority className="hidden md:block" />
+          <p className="text-lg font-semibold tracking-tight text-foreground md:text-2xl">{PUBLIC_BRAND}</p>
           <div className="pt-1 md:hidden">
             <LoginLocaleToggle />
           </div>
@@ -185,6 +185,13 @@ function LoginForm() {
               />
             </div>
             {error ? <p className="text-sm text-danger">{error}</p> : null}
+            {!setupRequired ? (
+              <p className="text-right text-xs">
+                <a href="/forgot-password" className="font-medium text-brand-teal hover:underline">
+                  {copy.forgotLink}
+                </a>
+              </p>
+            ) : null}
             <button
               type="submit"
               disabled={submitting}
@@ -211,7 +218,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <LocaleProvider>
+    <LocaleProvider storageKey="kc-locale">
       <Suspense
         fallback={
           <div className="premium-canvas flex min-h-dvh items-center justify-center bg-background">

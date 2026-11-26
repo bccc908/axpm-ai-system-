@@ -36,7 +36,7 @@ function escapeHtml(text: string) {
 function trimForTelegram(text: string, max = 3400) {
   const trimmed = text.trim();
   if (trimmed.length <= max) return trimmed;
-  return `${trimmed.slice(0, max - 20)}\n\n…（完整版见 AXPM Fortune 页面）`;
+  return `${trimmed.slice(0, max - 20)}\n\n…（完整版见 Kayden Chiew 页面）`;
 }
 
 function readingLinesForTelegram(reading: string) {
@@ -100,8 +100,8 @@ export function formatFortuneDailyTelegram(
   lines.push(
     "",
     locale === "zh"
-      ? "<i>仅供娱乐与个人反思 · AXPM Fortune</i>"
-      : "<i>For reflection only · AXPM Fortune</i>",
+      ? "<i>仅供娱乐与个人反思 · Kayden Chiew</i>"
+      : "<i>For reflection only · Kayden Chiew</i>",
   );
 
   return trimForTelegram(lines.filter((line) => line !== undefined).join("\n"), 3900);

@@ -1,9 +1,9 @@
-/** Product display name — AXPM */
+/** Product display name. */
 export const BRAND = {
-  zh: "AXPM",
-  en: "AXPM",
-  shortZh: "AXPM",
-  shortEn: "AXPM",
+  zh: "Kayden Chiew",
+  en: "Kayden Chiew",
+  shortZh: "Kayden Chiew",
+  shortEn: "Kayden Chiew",
 } as const;
 
 export function brandName(locale: "zh" | "en") {

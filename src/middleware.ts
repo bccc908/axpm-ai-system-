@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { decideApiAccess } from "@/lib/auth/api-policy";
-import { roleCanAccessPath } from "@/lib/auth/permissions";
+import { moduleForPath, roleCanAccessPath } from "@/lib/auth/permissions";
 import { bridgeRequestAuthorized, cronRequestAuthorized } from "@/lib/auth/secrets";
 import { verifySessionToken, SESSION_COOKIE, publicRequestOrigin } from "@/lib/auth/session";
 
-const PUBLIC_PAGE_PREFIXES = ["/login", "/signup", "/register", "/widget"];
+const PUBLIC_PAGE_PREFIXES = [
+  "/login",
+  "/signup",
+  "/register",
+  "/widget",
+  "/verify-email",
+  "/forgot-password",
+  "/reset-password",
+];
 
 function isPublicPage(pathname: string) {
   if (pathname === "/") return true;
@@ -63,6 +71,9 @@ export async function middleware(request: NextRequest) {
   }
 
   if (pathname.startsWith("/dashboard") && !roleCanAccessPath(session.role, pathname)) {
+    if (moduleForPath(pathname) === "crm") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     return NextResponse.redirect(new URL("/dashboard", publicRequestOrigin(request)));
   }
 

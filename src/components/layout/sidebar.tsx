@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
+import { PUBLIC_BRAND } from "@/lib/brand/public-brand";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useLocale } from "@/components/providers/locale-provider";
 import { ROLE_LABELS } from "@/lib/auth/permissions";
@@ -93,7 +94,7 @@ const navSections: NavSection[] = [
   },
 ];
 
-export function Sidebar({ compact = false }: { compact?: boolean }) {
+export function Sidebar({ compact = false, publicBrand = false }: { compact?: boolean; publicBrand?: boolean }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { t, locale } = useLocale();
@@ -136,7 +137,11 @@ export function Sidebar({ compact = false }: { compact?: boolean }) {
       )}
     >
       <div className={cn("flex h-16 items-center gap-2.5 border-b border-card-border", compact ? "justify-center px-1" : "px-4")}>
-        {compact ? (
+        {publicBrand ? (
+          <span className={cn("font-semibold tracking-tight text-foreground", compact ? "text-[11px]" : "text-sm")} aria-label={PUBLIC_BRAND}>
+            {compact ? "KC" : PUBLIC_BRAND}
+          </span>
+        ) : compact ? (
           <svg viewBox="0 0 22 22" className="h-[22px] w-[22px]" aria-hidden="true">
             <rect x="0.6" y="0.6" width="20.8" height="20.8" fill="none" stroke="#6eefe0" strokeWidth="0.9" />
             <path d="M11 3.2 L18.2 18.2 H14.8 L13.4 14.8 H8.6 L7.2 18.2 H3.8 Z M11 7.2 L9.3 12.2 H12.7 Z" fill="#6eefe0" />
@@ -144,7 +149,7 @@ export function Sidebar({ compact = false }: { compact?: boolean }) {
         ) : (
           <BrandLogo height={28} />
         )}
-        {compact ? null : (
+        {compact || publicBrand ? null : (
           <p className="min-w-0 truncate text-[11px] font-medium uppercase leading-4 tracking-[0.04em] text-muted">
             {t("app.title").replace(t("app.brand"), "").replace(/^[\s·\-–—|]+/, "") || t("app.title")}
           </p>
@@ -168,12 +173,15 @@ export function Sidebar({ compact = false }: { compact?: boolean }) {
               <div className="space-y-0.5">
                 {items.map(({ href, labelKey, icon: Icon }) => {
                   const active = isActive(href);
+                  const label = publicBrand
+                    ? t(labelKey).replace(/\bAXPM\b/gi, "").replace(/\s{2,}/g, " ").trim()
+                    : t(labelKey);
                   return (
                     <Link
                       key={href}
                       href={href as Route}
-                      title={t(labelKey)}
-                      aria-label={t(labelKey)}
+                      title={label}
+                      aria-label={label}
                       className={cn(
                         "group relative flex items-center gap-2.5 rounded-md py-[7px] text-[13px] font-medium transition-colors duration-150",
                         compact ? "justify-center px-0" : "px-3",
@@ -195,7 +203,7 @@ export function Sidebar({ compact = false }: { compact?: boolean }) {
                         )}
                         strokeWidth={active ? 2 : 1.75}
                       />
-                      {compact ? null : t(labelKey)}
+                      {compact ? null : label}
                     </Link>
                   );
                 })}

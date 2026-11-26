@@ -65,8 +65,8 @@ export function RemindersManager() {
   async function sendWeChatWork(client: Client) {
     const content =
       locale === "zh"
-        ? `您好 ${client.name}，这是 AXPM 的跟进提醒。如有任何问题请随时联系我们。`
-        : `Hi ${client.name}, this is a follow-up from AXPM. Please let us know if you have any questions.`;
+        ? `您好 ${client.name}，这是 Kayden Chiew 的跟进提醒。如有任何问题请随时联系我们。`
+        : `Hi ${client.name}, this is a follow-up from Kayden Chiew. Please let us know if you have any questions.`;
     await fetch("/api/wechat-work/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

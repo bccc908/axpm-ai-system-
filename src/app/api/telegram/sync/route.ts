@@ -27,7 +27,7 @@ export async function POST() {
 
     for (const chat of hintsResult.chats) {
       const message = [
-        "<b>AXPM AI Operations</b>",
+        "<b>Kayden Chiew</b>",
         "",
         "Your Chat ID:",
         `<code>${chat.chatId}</code>`,

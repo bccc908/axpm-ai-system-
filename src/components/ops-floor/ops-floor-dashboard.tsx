@@ -36,7 +36,7 @@ export function OpsFloorDashboard() {
   const [slots, setSlots] = useState<{ health: HTMLElement; tips: HTMLElement; reminders: HTMLElement; daily: HTMLElement } | null>(null);
 
   const labels: OpsFloorLabels = {
-    brand: "AXPM",
+    brand: "Kayden Chiew",
     brandSub: t("opsFloor.brandSub"),
     roster: t("opsFloor.roster"),
     hint: t("opsFloor.hint"),
