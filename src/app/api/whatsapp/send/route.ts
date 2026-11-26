@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { requireMappedSession } from "@/lib/auth/route-guard";
 import { sendWhatsAppMessageDetailed } from "@/lib/integrations/whatsapp";
 
 const bodySchema = z.object({
@@ -8,6 +9,9 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const gate = await requireMappedSession("/api/whatsapp/send");
+  if (!gate.ok) return gate.response;
+
   try {
     const parsed = bodySchema.safeParse(await request.json());
     if (!parsed.success) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { z } from "zod";
+import { authSecretUnavailableResponse } from "@/lib/auth/route-guard";
 import { createOwnerAccount, needsSetup } from "@/lib/auth/store";
 import { createSessionToken, sessionCookieOptions, SESSION_COOKIE } from "@/lib/auth/session";
 
@@ -11,6 +12,9 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const missingSecret = authSecretUnavailableResponse();
+  if (missingSecret) return missingSecret;
+
   if (!(await needsSetup())) {
     return NextResponse.json({ error: "Setup already completed" }, { status: 403 });
   }

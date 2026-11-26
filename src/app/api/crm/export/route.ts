@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
+import { requireMappedSession } from "@/lib/auth/route-guard";
 import { exportContactsCsv, exportLeadsCsv } from "@/lib/crm/zoho-store";
 
 export async function GET(request: Request) {
+  const gate = await requireMappedSession("/api/crm/export");
+  if (!gate.ok) return gate.response;
+
   const url = new URL(request.url);
   const type = url.searchParams.get("type");
 

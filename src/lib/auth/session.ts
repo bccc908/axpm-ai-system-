@@ -1,15 +1,12 @@
+import { getAuthSecret } from "@/lib/auth/secrets";
 import type { SessionPayload } from "@/lib/auth/types";
 
 export { SESSION_COOKIE } from "@/lib/auth/types";
 
 const SESSION_DAYS = 14;
 
-function getSecret(): string {
-  return (
-    process.env.AUTH_SECRET?.trim() ||
-    process.env.CRON_SECRET?.trim() ||
-    "signalqi-dev-change-me-in-production"
-  );
+function signingSecret(): string | null {
+  return getAuthSecret();
 }
 
 function encodeBase64Url(bytes: Uint8Array): string {
@@ -71,16 +68,22 @@ export async function createSessionToken(payload: Omit<SessionPayload, "exp">): 
     ...payload,
     exp: Math.floor(Date.now() / 1000) + SESSION_DAYS * 86400,
   };
+  const secret = signingSecret();
+  if (!secret) {
+    throw new Error("AUTH_SECRET is not set");
+  }
   const encoded = encodeBase64Url(new TextEncoder().encode(JSON.stringify(body)));
-  const sig = await hmacSign(encoded, getSecret());
+  const sig = await hmacSign(encoded, secret);
   return `${encoded}.${sig}`;
 }
 
 export async function verifySessionToken(token: string | undefined | null): Promise<SessionPayload | null> {
   if (!token) return null;
+  const secret = signingSecret();
+  if (!secret) return null;
   const [encoded, sig] = token.split(".");
   if (!encoded || !sig) return null;
-  const ok = await hmacVerify(encoded, sig, getSecret());
+  const ok = await hmacVerify(encoded, sig, secret);
   if (!ok) return null;
   try {
     const json = new TextDecoder().decode(decodeBase64Url(encoded));

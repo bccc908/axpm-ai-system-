@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
+import { cronRequestAuthorized } from "@/lib/auth/secrets";
 import { redactTelegramSecrets } from "@/lib/integrations/telegram";
 import { pollApprovalCallbacks } from "@/lib/signal-approval";
 
 export const dynamic = "force-dynamic";
 
-/** Requires CRON_SECRET to be set AND supplied. Unlike older cron routes, an unset secret means closed. */
+/** Requires CRON_SECRET to be set AND supplied. An unset secret means closed. */
 function isAuthorized(request: Request) {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) return false;
-  if (request.headers.get("authorization") === `Bearer ${secret}`) return true;
-  return new URL(request.url).searchParams.get("secret") === secret;
+  return cronRequestAuthorized(request);
 }
 
 /** Reads Approve / Reject taps from Kayden's Telegram chat and records them. Sends no new messages. */

@@ -61,8 +61,14 @@ const ROLE_MODULES: Record<UserRole, AuthModule[]> = {
   customer: ["overview", "fortune", "account"],
 };
 
+const ROLE_ORDER: UserRole[] = ["owner", "admin", "sales", "finance", "personal", "viewer", "customer"];
+
 export function modulesForRole(role: UserRole): AuthModule[] {
   return ROLE_MODULES[role] ?? ["overview"];
+}
+
+export function rolesForModule(module: AuthModule): UserRole[] {
+  return ROLE_ORDER.filter((role) => modulesForRole(role).includes(module));
 }
 
 export function roleCanAccessModule(role: UserRole, module: AuthModule): boolean {

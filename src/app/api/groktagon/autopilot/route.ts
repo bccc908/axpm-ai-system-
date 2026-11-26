@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSession } from "@/lib/auth/api-session";
 import { roleCanAccessModule } from "@/lib/auth/permissions";
+import { cronRequestAuthorized } from "@/lib/auth/secrets";
 import { getGroktagonAutopilot, saveGroktagonAutopilot } from "@/lib/groktagon/autopilot";
 import { runGroktagonAutopilot } from "@/lib/groktagon/run-autopilot";
 import { loadGroktagonState } from "@/lib/groktagon/state";
@@ -18,11 +19,7 @@ const Body = z.object({
 function isCron(request: Request) {
   const url = new URL(request.url);
   if (url.searchParams.get("tick") !== "1") return false;
-  const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) return true;
-  const auth = request.headers.get("authorization");
-  if (auth === `Bearer ${secret}`) return true;
-  return url.searchParams.get("secret") === secret;
+  return cronRequestAuthorized(request);
 }
 
 export async function GET(request: Request) {

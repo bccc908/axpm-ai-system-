@@ -2,24 +2,31 @@ import fs from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
-import type { AuthData, AuthUser, AuthUserPublic, UserRole } from "@/lib/auth/types";
+import { PUBLIC_SIGNUP_ROLE, type AuthData, type AuthUser, type AuthUserPublic, type UserRole } from "@/lib/auth/types";
 
-const DATA_FILE = path.join(process.cwd(), "data", "users.json");
+function authDataFile() {
+  const override = process.env.AXPM_AUTH_USERS_PATH?.trim();
+  if (override) return override;
+  return path.join(process.cwd(), "data", "users.json");
+}
 
 async function ensureFile(): Promise<AuthData> {
-  await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
+  const dataFile = authDataFile();
+  await fs.mkdir(path.dirname(dataFile), { recursive: true });
   try {
-    await fs.access(DATA_FILE);
+    await fs.access(dataFile);
   } catch {
-    await fs.writeFile(DATA_FILE, JSON.stringify({ users: [] }, null, 2));
+    await fs.writeFile(dataFile, JSON.stringify({ users: [] }, null, 2));
   }
-  const raw = await fs.readFile(DATA_FILE, "utf-8");
+  const raw = await fs.readFile(dataFile, "utf-8");
   const parsed = JSON.parse(raw) as AuthData;
   return { users: parsed.users ?? [] };
 }
 
 async function write(data: AuthData) {
-  await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
+  const dataFile = authDataFile();
+  await fs.mkdir(path.dirname(dataFile), { recursive: true });
+  await fs.writeFile(dataFile, JSON.stringify(data, null, 2));
 }
 
 export async function listUsers(): Promise<AuthUser[]> {
@@ -126,7 +133,7 @@ export async function registerCustomer(input: {
     id: randomUUID(),
     email,
     name: input.name.trim(),
-    role: "customer",
+    role: PUBLIC_SIGNUP_ROLE,
     password_hash: hashPassword(input.password),
     is_active: true,
     created_at: new Date().toISOString(),
