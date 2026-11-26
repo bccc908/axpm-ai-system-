@@ -1,19 +1,5 @@
-import Image from "next/image";
 import { cn } from "@/lib/utils";
-
-/**
- * Official AXPM wordmark (https://axpmprime.com/assets/img/logo.png).
- * Navy #00344d is ~1.4:1 on #111521, so the dark file keeps the same
- * drawing and recolors only that stroke to brand teal #089fac (5.7:1).
- * Orange stays the logo orange. Light backgrounds use the official navy.
- * Intrinsic size of both files: 2058×543.
- */
-const WORDMARK = {
-  dark: "/brand/axpm-logo-dark.png",
-  light: "/brand/axpm-logo.png",
-} as const;
-
-const INTRINSIC = { width: 2058, height: 543 };
+import { PUBLIC_BRAND } from "@/lib/brand/public-brand";
 
 export function BrandLogo({
   className,
@@ -23,21 +9,19 @@ export function BrandLogo({
 }: {
   className?: string;
   height?: number;
-  /** `dark` for #111521 and other dark surfaces. `light` for light backgrounds. */
-  tone?: keyof typeof WORDMARK;
+  /** Kept so existing call sites stay unchanged. */
+  tone?: "dark" | "light";
   priority?: boolean;
 }) {
-  const width = Math.round((height * INTRINSIC.width) / INTRINSIC.height);
+  void tone;
+  void priority;
   return (
-    <Image
-      src={WORDMARK[tone]}
-      alt="AXPM"
-      width={width}
-      height={height}
-      priority={priority}
-      unoptimized
-      className={cn("block h-auto w-auto max-w-full shrink-0", className)}
-      style={{ height, width: "auto" }}
-    />
+    <span
+      className={cn("block shrink-0 font-semibold tracking-tight text-foreground", className)}
+      style={{ fontSize: Math.max(13, Math.round(height * 0.52)), lineHeight: 1.2 }}
+      aria-label={PUBLIC_BRAND}
+    >
+      {PUBLIC_BRAND}
+    </span>
   );
 }

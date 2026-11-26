@@ -11,7 +11,7 @@ export const defaultEmailSettings: EmailSettings = {
   customHost: "",
   customPort: 587,
   customSecure: false,
-  fromName: "AXPM Operations",
+  fromName: "Kayden Chiew",
   recipients: [],
   ccRecipients: [],
   locale: "both",

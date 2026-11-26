@@ -11,11 +11,7 @@ import { publicMetadata } from "@/lib/brand/public-brand";
 export async function generateMetadata(): Promise<Metadata> {
   const ctx = await getServerSession();
   if (!ctx || ctx.user.role === PUBLIC_SIGNUP_ROLE) return publicMetadata();
-  return {
-    title: "AXPM",
-    applicationName: "AXPM",
-    description: "AXPM — CRM、财务、收件箱与 AI 助手",
-  };
+  return publicMetadata();
 }
 
 export default async function DashboardLayout({

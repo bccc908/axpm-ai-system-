@@ -113,8 +113,8 @@ export async function buildClientFollowUpDigest(locale: Locale) {
 
   const subject =
     locale === "zh"
-      ? `AXPM 客户跟进 — 今日 ${overview.clientsDueToday.length} 位`
-      : `AXPM Client Follow-Ups — ${overview.clientsDueToday.length} due today`;
+      ? `Kayden Chiew 客户跟进 — 今日 ${overview.clientsDueToday.length} 位`
+      : `Kayden Chiew Client Follow-Ups — ${overview.clientsDueToday.length} due today`;
 
   const text = [subject, "", ...lines.map((l) => `• ${l}`)].join("\n");
   const html = `<ul>${lines.map((l) => `<li>${l}</li>`).join("")}</ul>`;

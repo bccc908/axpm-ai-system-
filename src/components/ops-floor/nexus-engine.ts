@@ -30,7 +30,7 @@ export function mountNexus(root, initialLabels) {
   root.classList.add("ops-floor");
   root.innerHTML = `<div class="ops-floor-app" id="app">
   <aside id="left">
-    <h1 id="brand">AXPM</h1>
+    <h1 id="brand">Kayden Chiew</h1>
     <p class="brand-sub" id="brand-sub">Ops floor</p>
     <div class="sec" id="roster-label">AGENTS ON DUTY</div>
     <div id="agent-list"></div>
@@ -443,7 +443,7 @@ function addExecutiveDesk(parent, x, z) {
   addBox(0.7, 0.45, 0.08, leatherMat, x - 0.55, 0.95, z + 1.2, parent);
 }
 
-// Floors keep the same aisles. Furniture is themed for an AXPM broker office.
+// Floors keep the same aisles. Furniture is themed for an Kayden Chiew broker office.
 // 0 lobby, 1 gold desk, 2 crypto, 3 CRM / IB, 4 CEO office + finance.
 function furnishFloor(g, f) {
   for (let i = 0; i < 3; i++) {
@@ -468,10 +468,10 @@ function furnishFloor(g, f) {
     addReceptionDesk(g, 3.15, -1.35);
     addSofa(g, 3.2, 1.55);
     addPlant(g, 4.45, -2.9, 1.0);
-    const logo = makeLogoPlane('AXPM', 2.8, 0.78);
+    const logo = makeLogoPlane('Kayden Chiew', 2.8, 0.78);
     logo.position.set(3.15, 1.35, -0.95);
     g.add(logo);
-    const wallLogo = makeLogoPlane('AXPM', 2.2, 0.6);
+    const wallLogo = makeLogoPlane('Kayden Chiew', 2.2, 0.6);
     wallLogo.position.set(-1.35, 1.72, -3.28);
     g.add(wallLogo);
   } else if (f === 1) {
@@ -549,7 +549,7 @@ for (let f = 0; f < FLOORS; f++) {
 scene.traverse(o => { if (o.isMesh && o !== ground) { o.castShadow = !o.userData.noCast; o.receiveShadow = true; } });
 
 // Roof wordmark, visible from the isometric corner, plus an LED price band.
-const roofSign = makeLogoPlane('AXPM', 7.4, 2.05);
+const roofSign = makeLogoPlane('Kayden Chiew', 7.4, 2.05);
 roofSign.position.set(0, FLOORS * FLOOR_H + 0.95, 0.15);
 roofSign.rotation.x = -Math.PI / 2;
 scene.add(roofSign);
@@ -949,7 +949,7 @@ function updateLabels(labels) {
   if (labels.sessionWord) sessionWord = labels.sessionWord;
   if (labels.breakdown) breakdownTpl = labels.breakdown;
   const set = (id, value) => { const el = qs(id); if (el && value) el.textContent = value; };
-  set('brand', labels.brand || 'AXPM');
+  set('brand', labels.brand || 'Kayden Chiew');
   set('brand-sub', labels.brandSub);
   set('roster-label', labels.roster);
   set('hint', labels.hint);
@@ -1043,7 +1043,7 @@ window.nexus = { updateAgentStatus, setStats, connectLiveData, setAgentTask, set
   setDemo: on => { demoEnabled = !!on; } };
 
 setStats({});
-logActivity(`AXPM online · ${AGENTS.length} staff across 5 floors`, '#ff6a32');
+logActivity(`Kayden Chiew online · ${AGENTS.length} staff across 5 floors`, '#ff6a32');
 
 /* ---------- Interaction: hover tooltip, click to follow, toolbar ---------- */
 const tipEl = qs('tip');

@@ -81,7 +81,7 @@ export function SolanaBotDesk({ serverAllowed = false }: { serverAllowed?: boole
             <div className="brand">
               <Mark />
               <div className="brand-title">
-                AXPM <span className="slash">{"//"}</span> {t("solanaBot.title")}
+                Kayden Chiew <span className="slash">{"//"}</span> {t("solanaBot.title")}
               </div>
             </div>
             <div className="pills">
@@ -102,7 +102,7 @@ export function SolanaBotDesk({ serverAllowed = false }: { serverAllowed?: boole
             <span className="tag veto">Veto</span> <span className="tok">$WIGHOOD</span>
             <span className="muted">creator: 39 launches, 0 alive</span>
             <span className="tag curve">Curve</span> <span className="tok">$VOLF</span>
-            <span className="muted">reference-sample figures — not live AXPM data</span>
+            <span className="muted">reference-sample figures — not live Kayden Chiew data</span>
           </div>
         </header>
 
