@@ -7,6 +7,8 @@
     "dev:reset": "lsof -tiTCP:3000 | xargs kill -9 2>/dev/null; rm -rf .next && next dev",
     "fix": "npm run dev:reset",
     "build": "lsof -tiTCP:3000 | xargs kill -9 2>/dev/null; next build",
+    "gate:placeholders": "node scripts/placeholder-gate.mjs",
+    "preflight:founding": "node scripts/founding-preflight.mjs",
     "start": "next start -H 0.0.0.0",
     "start:prod": "next start -H 0.0.0.0",
     "system": "bash scripts/run-system.sh",

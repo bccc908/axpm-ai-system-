@@ -1,4 +1,6 @@
 import type { NextConfig } from "next";
+import { execFileSync } from "child_process";
+import { PHASE_PRODUCTION_BUILD } from "next/constants";
 
 const nextConfig: NextConfig = {
   typedRoutes: true,
@@ -55,4 +57,15 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+/**
+ * Founding waitlist go-live guard: `next build` (including `npx next build` in the
+ * zero-downtime deploy) fails if FOUNDING_WAITLIST_OPEN=true while the seller
+ * placeholders, C-W1 or copy placeholders are unresolved. Flag OFF = preview build.
+ */
+export default function config(phase: string): NextConfig {
+  if (phase === PHASE_PRODUCTION_BUILD && !process.env.FOUNDING_PREFLIGHT_PASSED) {
+    execFileSync(process.execPath, ["scripts/founding-preflight.mjs"], { stdio: "inherit" });
+    process.env.FOUNDING_PREFLIGHT_PASSED = "1";
+  }
+  return nextConfig;
+}
