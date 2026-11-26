@@ -26,6 +26,25 @@ export const WORKFLOW_ERRORS = {
   approver: "Named approver must be an active staff user",
 } as const;
 
+/** Maps stored English error strings to workflowRules i18n keys. */
+export const WORKFLOW_ERROR_I18N_KEYS: Record<
+  (typeof WORKFLOW_ERRORS)[keyof typeof WORKFLOW_ERRORS],
+  string
+> = {
+  [WORKFLOW_ERRORS.leadNoContext]: "workflowRules.errNoContext",
+  [WORKFLOW_ERRORS.telegramNotConfigured]: "workflowRules.errNotConfigured",
+  [WORKFLOW_ERRORS.telegramPaused]: "workflowRules.errPaused",
+  [WORKFLOW_ERRORS.telegramSendFailed]: "workflowRules.errSendFailed",
+  [WORKFLOW_ERRORS.alreadySent]: "workflowRules.errAlreadySent",
+  [WORKFLOW_ERRORS.retryRequired]: "workflowRules.errRetryRequired",
+  [WORKFLOW_ERRORS.retrySpent]: "workflowRules.errRetrySpent",
+  [WORKFLOW_ERRORS.notWaiting]: "workflowRules.errNotWaiting",
+  [WORKFLOW_ERRORS.notFound]: "workflowRules.errNotFound",
+  [WORKFLOW_ERRORS.forbidden]: "workflowRules.errForbidden",
+  [WORKFLOW_ERRORS.invalid]: "workflowRules.errInvalid",
+  [WORKFLOW_ERRORS.approver]: "workflowRules.errApprover",
+};
+
 const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
 const PLUS_PHONE_RE = /\+\d{8,15}/g;
 const LONG_DIGITS_RE = /\b\d{10,15}\b/g;
@@ -183,14 +202,26 @@ export function buildRedactedPayload(input: {
   return payload;
 }
 
-export function toPublicWorkflowRun(run: CrmWorkflowRun): CrmWorkflowRunPublic {
+function withoutStoredMessage(run: CrmWorkflowRun): Omit<CrmWorkflowRun, "message_template" | "message_vars"> {
+  const { message_template: _template, message_vars: _vars, ...rest } = run;
+  return rest;
+}
+
+/** History listing: allowlisted fields only. No composed outbound message. */
+export function toHistoryWorkflowRun(run: CrmWorkflowRun): CrmWorkflowRunPublic {
+  const rest = withoutStoredMessage(run);
+  const { message_preview: _preview, ...payload } = rest.payload_redacted;
+  return { ...rest, payload_redacted: payload, outbound_message: null };
+}
+
+/** Approval card: the composed message, for a waiting or failed send. */
+export function toApprovalWorkflowRun(run: CrmWorkflowRun): CrmWorkflowRunPublic {
   const showOutbound = run.result === "waiting-approval" || run.result === "error";
   const outbound =
     showOutbound && run.message_template
       ? composeOutbound(run.message_template, run.message_vars)
       : null;
-  const { message_template: _template, message_vars: _vars, ...rest } = run;
-  return { ...rest, outbound_message: outbound };
+  return { ...withoutStoredMessage(run), outbound_message: outbound };
 }
 
 export function sortWorkflows(rules: CrmWorkflow[]): CrmWorkflow[] {

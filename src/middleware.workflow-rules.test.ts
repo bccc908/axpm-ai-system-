@@ -52,4 +52,40 @@ describe("workflow rules middleware", () => {
       expect(response.status).toBe(401);
     }
   });
+
+  it("uses 中文 deny copy for a 中文 session and English otherwise", async () => {
+    const headers = new Headers({ cookie: "kc-locale=zh" });
+    const token = await createSessionToken({
+      sub: "customer-1",
+      role: "customer",
+      email: "customer@example.com",
+      name: "Customer",
+    });
+    headers.set("cookie", `kc-locale=zh; ${SESSION_COOKIE}=${token}`);
+    const zh = await middleware(
+      new NextRequest(new URL("http://127.0.0.1:3000/dashboard/crm/workflow-rules"), { headers }),
+    );
+    expect(zh.status).toBe(403);
+    const zhBody = await zh.text();
+    expect(zhBody).toContain("没有权限");
+    expect(zhBody).not.toContain("Forbidden");
+
+    const enHeaders = new Headers();
+    enHeaders.set("cookie", `${SESSION_COOKIE}=${token}`);
+    const en = await middleware(
+      new NextRequest(new URL("http://127.0.0.1:3000/dashboard/crm/workflow-rules"), { headers: enHeaders }),
+    );
+    expect(en.status).toBe(403);
+    const enBody = await en.text();
+    expect(enBody).toContain("Forbidden");
+    expect(enBody).not.toContain("没有权限");
+
+    const anon = await middleware(
+      new NextRequest(new URL("http://127.0.0.1:3000/dashboard/crm/workflow-rules"), {
+        headers: { "accept-language": "zh-CN,zh;q=0.9", cookie: "kc-locale=zh" },
+      }),
+    );
+    expect(anon.status).toBe(401);
+    expect(await anon.text()).toContain("未登录");
+  });
 });

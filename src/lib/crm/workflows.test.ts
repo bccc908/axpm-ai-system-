@@ -11,7 +11,9 @@ import { formatWorkflowTimestamp } from "@/lib/crm/workflow-time";
 import {
   buildRedactedPayload,
   composeOutbound,
-  toPublicWorkflowRun,
+  toApprovalWorkflowRun,
+  WORKFLOW_ERROR_I18N_KEYS,
+  WORKFLOW_ERRORS,
   workflowConditionMatches,
 } from "@/lib/crm/workflow-engine";
 import { sendTelegramMessage } from "@/lib/integrations/telegram";
@@ -20,6 +22,7 @@ import { writeAppSettings } from "@/lib/finance/settings";
 import {
   decideWorkflowRun,
   listCrmWorkflows,
+  listWorkflowHistory,
   runLeadStatusWorkflows,
   saveCrmWorkflows,
 } from "@/lib/crm/workflows";
@@ -244,7 +247,10 @@ describe("workflow rules engine", () => {
     const waiting = await listWorkflowRuns();
     expect(waiting[0].result).toBe("waiting-approval");
     expect(waiting[0].actor_user_id).toBe("staff-2");
-    expect(toPublicWorkflowRun(waiting[0]).outbound_message).toBe("Ready: Avery Chen (Northwind)");
+    expect(toApprovalWorkflowRun(waiting[0]).outbound_message).toBe("Ready: Avery Chen (Northwind)");
+    const listed = await listWorkflowHistory();
+    expect(listed[0]?.outbound_message).toBeNull();
+    expect(JSON.stringify(listed)).not.toContain("Ready: Avery Chen (Northwind)");
     assertRedacted(waiting);
 
     const rejected = await decideWorkflowRun({
@@ -516,9 +522,12 @@ describe("workflow rules engine", () => {
   });
 
   it("shows Asia/Shanghai and keeps product copy free of banned wording", () => {
-    const stamp = formatWorkflowTimestamp("2026-03-01T16:00:00.000Z", "en");
-    expect(stamp).toContain("00:00");
-    expect(stamp).toContain("2026");
+    const stamp = formatWorkflowTimestamp("2026-11-26T17:23:00.000Z", "en");
+    expect(stamp).toBe("27 Nov 2026, 01:23 GMT+8");
+    const zhStamp = formatWorkflowTimestamp("2026-11-26T17:23:00.000Z", "zh");
+    expect(zhStamp).toBe("2026年11月27日 GMT+8 01:23");
+    expect(stamp).toMatch(/\d{2}:\d{2}/);
+    expect(zhStamp).toMatch(/\d{2}:\d{2}/);
     expect(JSON.stringify(DEFAULT_CRM_WORKFLOWS)).not.toMatch(/onboard IB|\bIB\b|broker|AXPM|Grok/i);
 
     const keys = Object.keys(en.workflowRules);
@@ -535,6 +544,18 @@ describe("workflow rules engine", () => {
     expect(translate(en, "workflowRules.title")).not.toBe(translate(zh, "workflowRules.title"));
     expect(translate(en, "nav.workflowRules")).not.toMatch(banned);
     expect(translate(zh, "nav.workflowRules")).not.toMatch(banned);
+    expect(translate(zh, "workflowRules.exactMessage")).toBe("待发送的消息");
+    expect(translate(en, "workflowRules.exactMessage")).toBe("Message that would be sent");
+    expect(translate(zh, "workflowRules.firesAlone")).toBe("仅在触发时运行，无额外条件");
+    expect(translate(en, "workflowRules.firesAlone")).toBe("Fires on the trigger alone");
+    expect(translate(zh, "workflowRules.denyForbidden")).toBe("没有权限");
+    expect(translate(zh, "workflowRules.denyUnauthorized")).toBe("未登录");
+    for (const message of Object.values(WORKFLOW_ERRORS)) {
+      const key = WORKFLOW_ERROR_I18N_KEYS[message];
+      expect(translate(en, key)).not.toBe(key);
+      expect(translate(zh, key)).not.toBe(key);
+      expect(translate(zh, key)).not.toBe(message);
+    }
 
     const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
     const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")) as {
@@ -555,5 +576,35 @@ describe("workflow rules engine", () => {
     }
     const screen = readFileSync(path.join(root, "src/components/crm/workflow-rules-screen.tsx"), "utf8");
     expect(screen).not.toMatch(/TELEGRAM_BOT_TOKEN|TELEGRAM_CHAT_ID|password/);
+    expect(screen).not.toMatch(/description=\{t\("workflowRules\.historyHint"\)\}[\s\S]*workflow-rule-list|workflow-rule-list[\s\S]{0,200}historyHint/);
+  });
+});
+
+describe("timestamp colon", () => {
+  it("inserts a colon when Intl drops the time separator", () => {
+    const Real = Intl.DateTimeFormat;
+    const spy = vi.spyOn(Intl, "DateTimeFormat").mockImplementation((locales, options) => {
+      const formatter = new Real(locales as string, options);
+      return new Proxy(formatter, {
+        get(target, prop, receiver) {
+          if (prop === "format") return () => "27 Nov 2026, 0123 GMT+8";
+          if (prop === "formatToParts") {
+            return (date?: Date) =>
+              target.formatToParts(date).map((part) =>
+                part.type === "literal" ? { ...part, value: part.value.replace(/:/g, "") } : part,
+              );
+          }
+          const value = Reflect.get(target, prop, receiver);
+          return typeof value === "function" ? value.bind(target) : value;
+        },
+      });
+    });
+    const stamp = formatWorkflowTimestamp("2026-11-26T17:23:00.000Z", "en");
+    const zhStamp = formatWorkflowTimestamp("2026-11-26T17:23:00.000Z", "zh");
+    expect(stamp).toContain("01:23");
+    expect(stamp).not.toMatch(/0123/);
+    expect(zhStamp).toContain("01:23");
+    expect(zhStamp).not.toMatch(/0123/);
+    spy.mockRestore();
   });
 });

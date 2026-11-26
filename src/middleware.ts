@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { roleCanAccessPath } from "@/lib/auth/permissions";
 import { verifySessionToken, SESSION_COOKIE, publicRequestOrigin } from "@/lib/auth/session";
-import { canViewWorkflowRules, isWorkflowRulesApi, isWorkflowRulesPage } from "@/lib/crm/workflow-access";
+import { canViewWorkflowRules, isWorkflowRulesApi, isWorkflowRulesPage, WORKFLOW_LOCALE_COOKIE, workflowDenyHtml, workflowPageLocale } from "@/lib/crm/workflow-access";
 
 const PUBLIC_PAGE_PREFIXES = ["/login", "/signup", "/register", "/widget"];
 
@@ -52,6 +52,17 @@ function isCronApi(pathname: string) {
   );
 }
 
+function workflowDenyResponse(request: NextRequest, status: 401 | 403) {
+  const locale = workflowPageLocale(
+    request.cookies.get(WORKFLOW_LOCALE_COOKIE)?.value,
+    request.headers.get("accept-language"),
+  );
+  return new NextResponse(workflowDenyHtml(status, locale), {
+    status,
+    headers: { "content-type": "text/html; charset=utf-8" },
+  });
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -84,8 +95,11 @@ export async function middleware(request: NextRequest) {
   const session = await verifySessionToken(token);
 
   if (!session) {
-    if (pathname.startsWith("/api/") || isWorkflowRulesPage(pathname)) {
+    if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (isWorkflowRulesPage(pathname)) {
+      return workflowDenyResponse(request, 401);
     }
     const loginUrl = new URL("/login", publicRequestOrigin(request));
     if (pathname.startsWith("/dashboard")) {
@@ -101,10 +115,7 @@ export async function middleware(request: NextRequest) {
     if (isWorkflowRulesApi(pathname)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-    return new NextResponse(
-      "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><title>Forbidden</title><p>Forbidden</p>",
-      { status: 403, headers: { "content-type": "text/html; charset=utf-8" } },
-    );
+    return workflowDenyResponse(request, 403);
   }
 
   if (pathname.startsWith("/dashboard") && !roleCanAccessPath(session.role, pathname)) {

@@ -5,6 +5,7 @@ import { ArrowDown, ArrowUp, Loader2, Plus } from "lucide-react";
 import { useLocale } from "@/components/providers/locale-provider";
 import { Card, CardHeader } from "@/components/ui/card";
 import { formatWorkflowTimestamp } from "@/lib/crm/workflow-time";
+import { WORKFLOW_ERROR_I18N_KEYS } from "@/lib/crm/workflow-engine";
 import { cn } from "@/lib/utils";
 import type {
   CrmWorkflow,
@@ -34,12 +35,7 @@ const DEAL_STAGES = [
   ["stage-active", "workflowRules.stageActive"],
 ] as const;
 
-const ERROR_KEYS: Record<string, string> = {
-  "Lead has no client and no deal context": "workflowRules.errNoContext",
-  "Telegram is not configured": "workflowRules.errNotConfigured",
-  "Telegram sends are paused by settings": "workflowRules.errPaused",
-  "Telegram send failed": "workflowRules.errSendFailed",
-};
+const ERROR_KEYS: Record<string, string> = WORKFLOW_ERROR_I18N_KEYS;
 
 type Approver = { id: string; name: string; role: string };
 
@@ -66,6 +62,7 @@ export function WorkflowRulesScreen() {
   const { t, locale } = useLocale();
   const [bundle, setBundle] = useState<Bundle | null>(null);
   const [runs, setRuns] = useState<CrmWorkflowRunPublic[]>([]);
+  const [waiting, setWaiting] = useState<CrmWorkflowRunPublic[]>([]);
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState<number | null>(null);
   const [draft, setDraft] = useState<CrmWorkflow | null>(null);
@@ -95,6 +92,7 @@ export function WorkflowRulesScreen() {
       default_approver_id: rulesJson.default_approver_id ?? null,
       approvers: rulesJson.approvers ?? [],
     });
+    setWaiting(rulesJson.waiting ?? []);
     setRuns(historyJson.runs ?? []);
   }, []);
 
@@ -113,7 +111,6 @@ export function WorkflowRulesScreen() {
     return map;
   }, [runs]);
 
-  const waiting = runs.filter((run) => run.result === "waiting-approval");
   const visibleRuns =
     resultFilter === "all" ? runs : runs.filter((run) => run.result === resultFilter);
 
@@ -265,7 +262,9 @@ export function WorkflowRulesScreen() {
   if (denied) {
     return (
       <Card>
-        <p className="text-sm text-foreground">{denied === 401 ? "Unauthorized" : "Forbidden"}</p>
+        <p className="text-sm text-foreground">
+          {denied === 401 ? t("workflowRules.denyUnauthorized") : t("workflowRules.denyForbidden")}
+        </p>
       </Card>
     );
   }
@@ -359,7 +358,7 @@ export function WorkflowRulesScreen() {
 
       <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
         <Card data-testid="workflow-rule-list">
-          <CardHeader title={t("workflowRules.title")} description={t("workflowRules.historyHint")} />
+          <CardHeader title={t("workflowRules.title")} />
           {workflows.length === 0 && !isNew ? (
             <div className="space-y-2 text-sm text-muted">
               <p>{t("workflowRules.empty")}</p>
@@ -489,9 +488,6 @@ export function WorkflowRulesScreen() {
                     <td className="py-2 pr-3">
                       <p>{resultLabel(run.result)}</p>
                       {run.error_message ? <p className="text-xs text-muted">{explain(run.error_message)}</p> : null}
-                      {run.outbound_message && (run.result === "error" || run.result === "waiting-approval") ? (
-                        <pre className="mt-1 whitespace-pre-wrap text-xs text-foreground">{run.outbound_message}</pre>
-                      ) : null}
                       {run.approved_by && run.approved_at ? (
                         <p className="text-xs text-muted">
                           {run.approved_by.name} · {formatWorkflowTimestamp(run.approved_at, locale === "zh" ? "zh" : "en")}
@@ -515,7 +511,7 @@ export function WorkflowRulesScreen() {
                     </td>
                     <td className="py-2 pr-3">{run.actor_name}</td>
                     <td className="py-2">
-                      <PayloadFacts payload={run.payload_redacted} />
+                      <HistoryPreview payload={run.payload_redacted} />
                     </td>
                   </tr>
                 ))}
@@ -533,6 +529,11 @@ function approverName(approvers: Approver[], id: string | null, fallback: string
   return approvers.find((person) => person.id === id)?.name ?? fallback;
 }
 
+function HistoryPreview({ payload }: { payload: CrmWorkflowRunPublic["payload_redacted"] }) {
+  const parts = [payload.display_name, payload.company, payload.status].filter(Boolean);
+  return <p className="text-xs text-muted">{parts.join(" · ") || "—"}</p>;
+}
+
 function PayloadFacts({ payload }: { payload: CrmWorkflowRunPublic["payload_redacted"] }) {
   const parts = [
     payload.display_name,
@@ -543,7 +544,7 @@ function PayloadFacts({ payload }: { payload: CrmWorkflowRunPublic["payload_reda
     payload.amount != null ? String(payload.amount) : null,
     payload.source,
   ].filter(Boolean);
-  return <p className="text-xs text-muted">{parts.join(" · ") || payload.message_preview || "—"}</p>;
+  return <p className="text-xs text-muted">{parts.join(" · ") || "—"}</p>;
 }
 
 function WorkflowCanvas({

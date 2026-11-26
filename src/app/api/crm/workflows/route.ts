@@ -3,6 +3,7 @@ import { listUsers } from "@/lib/auth/store";
 import {
   getWorkflowTelegramReadiness,
   listCrmWorkflows,
+  listWorkflowInbox,
   saveCrmWorkflows,
   WorkflowSaveError,
 } from "@/lib/crm/workflows";
@@ -15,9 +16,10 @@ export async function GET() {
   const gate = await guardWorkflowRequest("view");
   if (!gate.ok) return gate.response;
 
-  const [workflows, runs, telegram, users] = await Promise.all([
+  const [workflows, runs, waiting, telegram, users] = await Promise.all([
     listCrmWorkflows(),
     listWorkflowRuns(),
+    listWorkflowInbox(),
     getWorkflowTelegramReadiness(),
     listUsers(),
   ]);
@@ -32,6 +34,7 @@ export async function GET() {
     can_approve: gate.access === "edit",
     enabled_count: workflows.filter((rule) => rule.enabled).length,
     waiting_count: runs.filter((run) => run.result === "waiting-approval").length,
+    waiting,
     telegram,
     default_approver_id: owner?.id ?? null,
     approvers,
