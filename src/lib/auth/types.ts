@@ -1,5 +1,8 @@
 export type UserRole = "owner" | "admin" | "sales" | "finance" | "personal" | "viewer" | "customer";
 
+/** Which login page issued the session. Staff and customers do not share a login. */
+export type LoginSpace = "staff" | "customer";
+
 /** Role assigned by public sign-up. Least privilege: overview, fortune, and account only. */
 export const PUBLIC_SIGNUP_ROLE: UserRole = "customer";
 
@@ -55,6 +58,12 @@ export interface SessionPayload {
   email: string;
   name: string;
   exp: number;
+  /** Present on sessions issued after the staff/customer login split. */
+  space?: LoginSpace;
 }
 
+/** Staff and owner sessions. Host-only. */
 export const SESSION_COOKIE = "sf_session";
+
+/** Customer sessions. A different cookie from the staff session. */
+export const CUSTOMER_SESSION_COOKIE = "kc_customer_session";

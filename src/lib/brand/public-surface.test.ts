@@ -8,6 +8,8 @@ import { PUBLIC_BRAND, publicMetadata, renderPublicSurfaceHtml } from "@/lib/bra
 const PUBLIC_FILES = [
   "src/app/layout.tsx",
   "src/app/login/page.tsx",
+  "src/app/customer/login/page.tsx",
+  "src/components/auth/login-form.tsx",
   "src/app/signup/page.tsx",
   "src/app/signup/layout.tsx",
   "src/app/verify-email/page.tsx",

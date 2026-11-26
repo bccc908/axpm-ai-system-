@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { CUSTOMER_LOGIN_PATH, STAFF_LOGIN_PATH } from "@/lib/auth/login-space";
 import type { AuthModule, AuthUserPublic } from "@/lib/auth/types";
 import { NAV_MODULE } from "@/lib/auth/permissions";
 
@@ -56,9 +57,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
+    const dest = user?.role === "customer" ? CUSTOMER_LOGIN_PATH : STAFF_LOGIN_PATH;
     await fetch("/api/auth/logout", { method: "POST" });
-    window.location.href = "/login";
-  }, []);
+    window.location.href = dest;
+  }, [user?.role]);
 
   const value = useMemo(
     () => ({ loading, user, modules, can, canHref, refresh, logout }),

@@ -93,6 +93,7 @@ describe("api access policy", () => {
     expect(decide("/api/account/checkout", "customer").allow).toBe(true);
     expect(decide("/api/auth/signup", null).allow).toBe(true);
     expect(decide("/api/auth/login", null).allow).toBe(true);
+    expect(decide("/api/auth/customer-login", null).allow).toBe(true);
   });
 
   it("does not let a longer prefix steal a more specific rule", () => {

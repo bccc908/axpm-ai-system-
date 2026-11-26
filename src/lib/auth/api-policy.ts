@@ -22,6 +22,7 @@ export type ApiRule =
  */
 const API_RULES: ApiRule[] = [
   { prefix: "/api/auth/login", kind: "public" },
+  { prefix: "/api/auth/customer-login", kind: "public" },
   { prefix: "/api/auth/logout", kind: "public" },
   { prefix: "/api/auth/setup", kind: "public" },
   { prefix: "/api/auth/signup", kind: "public" },

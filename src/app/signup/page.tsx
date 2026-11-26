@@ -2,9 +2,11 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import type { Route } from "next";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useLocale } from "@/components/providers/locale-provider";
+import { CUSTOMER_LOGIN_PATH } from "@/lib/auth/login-space";
 import { PUBLIC_BRAND } from "@/lib/brand/public-brand";
 import { localeFromQueryParam, type Locale } from "@/lib/i18n";
 
@@ -157,7 +159,7 @@ function SignupForm() {
 
         <p className="mt-6 text-center text-sm text-muted">
           {t("account.haveAccount")}{" "}
-          <Link href="/login" className="text-accent hover:underline">
+          <Link href={CUSTOMER_LOGIN_PATH as Route} className="text-accent hover:underline">
             {t("account.signInLink")}
           </Link>
         </p>

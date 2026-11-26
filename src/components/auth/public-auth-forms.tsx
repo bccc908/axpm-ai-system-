@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import type { Route } from "next";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useLocale } from "@/components/providers/locale-provider";
+import { CUSTOMER_LOGIN_PATH, STAFF_LOGIN_PATH, loginPathForSpace } from "@/lib/auth/login-space";
 import { PUBLIC_BRAND, publicCopy } from "@/lib/brand/public-brand";
 
 function Frame({ title, children }: { title: string; children: React.ReactNode }) {
@@ -85,7 +87,7 @@ export function VerifyEmailForm() {
       </p>
       {status === "working" ? <Loader2 className="mt-4 h-5 w-5 animate-spin text-accent" /> : null}
       {status === "ok" ? (
-        <Link href="/login" className="mt-6 inline-block text-sm font-medium text-accent hover:underline">
+        <Link href={CUSTOMER_LOGIN_PATH as Route} className="mt-6 inline-block text-sm font-medium text-accent hover:underline">
           {copy.backToSignIn}
         </Link>
       ) : (
@@ -119,6 +121,8 @@ export function VerifyEmailForm() {
 export function ForgotPasswordForm() {
   const { locale, t } = useLocale();
   const copy = publicCopy(locale);
+  const searchParams = useSearchParams();
+  const backHref = loginPathForSpace(searchParams.get("space") === "staff" ? "staff" : "customer");
   const [email, setEmail] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -167,7 +171,7 @@ export function ForgotPasswordForm() {
           {copy.forgotSubmit}
         </button>
       </form>
-      <Link href="/login" className="mt-6 inline-block text-sm text-accent hover:underline">
+      <Link href={backHref as Route} className="mt-6 inline-block text-sm text-accent hover:underline">
         {copy.backToSignIn}
       </Link>
     </Frame>
@@ -182,6 +186,7 @@ export function ResetPasswordForm() {
   const [password, setPassword] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [signInHref, setSignInHref] = useState(CUSTOMER_LOGIN_PATH);
   const [submitting, setSubmitting] = useState(false);
 
   async function submit(e: React.FormEvent) {
@@ -194,9 +199,13 @@ export function ResetPasswordForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, password }),
       });
+      const data = (await res.json().catch(() => ({}))) as { loginPath?: string };
       if (!res.ok) {
         setNote(copy.resetInvalid);
         return;
+      }
+      if (data.loginPath === STAFF_LOGIN_PATH || data.loginPath === CUSTOMER_LOGIN_PATH) {
+        setSignInHref(data.loginPath);
       }
       setDone(true);
     } catch {
@@ -211,7 +220,7 @@ export function ResetPasswordForm() {
       {done ? (
         <>
           <p className="mt-2 text-sm text-muted">{copy.resetSuccess}</p>
-          <Link href="/login" className="mt-6 inline-block text-sm font-medium text-accent hover:underline">
+          <Link href={signInHref as Route} className="mt-6 inline-block text-sm font-medium text-accent hover:underline">
             {copy.backToSignIn}
           </Link>
         </>

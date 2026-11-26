@@ -31,6 +31,7 @@ export async function POST(request: Request) {
       role: user.role,
       email: user.email,
       name: user.name,
+      space: "staff",
     });
     const cookieStore = await cookies();
     cookieStore.set(SESSION_COOKIE, token, sessionCookieOptions(undefined, request));

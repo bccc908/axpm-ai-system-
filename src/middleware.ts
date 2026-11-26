@@ -1,12 +1,22 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { decideApiAccess } from "@/lib/auth/api-policy";
+import {
+  CUSTOMER_LOGIN_PATH,
+  STAFF_LOGIN_PATH,
+  homePathForSpace,
+  loginPathForSpace,
+  loginSpaceForPath,
+  pickLoginSession,
+} from "@/lib/auth/login-space";
+import { readLoginSessions } from "@/lib/auth/login-sessions";
 import { moduleForPath, roleCanAccessPath } from "@/lib/auth/permissions";
 import { bridgeRequestAuthorized, cronRequestAuthorized } from "@/lib/auth/secrets";
-import { verifySessionToken, SESSION_COOKIE, publicRequestOrigin } from "@/lib/auth/session";
+import { publicRequestOrigin } from "@/lib/auth/session";
 
 const PUBLIC_PAGE_PREFIXES = [
-  "/login",
+  STAFF_LOGIN_PATH,
+  CUSTOMER_LOGIN_PATH,
   "/signup",
   "/register",
   "/widget",
@@ -17,9 +27,13 @@ const PUBLIC_PAGE_PREFIXES = [
 
 function isPublicPage(pathname: string) {
   if (pathname === "/") return true;
-  return PUBLIC_PAGE_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`),
-  );
+  return PUBLIC_PAGE_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+function nextWithPath(request: NextRequest) {
+  const headers = new Headers(request.headers);
+  headers.set("x-kc-pathname", request.nextUrl.pathname);
+  return NextResponse.next({ request: { headers } });
 }
 
 export async function middleware(request: NextRequest) {
@@ -35,19 +49,19 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  const sessions = await readLoginSessions((name) => request.cookies.get(name)?.value);
+
   if (isPublicPage(pathname)) {
-    if (pathname === "/login") {
-      const token = request.cookies.get(SESSION_COOKIE)?.value;
-      const session = await verifySessionToken(token);
-      if (session) {
-        return NextResponse.redirect(new URL("/dashboard", publicRequestOrigin(request)));
-      }
+    if (pathname === STAFF_LOGIN_PATH && sessions.staff) {
+      return NextResponse.redirect(new URL(homePathForSpace("staff"), publicRequestOrigin(request)));
+    }
+    if (pathname === CUSTOMER_LOGIN_PATH && sessions.customer) {
+      return NextResponse.redirect(new URL(homePathForSpace("customer"), publicRequestOrigin(request)));
     }
     return NextResponse.next();
   }
 
-  const token = request.cookies.get(SESSION_COOKIE)?.value;
-  const session = await verifySessionToken(token);
+  const session = pickLoginSession(pathname, sessions.staff, sessions.customer);
 
   if (pathname.startsWith("/api/")) {
     const decision = decideApiAccess({
@@ -59,11 +73,11 @@ export async function middleware(request: NextRequest) {
     if (!decision.allow) {
       return NextResponse.json({ error: decision.error }, { status: decision.status });
     }
-    return NextResponse.next();
+    return nextWithPath(request);
   }
 
   if (!session) {
-    const loginUrl = new URL("/login", publicRequestOrigin(request));
+    const loginUrl = new URL(loginPathForSpace(loginSpaceForPath(pathname)), publicRequestOrigin(request));
     if (pathname.startsWith("/dashboard")) {
       loginUrl.searchParams.set("next", pathname);
     }
@@ -77,9 +91,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", publicRequestOrigin(request)));
   }
 
-  return NextResponse.next();
+  return nextWithPath(request);
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/api/:path*", "/login", "/signup"],
+  matcher: ["/dashboard/:path*", "/api/:path*", "/login", "/customer/login", "/signup"],
 };

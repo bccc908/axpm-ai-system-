@@ -1,5 +1,5 @@
 import { getAuthSecret } from "@/lib/auth/secrets";
-import type { SessionPayload } from "@/lib/auth/types";
+import type { LoginSpace, SessionPayload } from "@/lib/auth/types";
 
 export { SESSION_COOKIE } from "@/lib/auth/types";
 
@@ -90,10 +90,15 @@ export async function verifySessionToken(token: string | undefined | null): Prom
     const payload = JSON.parse(json) as SessionPayload;
     if (!payload.sub || !payload.role || !payload.exp) return null;
     if (payload.exp < Math.floor(Date.now() / 1000)) return null;
+    if (payload.space && payload.space !== expectedSpace(payload.role)) return null;
     return payload;
   } catch {
     return null;
   }
+}
+
+function expectedSpace(role: SessionPayload["role"]): LoginSpace {
+  return role === "customer" ? "customer" : "staff";
 }
 
 export function isHttpsRequest(request: { headers: Headers; url: string }): boolean {
