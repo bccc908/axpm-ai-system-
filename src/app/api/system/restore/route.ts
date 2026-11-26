@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { requireMappedSession } from "@/lib/auth/route-guard";
 import { restoreSystemBackup } from "@/lib/system/backup";
 
 const bodySchema = z.object({
@@ -13,6 +14,9 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const gate = await requireMappedSession("/api/system/restore");
+  if (!gate.ok) return gate.response;
+
   try {
     const body = await request.json();
     const parsed = bodySchema.safeParse(body);

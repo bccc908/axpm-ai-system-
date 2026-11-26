@@ -1,5 +1,8 @@
 export type UserRole = "owner" | "admin" | "sales" | "finance" | "personal" | "viewer" | "customer";
 
+/** Role assigned by public sign-up. Least privilege: overview, fortune, and account only. */
+export const PUBLIC_SIGNUP_ROLE: UserRole = "customer";
+
 export type AuthModule =
   | "overview"
   | "todos"

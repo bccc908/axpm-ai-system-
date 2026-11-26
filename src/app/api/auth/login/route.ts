@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { z } from "zod";
+import { authSecretUnavailableResponse } from "@/lib/auth/route-guard";
 import { verifyLogin } from "@/lib/auth/store";
 import { createSessionToken, sessionCookieOptions, SESSION_COOKIE } from "@/lib/auth/session";
 
@@ -10,6 +11,9 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const missingSecret = authSecretUnavailableResponse();
+  if (missingSecret) return missingSecret;
+
   const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 400 });

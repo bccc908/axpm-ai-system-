@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { IntegrationsStatus } from "@/components/dashboard/integrations-status";
 import { PersonalLiveStats } from "@/components/dashboard/personal-live-stats";
+import { useAuth } from "@/components/providers/auth-provider";
 import { useLocale } from "@/components/providers/locale-provider";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -46,6 +47,8 @@ const leadStatusVariant: Record<string, "default" | "success" | "warning" | "dan
 
 export function DashboardHome() {
   const { t, locale } = useLocale();
+  const { can, loading: authLoading } = useAuth();
+  const showCrm = can("crm");
   const [overview, setOverview] = useState<CrmOverview | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [threads, setThreads] = useState<ConversationThread[]>([]);
@@ -81,13 +84,45 @@ export function DashboardHome() {
   }, []);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!showCrm) {
+      setLoading(false);
+      return;
+    }
     load();
-  }, [load]);
+  }, [authLoading, showCrm, load]);
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="flex justify-center py-16">
         <Loader2 className="h-6 w-6 animate-spin text-muted" />
+      </div>
+    );
+  }
+
+  if (!showCrm) {
+    const links: Array<{ href: "/dashboard/fortune" | "/dashboard/account" | "/dashboard/todos" | "/dashboard/my-assistant" | "/dashboard/finance"; label: string }> = [];
+    if (can("fortune")) links.push({ href: "/dashboard/fortune", label: t("nav.fortune") });
+    if (can("account")) links.push({ href: "/dashboard/account", label: t("nav.account") });
+    if (can("todos")) links.push({ href: "/dashboard/todos", label: t("nav.todos") });
+    if (can("assistant")) links.push({ href: "/dashboard/my-assistant", label: t("nav.myAssistant") });
+    if (can("finance")) links.push({ href: "/dashboard/finance", label: t("nav.finance") });
+
+    return (
+      <div className="space-y-6">
+        <PageHeader title={t("dashboard.title")} subtitle={t("dashboard.subtitle")} />
+        {can("settings") ? <IntegrationsStatus /> : null}
+        {can("assistant") || can("finance") ? <PersonalLiveStats /> : null}
+        <div className="grid gap-4 sm:grid-cols-2">
+          {links.map((link) => (
+            <Card key={link.href}>
+              <CardHeader title={link.label} />
+              <Link href={link.href} className="text-sm text-accent hover:underline">
+                {t("common.open")}
+              </Link>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }

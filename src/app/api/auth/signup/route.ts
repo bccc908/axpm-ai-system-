@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { authSecretUnavailableResponse } from "@/lib/auth/route-guard";
 import { createSessionToken, sessionCookieOptions, SESSION_COOKIE } from "@/lib/auth/session";
 import { needsSetup, registerCustomer } from "@/lib/auth/store";
 import { getOrCreateCustomerAccount } from "@/lib/customer/store";
@@ -14,6 +15,9 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
+  const missingSecret = authSecretUnavailableResponse();
+  if (missingSecret) return missingSecret;
+
   if (await needsSetup()) {
     return NextResponse.json(
       { error: "Owner setup required first — use /login to create admin account" },

@@ -1,21 +1,11 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "@/lib/auth/api-session";
+import { OWNER_ADMIN, allowCronOrRoles } from "@/lib/auth/route-guard";
 import { createSystemBackup, listBackupFileMeta } from "@/lib/system/backup";
 
 export const dynamic = "force-dynamic";
 
-function hasCronSecret(request: Request) {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) return false;
-  const auth = request.headers.get("authorization");
-  if (auth === `Bearer ${secret}`) return true;
-  return new URL(request.url).searchParams.get("secret") === secret;
-}
-
 async function canAccessBackup(request: Request) {
-  if (hasCronSecret(request)) return true;
-  const ctx = await getServerSession();
-  return Boolean(ctx);
+  return allowCronOrRoles(request, OWNER_ADMIN);
 }
 
 async function runBackup() {

@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSession } from "@/lib/auth/api-session";
-import {
-  activateTrial,
-  getOrCreateCustomerAccount,
-  setCustomerSubscription,
-} from "@/lib/customer/store";
+import { activateTrial, getOrCreateCustomerAccount } from "@/lib/customer/store";
 import { createCheckoutSession } from "@/lib/customer/stripe";
 import { isStripeConfigured } from "@/lib/customer/plans";
 
@@ -25,26 +21,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid checkout request" }, { status: 400 });
   }
 
-  const account = await getOrCreateCustomerAccount(ctx.user.id);
-
   if (parsed.data.action === "trial") {
     const updated = await activateTrial(ctx.user.id);
     return NextResponse.json({ ok: true, account: updated, trial: true });
   }
 
   if (!isStripeConfigured()) {
-    const updated = await setCustomerSubscription(ctx.user.id, {
-      plan: parsed.data.plan,
-      status: "active",
-      current_period_end: new Date(Date.now() + 30 * 86400000).toISOString(),
-    });
-    return NextResponse.json({
-      ok: true,
-      account: updated,
-      manual: true,
-      message: "Stripe not configured — plan activated manually for 30 days",
-    });
+    return NextResponse.json(
+      { error: "Stripe is not configured. Paid plans cannot be activated." },
+      { status: 503 },
+    );
   }
+
+  const account = await getOrCreateCustomerAccount(ctx.user.id);
 
   try {
     const url = await createCheckoutSession({

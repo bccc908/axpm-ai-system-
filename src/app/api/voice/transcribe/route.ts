@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
+import { requireMappedSession } from "@/lib/auth/route-guard";
 import { getTranscribeProviders, transcribeAudio } from "@/lib/ai/transcribe";
 
 export async function GET() {
+  const gate = await requireMappedSession("/api/voice/transcribe");
+  if (!gate.ok) return gate.response;
+
   const providers = getTranscribeProviders();
   return NextResponse.json({
     ready: providers.length > 0,
@@ -11,6 +15,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const gate = await requireMappedSession("/api/voice/transcribe");
+  if (!gate.ok) return gate.response;
+
   try {
     const form = await request.formData();
     const audio = form.get("audio");

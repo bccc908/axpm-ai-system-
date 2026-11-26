@@ -19,6 +19,7 @@ import { isUnstructuredConfigured } from "@/lib/ai/unstructured-config";
 import { getActiveWebSearchProvider, isWebSearchConfigured } from "@/lib/ai/web-search-config";
 import { countWebWidgetMessages } from "@/lib/widget/chat-handler";
 import { buildWidgetEmbedCode, getPublicWidgetConfig } from "@/lib/widget/config";
+import { requireMappedSession } from "@/lib/auth/route-guard";
 
 const SETTINGS_FILE = path.join(process.cwd(), "data", "settings.json");
 
@@ -30,10 +31,8 @@ const defaultSettings = {
 };
 
 function isAuthSecretWeak() {
-  const secret =
-    process.env.AUTH_SECRET?.trim() || process.env.CRON_SECRET?.trim() || "";
-  if (!secret) return true;
-  return secret === "signalqi-dev-change-me-in-production" || secret.length < 24;
+  const secret = process.env.AUTH_SECRET?.trim() ?? "";
+  return secret.length < 24;
 }
 
 async function readSettings() {
@@ -51,6 +50,9 @@ async function writeSettings(settings: Record<string, unknown>) {
 }
 
 export async function GET() {
+  const gate = await requireMappedSession("/api/settings");
+  if (!gate.ok) return gate.response;
+
   const settings = await readSettings();
   const telegram = getTelegramConfig();
   const email = await getEmailConfig();
@@ -182,6 +184,9 @@ const schema = z.object({
 });
 
 export async function PATCH(request: Request) {
+  const gate = await requireMappedSession("/api/settings");
+  if (!gate.ok) return gate.response;
+
   try {
     const body = await request.json();
     const parsed = schema.safeParse(body);

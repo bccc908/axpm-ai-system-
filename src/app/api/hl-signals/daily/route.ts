@@ -1,16 +1,12 @@
 import { NextResponse } from "next/server";
 import { runDailyHlSignal } from "@/lib/hl-signals/daily";
+import { cronRequestAuthorized } from "@/lib/auth/secrets";
 
 export const maxDuration = 120;
 export const dynamic = "force-dynamic";
 
 function isAuthorized(request: Request) {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) return true;
-  const auth = request.headers.get("authorization");
-  if (auth === `Bearer ${secret}`) return true;
-  const url = new URL(request.url);
-  return url.searchParams.get("secret") === secret;
+  return cronRequestAuthorized(request);
 }
 
 async function handleDaily(request: Request) {
@@ -56,7 +52,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (process.env.CRON_SECRET?.trim() && !isAuthorized(request)) {
+  if (!isAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   return handleDaily(request);

@@ -1,19 +1,13 @@
 import { NextResponse } from "next/server";
 import { runFinanceAutomation } from "@/lib/finance/store";
+import { OWNER_ADMIN, allowCronOrRoles } from "@/lib/auth/route-guard";
 
-function isAuthorized(request: Request) {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) return true;
-
-  const auth = request.headers.get("authorization");
-  if (auth === `Bearer ${secret}`) return true;
-
-  const url = new URL(request.url);
-  return url.searchParams.get("secret") === secret;
+async function isAuthorized(request: Request) {
+  return allowCronOrRoles(request, OWNER_ADMIN);
 }
 
 export async function GET(request: Request) {
-  if (!isAuthorized(request)) {
+  if (!(await isAuthorized(request))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   try {
@@ -26,7 +20,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (process.env.CRON_SECRET?.trim() && !isAuthorized(request)) {
+  if (!(await isAuthorized(request))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   try {
