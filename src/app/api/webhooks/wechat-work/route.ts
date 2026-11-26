@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
-import {
-  getWeChatWorkConfig,
-  handleWeChatWorkEvent,
-  verifyWeChatWorkUrl,
-} from "@/lib/integrations/wechat-work";
+import { verifyWeChatWorkUrl } from "@/lib/integrations/wechat-work";
 
-/** WeChat Work (企业微信) webhook — auto-records incoming messages */
+/**
+ * WeChat Work (企业微信) webhook.
+ *
+ * GET keeps the URL-verification handshake.
+ *
+ * POST fails closed. Real WeCom callbacks are AES-encrypted XML signed with
+ * msg_signature over the Encrypt field; this app can't verify or decrypt them
+ * yet (CH-3). Until it can, every POST is rejected so nobody can forge inbound
+ * messages or create clients through this route. No config is echoed back.
+ */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const msg_signature = searchParams.get("msg_signature") ?? "";
@@ -21,26 +26,7 @@ export async function GET(request: Request) {
   return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 }
 
-export async function POST(request: Request) {
-  try {
-    const contentType = request.headers.get("content-type") ?? "";
-    let body: Record<string, unknown>;
-
-    if (contentType.includes("application/json")) {
-      body = await request.json();
-    } else {
-      const text = await request.text();
-      try {
-        body = JSON.parse(text) as Record<string, unknown>;
-      } catch {
-        body = { raw: text };
-      }
-    }
-
-    const result = await handleWeChatWorkEvent(body);
-    return NextResponse.json({ received: true, ...result, config: getWeChatWorkConfig() });
-  } catch (error) {
-    console.error("[WeChat Work Webhook]", error);
-    return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
-  }
+export async function POST(_request: Request) {
+  void _request;
+  return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 }
