@@ -5,6 +5,8 @@ import { ensureClientFromContact } from "@/lib/crm/auto-client";
 import { recordWeChatWorkMessage } from "@/lib/conversations/store";
 import { notifyInboundMessageTelegram } from "@/lib/integrations/inbound-notify";
 import { rejectIfAiDraftText } from "@/lib/support/client-send-gate";
+import { readAppSettings } from "@/lib/finance/settings";
+import { resolveWeChatWorkSenderLabel } from "@/lib/integrations/sender-label";
 
 const QYAPI = "https://qyapi.weixin.qq.com";
 
@@ -174,13 +176,18 @@ export async function sendWeChatWorkToClient(params: {
 
   if (!sendResult.ok) return sendResult;
 
+  const settings = await readAppSettings();
+  const senderLabel = resolveWeChatWorkSenderLabel({
+    workspaceDisplayName: settings.workspaceDisplayName,
+  });
+
   const message = await createMessage({
     client_id: client.id,
     client_name: client.name,
     wechat_id: externalUserId,
     channel: "wechat",
     direction: "outbound",
-    sender_label: process.env.WECHAT_WORK_SENDER_USERID ?? "AXPM Team",
+    sender_label: senderLabel,
     content: params.content,
     source: "wechat_work",
     external_id: sendResult.msgid,

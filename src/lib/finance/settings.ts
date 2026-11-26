@@ -5,6 +5,8 @@ import { currentMonthKey } from "@/lib/finance/helpers";
 const SETTINGS_FILE = path.join(process.cwd(), "data", "settings.json");
 
 export type AppSettings = {
+  /** Workspace display name shown as the sender on outbound customer messages (neutral; never a product brand) */
+  workspaceDisplayName?: string | null;
   digestHour?: number;
   defaultFinanceCurrency?: string;
   /** When true (default): auto-link, auto-reminders, auto-deduct on due day, receipt expenses */
