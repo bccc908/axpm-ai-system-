@@ -13,6 +13,7 @@ import type {
 import { readCrmData, writeCrmData, listClients, updateClient } from "@/lib/crm/store";
 import { listMessages } from "@/lib/conversations/store";
 import { buildDefaultPipeline, DEFAULT_PIPELINE_ID, STAGE_TO_LEAD_STATUS } from "@/lib/crm/pipelines-default";
+import type { WorkflowActor } from "@/types/crm-workflows";
 import { autoAssignWebLead } from "@/lib/crm/assignment";
 
 async function ensureProData() {
@@ -126,6 +127,7 @@ export async function updateDeal(
       | "assigned_to"
     >
   >,
+  actor?: WorkflowActor | null,
 ) {
   const data = await ensureProData();
   const index = data.deals.findIndex((d) => d.id === id);
@@ -163,7 +165,7 @@ export async function updateDeal(
     }
 
     const { runDealStageWorkflows } = await import("@/lib/crm/workflows");
-    await runDealStageWorkflows(deal, current.stage_id, patch.stage_id);
+    await runDealStageWorkflows(deal, current.stage_id, patch.stage_id, actor);
   }
 
   if (patch.status && patch.status !== current.status) {

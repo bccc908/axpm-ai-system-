@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { roleCanAccessPath } from "@/lib/auth/permissions";
 import { verifySessionToken, SESSION_COOKIE, publicRequestOrigin } from "@/lib/auth/session";
+import { canViewWorkflowRules, isWorkflowRulesApi, isWorkflowRulesPage } from "@/lib/crm/workflow-access";
 
 const PUBLIC_PAGE_PREFIXES = ["/login", "/signup", "/register", "/widget"];
 
@@ -83,7 +84,7 @@ export async function middleware(request: NextRequest) {
   const session = await verifySessionToken(token);
 
   if (!session) {
-    if (pathname.startsWith("/api/")) {
+    if (pathname.startsWith("/api/") || isWorkflowRulesPage(pathname)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const loginUrl = new URL("/login", publicRequestOrigin(request));
@@ -91,6 +92,19 @@ export async function middleware(request: NextRequest) {
       loginUrl.searchParams.set("next", pathname);
     }
     return NextResponse.redirect(loginUrl);
+  }
+
+  if (
+    (isWorkflowRulesPage(pathname) || isWorkflowRulesApi(pathname)) &&
+    !canViewWorkflowRules(session.role)
+  ) {
+    if (isWorkflowRulesApi(pathname)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    return new NextResponse(
+      "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><title>Forbidden</title><p>Forbidden</p>",
+      { status: 403, headers: { "content-type": "text/html; charset=utf-8" } },
+    );
   }
 
   if (pathname.startsWith("/dashboard") && !roleCanAccessPath(session.role, pathname)) {

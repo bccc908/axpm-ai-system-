@@ -4,22 +4,24 @@ import { randomUUID } from "crypto";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import type { AuthData, AuthUser, AuthUserPublic, UserRole } from "@/lib/auth/types";
 
-const DATA_FILE = path.join(process.cwd(), "data", "users.json");
+function usersFile() {
+  return path.join(process.cwd(), "data", "users.json");
+}
 
 async function ensureFile(): Promise<AuthData> {
-  await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
+  await fs.mkdir(path.dirname(usersFile()), { recursive: true });
   try {
-    await fs.access(DATA_FILE);
+    await fs.access(usersFile());
   } catch {
-    await fs.writeFile(DATA_FILE, JSON.stringify({ users: [] }, null, 2));
+    await fs.writeFile(usersFile(), JSON.stringify({ users: [] }, null, 2));
   }
-  const raw = await fs.readFile(DATA_FILE, "utf-8");
+  const raw = await fs.readFile(usersFile(), "utf-8");
   const parsed = JSON.parse(raw) as AuthData;
   return { users: parsed.users ?? [] };
 }
 
 async function write(data: AuthData) {
-  await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
+  await fs.writeFile(usersFile(), JSON.stringify(data, null, 2));
 }
 
 export async function listUsers(): Promise<AuthUser[]> {

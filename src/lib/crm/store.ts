@@ -9,11 +9,17 @@ import {
   mockTeamMembers,
 } from "@/lib/mock-data";
 import type { CrmData, CrmOverview } from "@/types/crm";
+import type { CrmWorkflowRun } from "@/types/crm-workflows";
 import type { Client, DailyReport, FollowUp, Reminder, TeamTask } from "@/types/database";
 import { buildDefaultPipeline } from "@/lib/crm/pipelines-default";
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const DATA_FILE = path.join(DATA_DIR, "crm.json");
+function crmDataDir() {
+  return path.join(process.cwd(), "data");
+}
+
+function crmDataFile() {
+  return path.join(crmDataDir(), "crm.json");
+}
 
 function seedData(): CrmData {
   return {
@@ -29,6 +35,7 @@ function seedData(): CrmData {
     pipelines: [buildDefaultPipeline()],
     leads: [],
     accounts: [],
+    workflowRuns: [],
   };
 }
 
@@ -47,27 +54,28 @@ function migrateCrmData(raw: Partial<CrmData>): CrmData {
     pipelines: raw.pipelines?.length ? raw.pipelines : seed.pipelines,
     leads: raw.leads ?? seed.leads,
     accounts: raw.accounts ?? seed.accounts,
+    workflowRuns: raw.workflowRuns ?? [],
   };
 }
 
 async function ensureDataFile() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
+  await fs.mkdir(crmDataDir(), { recursive: true });
   try {
-    await fs.access(DATA_FILE);
+    await fs.access(crmDataFile());
   } catch {
-    await fs.writeFile(DATA_FILE, JSON.stringify(seedData(), null, 2));
+    await fs.writeFile(crmDataFile(), JSON.stringify(seedData(), null, 2));
   }
 }
 
 export async function readCrmData(): Promise<CrmData> {
   await ensureDataFile();
-  const raw = await fs.readFile(DATA_FILE, "utf-8");
+  const raw = await fs.readFile(crmDataFile(), "utf-8");
   return migrateCrmData(JSON.parse(raw) as Partial<CrmData>);
 }
 
 export async function writeCrmData(data: CrmData) {
   await ensureDataFile();
-  await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
+  await fs.writeFile(crmDataFile(), JSON.stringify(data, null, 2));
 }
 
 export async function listClients() {
@@ -262,6 +270,29 @@ export async function getCrmOverview(): Promise<CrmOverview> {
     recentFollowUps: data.followUps.slice(0, 10),
     latestDailyReport: data.dailyReports[0] ?? null,
   };
+}
+
+export async function listWorkflowRuns(): Promise<CrmWorkflowRun[]> {
+  const data = await readCrmData();
+  return [...(data.workflowRuns ?? [])].sort((a, b) =>
+    a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0,
+  );
+}
+
+export async function appendWorkflowRun(run: CrmWorkflowRun) {
+  const data = await readCrmData();
+  data.workflowRuns = [run, ...(data.workflowRuns ?? [])];
+  await writeCrmData(data);
+  return run;
+}
+
+export async function replaceWorkflowRun(run: CrmWorkflowRun) {
+  const data = await readCrmData();
+  const index = data.workflowRuns.findIndex((item) => item.id === run.id);
+  if (index === -1) return null;
+  data.workflowRuns[index] = run;
+  await writeCrmData(data);
+  return run;
 }
 
 export async function getClientsForAi() {

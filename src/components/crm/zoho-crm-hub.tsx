@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Building2, Bell, Globe, Loader2, Mail, MessageCircle, MessagesSquare, Target, TrendingUp, Users } from "lucide-react";
+import { Building2, Bell, Globe, Loader2, Mail, MessageCircle, MessagesSquare, Target, TrendingUp, Users, Zap } from "lucide-react";
+import { useAuth } from "@/components/providers/auth-provider";
 import { useLocale } from "@/components/providers/locale-provider";
 import { AccountsPanel } from "@/components/crm/accounts-panel";
 import { ClientsManager } from "@/components/crm/clients-manager";
@@ -16,6 +17,7 @@ import { CrmWorkflowsPanel } from "@/components/crm/crm-workflows-panel";
 import { LeadsPanel } from "@/components/crm/leads-panel";
 import { PipelineBoard } from "@/components/crm/pipeline-board";
 import { Card } from "@/components/ui/card";
+import { canViewWorkflowRules } from "@/lib/crm/workflow-access";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { CrmAdvancedAnalytics } from "@/lib/crm/analytics";
 
@@ -43,6 +45,7 @@ function parseTab(value: string | null): Tab {
 
 export function ZohoCrmHub() {
   const { t } = useLocale();
+  const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<Tab>(() => parseTab(searchParams.get("tab")));
@@ -108,6 +111,9 @@ export function ZohoCrmHub() {
           <QuickLink href="/dashboard/whatsapp" icon={MessageCircle} label={t("nav.whatsapp")} />
           <QuickLink href="/dashboard/email" icon={Mail} label={t("nav.email")} />
           <QuickLink href="/dashboard/reminders" icon={Bell} label={t("nav.reminders")} />
+          {user && canViewWorkflowRules(user.role) ? (
+            <QuickLink href="/dashboard/crm/workflow-rules" icon={Zap} label={t("nav.workflowRules")} />
+          ) : null}
         </div>
       </div>
 

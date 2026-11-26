@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { getServerSession } from "@/lib/auth/api-session";
 import { getLeadDetail, updateLead } from "@/lib/crm/zoho-store";
 
 const patchSchema = z.object({
@@ -38,7 +39,12 @@ export async function PATCH(
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
-    const lead = await updateLead(id, parsed.data);
+    const ctx = await getServerSession();
+    const lead = await updateLead(
+      id,
+      parsed.data,
+      ctx ? { user_id: ctx.user.id, name: ctx.user.name } : null,
+    );
     if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
     return NextResponse.json({ lead: { ...lead, custom_fields: lead.custom_fields ?? {} } });
   } catch (error) {

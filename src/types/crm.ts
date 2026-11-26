@@ -9,6 +9,7 @@ import type {
 } from "@/types/database";
 import type { CrmActivity, CrmDeal, CrmPipeline } from "@/types/crm-pro";
 import type { CrmAccount, CrmLead } from "@/types/crm-zoho";
+import type { CrmWorkflowRun } from "@/types/crm-workflows";
 
 export interface CrmData {
   clients: Client[];
@@ -23,6 +24,7 @@ export interface CrmData {
   pipelines: CrmPipeline[];
   leads: CrmLead[];
   accounts: CrmAccount[];
+  workflowRuns: CrmWorkflowRun[];
 }
 
 export interface CrmOverview {
