@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { z } from "zod";
+import { readRequestLoginSessions } from "@/lib/auth/api-session";
 import type { UserRole } from "@/lib/auth/types";
 import { createUser } from "@/lib/auth/store";
-import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth/session";
 
 const roleSchema = z.enum(["admin", "sales", "finance", "personal", "viewer"]);
 
@@ -15,9 +14,8 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const cookieStore = await cookies();
-  const session = await verifySessionToken(cookieStore.get(SESSION_COOKIE)?.value);
-  if (!session || session.role !== "owner") {
+  const { staff } = await readRequestLoginSessions();
+  if (!staff || staff.role !== "owner") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -43,9 +41,8 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-  const cookieStore = await cookies();
-  const session = await verifySessionToken(cookieStore.get(SESSION_COOKIE)?.value);
-  if (!session || (session.role !== "owner" && session.role !== "admin")) {
+  const { staff } = await readRequestLoginSessions();
+  if (!staff || (staff.role !== "owner" && staff.role !== "admin")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

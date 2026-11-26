@@ -1,18 +1,23 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { readRequestLoginSessions } from "@/lib/auth/api-session";
 import { modulesForRole } from "@/lib/auth/permissions";
 import { needsSetup, toPublicUser, findUserById } from "@/lib/auth/store";
-import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth/session";
+import type { LoginSpace, SessionPayload } from "@/lib/auth/types";
 
-export async function GET() {
+export async function GET(request: Request) {
   const setupRequired = await needsSetup();
-  if (setupRequired) {
+  const requested = new URL(request.url).searchParams.get("space");
+  const space: LoginSpace | null = requested === "staff" || requested === "customer" ? requested : null;
+  const sessions = await readRequestLoginSessions();
+  let session: SessionPayload | null;
+  if (space === "staff") session = sessions.staff;
+  else if (space === "customer") session = sessions.customer;
+  else session = sessions.staff ?? sessions.customer;
+
+  if (setupRequired && space !== "customer") {
     return NextResponse.json({ setupRequired: true, user: null, modules: [] });
   }
 
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
-  const session = await verifySessionToken(token);
   if (!session) {
     return NextResponse.json({ setupRequired: false, user: null, modules: [] });
   }
