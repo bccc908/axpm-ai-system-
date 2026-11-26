@@ -108,6 +108,19 @@ describe("api access policy", () => {
     expect(describeRule(matchApiRule("/api/personal/jobs")!)).toContain("assistant");
     expect(matchApiRule("/api/system/backup")?.kind).toBe("cron-or-roles");
     expect(matchApiRule("/api/system/restore")?.kind).toBe("module");
+    expect(matchApiRule("/api/crm/export")?.kind).toBe("roles");
+    expect(describeRule(matchApiRule("/api/crm/export")!)).toBe("owner, admin");
+  });
+
+  it("keeps CRM for sales and viewer but locks export to owner and admin", () => {
+    for (const role of ["sales", "viewer", "customer"] as const) {
+      expect(decide("/api/crm/export", role), role).toMatchObject({ allow: false, status: 403 });
+    }
+    expect(decide("/api/crm/export", "owner").allow).toBe(true);
+    expect(decide("/api/crm/export", "admin").allow).toBe(true);
+    expect(decide("/api/crm/leads", "sales").allow).toBe(true);
+    expect(decide("/api/crm/leads", "viewer").allow).toBe(true);
+    expect(decide("/api/crm/overview", "customer")).toMatchObject({ allow: false, status: 403 });
   });
 
   it("fails closed for cron and bridge when the key is absent", () => {
