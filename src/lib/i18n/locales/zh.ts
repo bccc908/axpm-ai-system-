@@ -1686,7 +1686,7 @@ export const zh: TranslationDict = {
     pptGammaDoneMsg: "✅ Gamma PPT 已生成：《{title}》共 {n} 页 — 可下载或在线编辑",
   },
   register: {
-    title: "AXPM · 客户注册",
+    title: "Kayden Chiew · 客户登记",
     subtitle: "请填写以下资料，我们将尽快与您联系。",
     name: "姓名",
     nameRequired: "必填",

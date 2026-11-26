@@ -1690,7 +1690,7 @@ export const en = {
     pptGammaDoneMsg: "✅ Gamma PPT ready: “{title}” — {n} slides. Download or edit online.",
   },
   register: {
-    title: "AXPM · Client Registration",
+    title: "Kayden Chiew · Client registration",
     subtitle: "Submit your details — our team will contact you shortly.",
     name: "Full name",
     nameRequired: "Required",

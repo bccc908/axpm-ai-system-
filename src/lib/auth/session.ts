@@ -132,8 +132,9 @@ export function sessionCookieOptions(
 ) {
   return {
     httpOnly: true,
-    // Only mark Secure on real HTTPS. A production HTTP IP login would otherwise
-    // set a cookie the browser drops, and middleware redirects would bounce forever.
+    // Host-only: Domain is omitted so the cookie is not shared with other hosts.
+    // Secure on HTTPS, including when Caddy sets x-forwarded-proto. SameSite=Lax.
+    // HTTP (a local preview or a raw IP) stays non-Secure so the browser keeps the cookie.
     secure: request ? isHttpsRequest(request) : false,
     sameSite: "lax" as const,
     path: "/",

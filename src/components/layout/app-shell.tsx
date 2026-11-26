@@ -5,14 +5,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   CheckSquare,
+  CreditCard,
   LayoutDashboard,
   Menu,
   MessageSquare,
+  Sparkles,
   Users,
   Wallet,
   X,
 } from "lucide-react";
 import { BrandLogo } from "@/components/layout/brand-logo";
+import { PUBLIC_BRAND } from "@/lib/brand/public-brand";
+import type { UserRole } from "@/lib/auth/types";
 import { InstallAppBanner } from "@/components/layout/install-app-banner";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -28,12 +32,26 @@ const bottomNav = [
   { href: "/dashboard/crm", labelKey: "nav.crm", icon: Users },
 ] as const;
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+const customerNav = [
+  { href: "/dashboard", labelKey: "nav.overview", icon: LayoutDashboard },
+  { href: "/dashboard/fortune", labelKey: "nav.fortune", icon: Sparkles },
+  { href: "/dashboard/account", labelKey: "nav.account", icon: CreditCard },
+] as const;
+
+export function AppShell({
+  children,
+  sessionRole,
+}: {
+  children: React.ReactNode;
+  sessionRole: UserRole | null;
+}) {
   const pathname = usePathname();
   const { t } = useLocale();
   const { canHref } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-  const mobileNav = bottomNav.filter(({ href }) => canHref(href));
+  const crmScreen = pathname.startsWith("/dashboard/crm") || pathname.startsWith("/dashboard/clients");
+  const publicBrand = crmScreen || sessionRole === "customer" || sessionRole === null;
+  const mobileNav = (sessionRole === "customer" ? customerNav : bottomNav).filter(({ href }) => canHref(href));
   const immersive = pathname.startsWith("/dashboard/ops-floor");
   const goldDesk = pathname.startsWith("/dashboard/gold-signals");
   const solanaDesk = pathname.startsWith("/dashboard/solana-bot");
@@ -44,7 +62,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Desktop sidebar */}
       <div className="hidden md:flex md:shrink-0">
         <Suspense fallback={null}>
-          <Sidebar compact={solanaDesk} />
+          <Sidebar compact={solanaDesk} publicBrand={publicBrand} />
         </Suspense>
       </div>
 
@@ -59,14 +77,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           />
           <div className="absolute left-0 top-0 flex h-full w-[min(280px,85vw)] flex-col border-r border-card-border bg-surface shadow-2xl">
             <div className="flex items-center justify-between border-b border-card-border px-4 py-3">
-              <BrandLogo height={22} />
+              {publicBrand ? (
+                <span className="text-sm font-semibold text-foreground">{PUBLIC_BRAND}</span>
+              ) : (
+                <BrandLogo height={22} />
+              )}
               <button type="button" onClick={() => setMenuOpen(false)} className="p-2 text-muted">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="flex-1 overflow-hidden" onClick={() => setMenuOpen(false)}>
               <Suspense fallback={null}>
-                <Sidebar />
+                <Sidebar publicBrand={publicBrand} />
               </Suspense>
             </div>
           </div>
@@ -84,7 +106,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <BrandLogo height={22} />
+          {publicBrand ? (
+            <span className="text-sm font-semibold text-foreground">{PUBLIC_BRAND}</span>
+          ) : (
+            <BrandLogo height={22} />
+          )}
           <LanguageSwitcher className="text-xs" />
         </header>
 
@@ -111,7 +137,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     : "mx-auto w-full max-w-7xl p-4 md:p-6 lg:p-8",
             )}
           >
-            {fillHeight ? null : <InstallAppBanner />}
+            {fillHeight || publicBrand ? null : <InstallAppBanner />}
             {children}
           </div>
         </main>

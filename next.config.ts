@@ -24,6 +24,14 @@ const nextConfig: NextConfig = {
 
     return [
       {
+        source: "/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
+      },
+      {
+        source: "/",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
+      },
+      {
         source: "/widget/:path*",
         headers: [
           {

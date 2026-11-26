@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { authSecretUnavailableResponse } from "@/lib/auth/route-guard";
-import { createSessionToken, sessionCookieOptions, SESSION_COOKIE } from "@/lib/auth/session";
+import { rateLimitResponse } from "@/lib/auth/rate-limit-response";
+import { sendVerificationLink } from "@/lib/auth/send-auth-link";
 import { needsSetup, registerCustomer } from "@/lib/auth/store";
 import { getOrCreateCustomerAccount } from "@/lib/customer/store";
 import { resolveReferrer } from "@/lib/referral";
-import { cookies } from "next/headers";
 
 const schema = z.object({
   email: z.string().email(),
@@ -30,6 +30,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid signup data" }, { status: 400 });
   }
 
+  const limited = rateLimitResponse(request, "signup", parsed.data.email);
+  if (limited) return limited;
+
   try {
     const referrer = await resolveReferrer(parsed.data.ref);
     const user = await registerCustomer(parsed.data);
@@ -37,16 +40,18 @@ export async function POST(request: Request) {
       referred_by_user_id: referrer?.id ?? null,
     });
 
-    const token = await createSessionToken({
-      sub: user.id,
-      role: user.role,
-      email: user.email,
-      name: user.name,
-    });
-    const cookieStore = await cookies();
-    cookieStore.set(SESSION_COOKIE, token, sessionCookieOptions(undefined, request));
+    let emailSent = false;
+    try {
+      emailSent = await sendVerificationLink(user.id, false);
+    } catch (error) {
+      console.error("[signup email]", error instanceof Error ? error.message : "send failed");
+    }
 
-    return NextResponse.json({ ok: true, user, referredBy: referrer?.name ?? null });
+    return NextResponse.json({
+      ok: true,
+      verificationRequired: true,
+      emailSent,
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Signup failed" },

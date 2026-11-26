@@ -32,6 +32,10 @@ export interface AuthUser {
   password_hash: string;
   is_active: boolean;
   created_at: string;
+  /** Missing on accounts created before verification. Null means not yet confirmed. */
+  email_verified_at?: string | null;
+  verify_nonce?: string | null;
+  reset_nonce?: string | null;
 }
 
 export interface AuthUserPublic {

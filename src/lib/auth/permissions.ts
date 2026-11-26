@@ -58,6 +58,8 @@ const ROLE_MODULES: Record<UserRole, AuthModule[]> = {
   finance: ["overview", "todos", "finance", "email", "whatsapp", "knowledge"],
   personal: ["overview", "todos", "assistant", "fortune"],
   viewer: ["overview", "crm", "conversations", "knowledge"],
+  // Public sign-ups. There is no separate free-education module in this repo
+  // (the knowledge base is staff-only). CRM stays on staff roles only.
   customer: ["overview", "fortune", "account"],
 };
 

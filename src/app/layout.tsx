@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { publicMetadata } from "@/lib/brand/public-brand";
 import "./globals.css";
 
 const inter = Inter({
@@ -9,14 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "AXPM",
-  description: "AXPM — CRM、财务、收件箱与 AI 助手",
-  applicationName: "AXPM",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "AXPM",
-  },
+  ...publicMetadata(),
   formatDetection: {
     telephone: false,
   },
