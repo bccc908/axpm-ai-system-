@@ -137,7 +137,7 @@ export function AppShell({
                     : "mx-auto w-full max-w-7xl p-4 md:p-6 lg:p-8",
             )}
           >
-            {fillHeight || publicBrand ? null : <InstallAppBanner />}
+            {fillHeight ? null : <InstallAppBanner />}
             {children}
           </div>
         </main>
