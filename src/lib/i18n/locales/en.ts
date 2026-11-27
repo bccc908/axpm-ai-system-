@@ -355,7 +355,7 @@ export const en = {
     title: "Fortune & Reflection",
     subtitle: "Bazi · Zi Wei · Meihua · I Ching · bone weight · astrology · tarot · numerology",
     profileTitle: "Your profile",
-    profileDesc: "Birth details help personalize readings (stored locally)",
+    profileDesc: "Birth details help personalize readings",
     name: "Name",
     namePlaceholder: "Your name (optional)",
     birthDate: "Birth date",

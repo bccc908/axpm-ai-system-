@@ -355,7 +355,7 @@ export const zh: TranslationDict = {
     title: "命理运势",
     subtitle: "八字 · 紫微 · 梅花 · 易经 · 称骨 · 星座 · 塔罗 · 数字 — 可单独或综合",
     profileTitle: "个人资料",
-    profileDesc: "出生信息用于个性化解读（仅保存在本地）",
+    profileDesc: "出生信息用于个性化解读",
     name: "姓名",
     namePlaceholder: "你的名字（选填）",
     birthDate: "出生日期",
