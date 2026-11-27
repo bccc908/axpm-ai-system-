@@ -27,6 +27,7 @@ import {
 import type { UserRole } from "@/lib/auth/types";
 import { sendFortuneQuestionTelegram } from "@/lib/fortune/telegram";
 import { generateMianxiangFromPhoto } from "@/lib/fortune/mianxiang-vision";
+import { refusePersonalisedTradeAdvice } from "@/lib/fortune/trade-advice-block";
 
 export const fortuneGenerateSchema = z.object({
   topic: z.enum([
@@ -64,6 +65,25 @@ export async function handleFortuneGenerate(params: {
   body: z.infer<typeof fortuneGenerateSchema>;
   skipQuota?: boolean;
 }) {
+  const locale = params.body.locale === "zh" ? "zh" : "en";
+  if (params.role === "customer") {
+    const blocked = refusePersonalisedTradeAdvice({
+      topic: params.body.topic,
+      question: params.body.question,
+      locale,
+    });
+    if (blocked) {
+      return {
+        status: 200 as const,
+        body: {
+          adviceBlocked: true as const,
+          usedAi: false,
+          reading: blocked,
+        },
+      };
+    }
+  }
+
   const scope = fortuneScopeForRole(params.userId, params.role);
   const isCustomer = params.role === "customer";
   const ownerPrompts = usesOwnerAiPrompts(params.role);
@@ -95,7 +115,6 @@ export async function handleFortuneGenerate(params: {
   }
 
   const profile = await getScopedFortuneProfile(scope);
-  const locale = params.body.locale ?? "en";
   const force = params.body.force === true;
   const hasQuestion = Boolean(params.body.question?.trim());
   const todayKey = getFortuneTodayKey();

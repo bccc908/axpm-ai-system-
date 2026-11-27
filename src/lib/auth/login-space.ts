@@ -1,5 +1,10 @@
 import { matchApiRule } from "@/lib/auth/api-policy";
-import { moduleForPath, roleCanAccessModule, roleCanAccessPath } from "@/lib/auth/permissions";
+import {
+  isCustomerAiFortunePath,
+  moduleForPath,
+  roleCanAccessModule,
+  roleCanAccessPath,
+} from "@/lib/auth/permissions";
 import type { LoginSpace, SessionPayload, UserRole } from "@/lib/auth/types";
 
 export const STAFF_LOGIN_PATH = "/login";
@@ -33,7 +38,7 @@ export function loginSpaceForPath(pathname: string): LoginSpace {
   }
   if (pathname.startsWith("/dashboard")) {
     const mod = moduleForPath(pathname);
-    if (mod === "account" || mod === "fortune") return "customer";
+    if (mod === "account" || mod === "fortune" || isCustomerAiFortunePath(pathname)) return "customer";
     return "staff";
   }
   if (pathname.startsWith("/api/")) {

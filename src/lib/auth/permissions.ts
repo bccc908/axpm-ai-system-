@@ -60,8 +60,23 @@ const ROLE_MODULES: Record<UserRole, AuthModule[]> = {
   viewer: ["overview", "crm", "conversations", "knowledge"],
   // Public sign-ups. There is no separate free-education module in this repo
   // (the knowledge base is staff-only). CRM stays on staff roles only.
+  // Market AI and Gold Signals are path exceptions below, not the market module,
+  // so Groktagon and the rest of the staff desk stay closed.
   customer: ["overview", "fortune", "account"],
 };
+
+/** Customer-allowed AI paths that must not grant the staff `market` module. */
+export const CUSTOMER_AI_FORTUNE_PREFIXES = [
+  "/dashboard/market-ai",
+  "/dashboard/gold-signals",
+] as const;
+
+export function isCustomerAiFortunePath(pathname: string): boolean {
+  const path = pathname.split("?")[0] || pathname;
+  return CUSTOMER_AI_FORTUNE_PREFIXES.some(
+    (prefix) => path === prefix || path.startsWith(`${prefix}/`),
+  );
+}
 
 const ROLE_ORDER: UserRole[] = ["owner", "admin", "sales", "finance", "personal", "viewer", "customer"];
 
@@ -87,7 +102,9 @@ export function moduleForPath(pathname: string): AuthModule | null {
 }
 
 export function roleCanAccessPath(role: UserRole, pathname: string): boolean {
-  const authModule = moduleForPath(pathname);
+  const path = pathname.split("?")[0] || pathname;
+  if (role === "customer" && isCustomerAiFortunePath(path)) return true;
+  const authModule = moduleForPath(path);
   if (!authModule) return true;
   return roleCanAccessModule(role, authModule);
 }

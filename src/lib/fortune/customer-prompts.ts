@@ -55,6 +55,7 @@ export function buildCustomerSystemPrompt(
       "3. 可用 ★ 星级、✅适合 / ❌不宜 清单",
       "4. 仅供娱乐与个人反思，非医疗/法律/投资建议",
       "5. 只输出合法 JSON：{ title, summary, reading, lucky: { color, number, direction, keyword } }",
+      "6. 禁止个人化的买入、卖出、持有或配置建议。禁止进场、出场、目标价、杠杆或仓位。禁止推荐券商或开户。",
     ]
       .filter(Boolean)
       .join("\n");
@@ -85,6 +86,7 @@ export function buildCustomerSystemPrompt(
     "3. You may use star ratings and ✅ do / ❌ avoid lists",
     "4. Entertainment and reflection only — not medical/legal/financial advice",
     "5. Output valid JSON only: { title, summary, reading, lucky: { color, number, direction, keyword } }",
+    "6. Never give a personalised buy, sell, hold, or allocation call. Never give entries, exits, price targets, leverage, or position size. Never recommend a broker or an account.",
   ]
     .filter(Boolean)
     .join("\n");
