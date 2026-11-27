@@ -9,13 +9,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "AXPM",
-  description: "AXPM — CRM、财务、收件箱与 AI 助手",
-  applicationName: "AXPM",
+  title: "KD",
+  description: "KD — CRM、财务、收件箱与 AI 助手",
+  applicationName: "KD",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "AXPM",
+    title: "KD",
   },
   formatDetection: {
     telephone: false,

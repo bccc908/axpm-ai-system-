@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "AXPM",
-    short_name: "AXPM",
-    description: "CRM、财务、微信与 AI 助手 — AXPM",
+    name: "KD",
+    short_name: "KD",
+    description: "CRM、财务、微信与 AI 助手 — KD",
     start_url: "/dashboard",
     scope: "/",
     display: "standalone",

@@ -136,14 +136,7 @@ export function Sidebar({ compact = false }: { compact?: boolean }) {
       )}
     >
       <div className={cn("flex h-16 items-center gap-2.5 border-b border-card-border", compact ? "justify-center px-1" : "px-4")}>
-        {compact ? (
-          <svg viewBox="0 0 22 22" className="h-[22px] w-[22px]" aria-hidden="true">
-            <rect x="0.6" y="0.6" width="20.8" height="20.8" fill="none" stroke="#6eefe0" strokeWidth="0.9" />
-            <path d="M11 3.2 L18.2 18.2 H14.8 L13.4 14.8 H8.6 L7.2 18.2 H3.8 Z M11 7.2 L9.3 12.2 H12.7 Z" fill="#6eefe0" />
-          </svg>
-        ) : (
-          <BrandLogo height={28} />
-        )}
+        <BrandLogo height={compact ? 18 : 28} />
         {compact ? null : (
           <p className="min-w-0 truncate text-[11px] font-medium uppercase leading-4 tracking-[0.04em] text-muted">
             {t("app.title").replace(t("app.brand"), "").replace(/^[\s·\-–—|]+/, "") || t("app.title")}

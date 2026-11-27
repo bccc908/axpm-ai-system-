@@ -175,7 +175,7 @@ export async function handlePublicWidgetChat(input: {
     title: "AI draft pending approval",
     body: draft?.draftReply ?? "(no draft)",
     channel: "web",
-    actor_name: "AXPM Support",
+    actor_name: "KD",
     metadata: {
       direction: "internal",
       fallback: Boolean(result.fallback),

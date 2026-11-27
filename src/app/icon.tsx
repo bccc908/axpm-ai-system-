@@ -19,13 +19,13 @@ export default function Icon() {
       >
         <div
           style={{
-            fontSize: 200,
+            fontSize: 168,
             fontWeight: 800,
             color: "white",
-            letterSpacing: -8,
+            letterSpacing: -6,
           }}
         >
-          G
+          KD
         </div>
       </div>
     ),

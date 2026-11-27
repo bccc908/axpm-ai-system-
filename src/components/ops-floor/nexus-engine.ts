@@ -30,8 +30,8 @@ export function mountNexus(root, initialLabels) {
   root.classList.add("ops-floor");
   root.innerHTML = `<div class="ops-floor-app" id="app">
   <aside id="left">
-    <h1 id="brand">AXPM</h1>
-    <p class="brand-sub" id="brand-sub">Ops floor</p>
+    <h1 id="brand">KD</h1>
+    <p class="brand-sub" id="brand-sub">Operations</p>
     <div class="sec" id="roster-label">AGENTS ON DUTY</div>
     <div id="agent-list"></div>
   </aside>
@@ -375,13 +375,15 @@ function makeLogoPlane(text, w, h) {
   g.strokeStyle = '#e8c872';
   g.lineWidth = 6;
   g.strokeRect(10, 10, 492, 108);
-  g.font = '700 74px monospace';
+  const label = String(text);
+  const fontSize = label.length <= 3 ? 96 : 74;
+  g.font = `700 ${fontSize}px monospace`;
   g.fillStyle = '#f4d78c';
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.shadowColor = '#e8c872';
   g.shadowBlur = 16;
-  g.fillText(text, 256, 68);
+  g.fillText(label, 256, 68);
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false, side: THREE.DoubleSide }));
@@ -468,10 +470,10 @@ function furnishFloor(g, f) {
     addReceptionDesk(g, 3.15, -1.35);
     addSofa(g, 3.2, 1.55);
     addPlant(g, 4.45, -2.9, 1.0);
-    const logo = makeLogoPlane('AXPM', 2.8, 0.78);
+    const logo = makeLogoPlane('KD', 2.8, 0.78);
     logo.position.set(3.15, 1.35, -0.95);
     g.add(logo);
-    const wallLogo = makeLogoPlane('AXPM', 2.2, 0.6);
+    const wallLogo = makeLogoPlane('KD', 2.2, 0.6);
     wallLogo.position.set(-1.35, 1.72, -3.28);
     g.add(wallLogo);
   } else if (f === 1) {
@@ -549,7 +551,7 @@ for (let f = 0; f < FLOORS; f++) {
 scene.traverse(o => { if (o.isMesh && o !== ground) { o.castShadow = !o.userData.noCast; o.receiveShadow = true; } });
 
 // Roof wordmark, visible from the isometric corner, plus an LED price band.
-const roofSign = makeLogoPlane('AXPM', 7.4, 2.05);
+const roofSign = makeLogoPlane('KD', 7.4, 2.05);
 roofSign.position.set(0, FLOORS * FLOOR_H + 0.95, 0.15);
 roofSign.rotation.x = -Math.PI / 2;
 scene.add(roofSign);
@@ -949,7 +951,7 @@ function updateLabels(labels) {
   if (labels.sessionWord) sessionWord = labels.sessionWord;
   if (labels.breakdown) breakdownTpl = labels.breakdown;
   const set = (id, value) => { const el = qs(id); if (el && value) el.textContent = value; };
-  set('brand', labels.brand || 'AXPM');
+  set('brand', labels.brand || 'KD');
   set('brand-sub', labels.brandSub);
   set('roster-label', labels.roster);
   set('hint', labels.hint);
@@ -1043,7 +1045,7 @@ window.nexus = { updateAgentStatus, setStats, connectLiveData, setAgentTask, set
   setDemo: on => { demoEnabled = !!on; } };
 
 setStats({});
-logActivity(`AXPM online · ${AGENTS.length} staff across 5 floors`, '#ff6a32');
+logActivity(`KD online · ${AGENTS.length} staff across 5 floors`, '#ff6a32');
 
 /* ---------- Interaction: hover tooltip, click to follow, toolbar ---------- */
 const tipEl = qs('tip');

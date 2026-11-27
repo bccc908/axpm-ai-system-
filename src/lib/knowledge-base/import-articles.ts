@@ -44,7 +44,7 @@ export function fallbackImportBody(source: Exclude<KnowledgeSource, "manual">, a
   if (attached) {
     return `Imported from ${name}. 从 ${name} 导入。\n\nThe file is attached to this draft. 文件附在这篇草稿上，仅员工可打开。`;
   }
-  return `Imported from ${name}. 从 ${name} 导入。\n\nThis draft stores the link only. The file was not copied into AXPM. 这里只保存链接，文件本身没有复制进 AXPM。`;
+  return `Imported from ${name}. 从 ${name} 导入。\n\nThis draft stores the link only. The file was not copied into KD. 这里只保存链接，文件本身没有复制进 KD。`;
 }
 
 export function isFallbackImportBody(body: string): boolean {

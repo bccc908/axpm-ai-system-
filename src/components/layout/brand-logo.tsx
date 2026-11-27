@@ -1,20 +1,8 @@
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 /**
- * Official AXPM wordmark (https://axpmprime.com/assets/img/logo.png).
- * Navy #00344d is ~1.4:1 on #111521, so the dark file keeps the same
- * drawing and recolors only that stroke to brand teal #089fac (5.7:1).
- * Orange stays the logo orange. Light backgrounds use the official navy.
- * Intrinsic size of both files: 2058×543.
+ * Typographic KD wordmark. There is no logo asset for this brand pass.
  */
-const WORDMARK = {
-  dark: "/brand/axpm-logo-dark.png",
-  light: "/brand/axpm-logo.png",
-} as const;
-
-const INTRINSIC = { width: 2058, height: 543 };
-
 export function BrandLogo({
   className,
   height = 28,
@@ -23,21 +11,23 @@ export function BrandLogo({
 }: {
   className?: string;
   height?: number;
-  /** `dark` for #111521 and other dark surfaces. `light` for light backgrounds. */
-  tone?: keyof typeof WORDMARK;
+  /** `dark` for dark surfaces. `light` for light backgrounds. */
+  tone?: "dark" | "light";
+  /** Accepted so existing image call sites keep type-checking. Text has no fetch priority. */
   priority?: boolean;
 }) {
-  const width = Math.round((height * INTRINSIC.width) / INTRINSIC.height);
+  void priority;
+  const fontSize = Math.max(14, Math.round(height * 0.72));
   return (
-    <Image
-      src={WORDMARK[tone]}
-      alt="AXPM"
-      width={width}
-      height={height}
-      priority={priority}
-      unoptimized
-      className={cn("block h-auto w-auto max-w-full shrink-0", className)}
-      style={{ height, width: "auto" }}
-    />
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center font-semibold leading-none tracking-[0.04em]",
+        tone === "light" ? "text-[#00344d]" : "text-foreground",
+        className,
+      )}
+      style={{ height, fontSize }}
+    >
+      KD
+    </span>
   );
 }
