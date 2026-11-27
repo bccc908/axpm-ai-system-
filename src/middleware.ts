@@ -4,6 +4,11 @@ import { decideApiAccess } from "@/lib/auth/api-policy";
 import { moduleForPath, roleCanAccessPath } from "@/lib/auth/permissions";
 import { bridgeRequestAuthorized, cronRequestAuthorized } from "@/lib/auth/secrets";
 import { verifySessionToken, SESSION_COOKIE, publicRequestOrigin } from "@/lib/auth/session";
+import {
+  canViewProductSignups,
+  isProductSignupsPath,
+  productSignupsForbiddenHtml,
+} from "@/lib/customers/product-signups";
 
 const PUBLIC_PAGE_PREFIXES = [
   "/login",
@@ -68,6 +73,16 @@ export async function middleware(request: NextRequest) {
       loginUrl.searchParams.set("next", pathname);
     }
     return NextResponse.redirect(loginUrl);
+  }
+
+  if (isProductSignupsPath(pathname) && !canViewProductSignups(session.role)) {
+    return new NextResponse(productSignupsForbiddenHtml(), {
+      status: 403,
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store",
+      },
+    });
   }
 
   if (pathname.startsWith("/dashboard") && !roleCanAccessPath(session.role, pathname)) {
