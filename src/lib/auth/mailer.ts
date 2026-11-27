@@ -8,6 +8,8 @@ export interface AuthEmail {
   subject: string;
   html: string;
   text: string;
+  /** When set, used instead of the default auth From address. */
+  from?: string;
 }
 
 function outboxFile(): string {
@@ -22,8 +24,14 @@ function mockTransportEnabled(): boolean {
   return mode === "mock" || key === "mock" || key === "";
 }
 
+function chosenFrom(override: string | undefined): string {
+  const trimmed = override?.replace(/[\r\n]/g, "").trim() ?? "";
+  if (!trimmed) return publicFromAddress();
+  return trimmed;
+}
+
 export async function sendAuthEmail(message: AuthEmail): Promise<{ mocked: boolean; id?: string }> {
-  const from = publicFromAddress();
+  const from = chosenFrom(message.from);
   const payload = {
     from,
     to: [message.to],
