@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { formatCurrency } from "@/lib/utils";
+import { canSeeWorkflowOutbound } from "@/lib/crm/workflow-access";
+import type { UserRole } from "@/lib/auth/types";
 import type { CrmDeal } from "@/types/crm-pro";
 import type { CrmLead } from "@/types/crm-zoho";
 import type {
@@ -222,6 +224,16 @@ export function toApprovalWorkflowRun(run: CrmWorkflowRun): CrmWorkflowRunPublic
       ? composeOutbound(run.message_template, run.message_vars)
       : null;
   return { ...withoutStoredMessage(run), outbound_message: outbound };
+}
+
+export function toViewerWorkflowRun(
+  run: CrmWorkflowRun,
+  viewer: { userId: string; role: UserRole },
+): CrmWorkflowRunPublic {
+  if (canSeeWorkflowOutbound(viewer.role, viewer.userId, run.approver_user_id)) {
+    return toApprovalWorkflowRun(run);
+  }
+  return toHistoryWorkflowRun(run);
 }
 
 export function sortWorkflows(rules: CrmWorkflow[]): CrmWorkflow[] {

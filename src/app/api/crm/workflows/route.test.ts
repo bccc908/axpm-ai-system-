@@ -1,4 +1,5 @@
 import { mkdtempSync } from "fs";
+import { mkdir, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import path from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -6,6 +7,9 @@ import type { UserRole } from "@/lib/auth/types";
 import { GET as historyGet } from "@/app/api/crm/workflows/history/route";
 import { GET, PATCH } from "@/app/api/crm/workflows/route";
 import { POST as decidePost } from "@/app/api/crm/workflows/runs/[id]/route";
+import { canSeeWorkflowOutbound } from "@/lib/crm/workflow-access";
+import { createLead, updateLead } from "@/lib/crm/zoho-store";
+import { saveCrmWorkflows } from "@/lib/crm/workflows";
 
 const gate = vi.hoisted(() => ({
   session: null as null | {
@@ -18,22 +22,25 @@ vi.mock("@/lib/auth/api-session", () => ({
   getServerSession: async () => gate.session,
 }));
 
-function user(role: UserRole) {
+function user(role: UserRole, id = `${role}-1`) {
   gate.session = {
     session: {
-      sub: `${role}-1`,
+      sub: id,
       role,
       email: `${role}@example.com`,
       name: role,
       exp: 4_000_000_000,
     },
-    user: { id: `${role}-1`, name: role, email: `${role}@example.com`, role },
+    user: { id, name: role, email: `${role}@example.com`, role },
   };
 }
 
+let dir = "";
+
 beforeEach(() => {
   gate.session = null;
-  vi.spyOn(process, "cwd").mockReturnValue(mkdtempSync(path.join(tmpdir(), "wf-api-")));
+  dir = mkdtempSync(path.join(tmpdir(), "wf-api-"));
+  vi.spyOn(process, "cwd").mockReturnValue(dir);
 });
 
 afterEach(() => {
@@ -157,5 +164,76 @@ describe("workflow rule HTTP access", () => {
     expect(body.access).toBe("edit");
     expect(body.can_approve).toBe(true);
     expect(body.telegram).toEqual({ ready: false, configured: false, paused: false });
+  });
+
+  it("hides the composed message from sales and shows it to owner, admin, and the named approver", async () => {
+    const composed = "Ping Avery Chen";
+    await mkdir(path.join(dir, "data"), { recursive: true });
+    await writeFile(
+      path.join(dir, "data", "users.json"),
+      JSON.stringify({
+        users: [
+          { id: "owner-1", email: "owner@example.com", name: "Owner", role: "owner", password_hash: "hash-placeholder", is_active: true, created_at: "2026-01-01T00:00:00.000Z" },
+          { id: "admin-1", email: "admin@example.com", name: "Admin", role: "admin", password_hash: "hash-placeholder", is_active: true, created_at: "2026-01-01T00:00:00.000Z" },
+          { id: "sales-1", email: "sales@example.com", name: "Sales", role: "sales", password_hash: "hash-placeholder", is_active: true, created_at: "2026-01-01T00:00:00.000Z" },
+        ],
+      }),
+    );
+    await saveCrmWorkflows({
+      workflows: [
+        {
+          id: "notify-visibility",
+          name: "Staff alert",
+          enabled: true,
+          trigger: "lead_status",
+          trigger_value: "qualified",
+          action: "notify_telegram",
+          task_title: "",
+          telegram_message: "Ping {name}",
+          approver_user_id: "admin-1",
+          condition: null,
+        },
+      ],
+    });
+    const lead = await createLead({
+      name: "Avery Chen",
+      email: null,
+      phone: null,
+      whatsapp: null,
+      wechat: null,
+      company: "Northwind",
+      title: null,
+      source: null,
+      channel: null,
+      status: "new",
+      assigned_to: null,
+      notes: null,
+      client_id: null,
+    });
+    await updateLead(lead.id, { status: "qualified" });
+
+    user("sales");
+    const sales = await GET();
+    expect(sales.status).toBe(200);
+    const salesText = JSON.stringify(await sales.json());
+    expect(salesText).not.toContain(composed);
+    const salesHistory = await historyGet(new Request("http://127.0.0.1/api/crm/workflows/history"));
+    expect(JSON.stringify(await salesHistory.json())).not.toContain(composed);
+
+    user("owner");
+    const ownerBody = await (await GET()).json();
+    expect(JSON.stringify(ownerBody)).toContain(composed);
+    expect(ownerBody.waiting[0].outbound_message).toBe(composed);
+
+    user("admin");
+    const adminBody = await (await GET()).json();
+    expect(adminBody.waiting[0].outbound_message).toBe(composed);
+    expect(adminBody.waiting[0].approver_user_id).toBe("admin-1");
+
+    expect(canSeeWorkflowOutbound("sales", "sales-1", "sales-1")).toBe(false);
+    expect(canSeeWorkflowOutbound("owner", "owner-1", "admin-1")).toBe(true);
+    expect(canSeeWorkflowOutbound("admin", "admin-1", "admin-1")).toBe(true);
+    expect(canSeeWorkflowOutbound("viewer", "admin-1", "admin-1")).toBe(true);
+    expect(canSeeWorkflowOutbound("viewer", "other", "admin-1")).toBe(false);
   });
 });

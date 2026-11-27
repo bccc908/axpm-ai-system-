@@ -24,8 +24,8 @@ import {
   redactWorkflowText,
   scrubKnownDefaultCopy,
   sortWorkflows,
-  toApprovalWorkflowRun,
   toHistoryWorkflowRun,
+  toViewerWorkflowRun,
   workflowConditionMatches,
 } from "@/lib/crm/workflow-engine";
 import { getTelegramConfig, sendTelegramMessage } from "@/lib/integrations/telegram";
@@ -299,11 +299,14 @@ export async function listWorkflowHistory(filters?: {
   return runs.map(toHistoryWorkflowRun);
 }
 
-export async function listWorkflowInbox(): Promise<CrmWorkflowRunPublic[]> {
+export async function listWorkflowInbox(viewer: {
+  userId: string;
+  role: UserRole;
+}): Promise<CrmWorkflowRunPublic[]> {
   const runs = await listWorkflowRuns();
   return runs
     .filter((run) => run.result === "waiting-approval")
-    .map(toApprovalWorkflowRun);
+    .map((run) => toViewerWorkflowRun(run, viewer));
 }
 
 export async function decideWorkflowRun(input: {
@@ -337,7 +340,7 @@ export async function decideWorkflowRun(input: {
       error_message: null,
     };
     await replaceWorkflowRun(next);
-    return { ok: true, run: toApprovalWorkflowRun(next) };
+    return { ok: true, run: toViewerWorkflowRun(next, { userId: input.actor.user_id, role: input.actor.role }) };
   }
 
   if (current.result === "ok") {
@@ -396,5 +399,5 @@ export async function decideWorkflowRun(input: {
     },
   };
   await replaceWorkflowRun(next);
-    return { ok: true, run: toApprovalWorkflowRun(next) };
+    return { ok: true, run: toViewerWorkflowRun(next, { userId: input.actor.user_id, role: input.actor.role }) };
 }

@@ -19,7 +19,7 @@ export async function GET() {
   const [workflows, runs, waiting, telegram, users] = await Promise.all([
     listCrmWorkflows(),
     listWorkflowRuns(),
-    listWorkflowInbox(),
+    listWorkflowInbox({ userId: gate.ctx.user.id, role: gate.ctx.user.role }),
     getWorkflowTelegramReadiness(),
     listUsers(),
   ]);

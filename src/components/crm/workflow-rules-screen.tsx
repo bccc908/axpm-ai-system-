@@ -295,6 +295,7 @@ export function WorkflowRulesScreen() {
         {!bundle.telegram.configured ? t("workflowRules.telegramNotConfigured") : null}
         {bundle.telegram.configured && !bundle.telegram.paused ? t("workflowRules.telegramReady") : null}
       </p>
+      <p className="text-sm text-muted">{t("workflowRules.telegramPersonal")}</p>
       {!canEdit ? <p className="text-sm text-muted">{t("workflowRules.readOnly")}</p> : null}
       {notice ? <p className="text-sm text-foreground">{notice}</p> : null}
 
@@ -310,15 +311,21 @@ export function WorkflowRulesScreen() {
                     {formatWorkflowTimestamp(run.created_at, locale === "zh" ? "zh" : "en")}
                   </p>
                 </div>
-                <PayloadFacts payload={run.payload_redacted} />
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted">
-                    {t("workflowRules.exactMessage")}
-                  </p>
-                  <pre className="mt-1 whitespace-pre-wrap rounded-lg border border-card-border bg-background p-3 text-sm text-foreground">
-                    {run.outbound_message || run.payload_redacted.message_preview || ""}
-                  </pre>
-                </div>
+                {run.outbound_message ? (
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted">
+                      {t("workflowRules.exactMessage")}
+                    </p>
+                    <pre className="mt-1 whitespace-pre-wrap rounded-lg border border-card-border bg-background p-3 text-sm text-foreground">
+                      {run.outbound_message}
+                    </pre>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <HistoryPreview payload={run.payload_redacted} />
+                    <p className="text-sm text-muted">{t("workflowRules.approversOnly")}</p>
+                  </div>
+                )}
                 <p className="text-xs text-muted">
                   {t("workflowRules.approver")}: {approverName(bundle.approvers, run.approver_user_id, t("workflowRules.approverMissing"))}
                 </p>
@@ -531,19 +538,6 @@ function approverName(approvers: Approver[], id: string | null, fallback: string
 
 function HistoryPreview({ payload }: { payload: CrmWorkflowRunPublic["payload_redacted"] }) {
   const parts = [payload.display_name, payload.company, payload.status].filter(Boolean);
-  return <p className="text-xs text-muted">{parts.join(" · ") || "—"}</p>;
-}
-
-function PayloadFacts({ payload }: { payload: CrmWorkflowRunPublic["payload_redacted"] }) {
-  const parts = [
-    payload.display_name,
-    payload.company,
-    payload.status,
-    payload.stage_id,
-    payload.currency,
-    payload.amount != null ? String(payload.amount) : null,
-    payload.source,
-  ].filter(Boolean);
   return <p className="text-xs text-muted">{parts.join(" · ") || "—"}</p>;
 }
 

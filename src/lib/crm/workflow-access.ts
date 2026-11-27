@@ -53,6 +53,17 @@ export function workflowDenyHtml(status: 401 | 403, locale: "en" | "zh"): string
   return `<!doctype html><html lang="${lang}"><meta charset="utf-8"><title>${title}</title><p>${title}</p>`;
 }
 
+/** Full outbound text is limited to owner, admin, and the named approver. Sales never receive it. */
+export function canSeeWorkflowOutbound(
+  role: UserRole,
+  userId: string,
+  approverUserId: string | null | undefined,
+): boolean {
+  if (role === "sales") return false;
+  if (role === "owner" || role === "admin") return true;
+  return Boolean(approverUserId && userId === approverUserId);
+}
+
 export function canApproveWorkflowRun(
   role: UserRole,
   userId: string,
