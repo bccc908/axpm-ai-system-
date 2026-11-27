@@ -3,7 +3,9 @@ import { z } from "zod";
 import { authSecretUnavailableResponse } from "@/lib/auth/route-guard";
 import { rateLimitResponse } from "@/lib/auth/rate-limit-response";
 import { sendVerificationLink } from "@/lib/auth/send-auth-link";
-import { needsSetup, registerCustomer } from "@/lib/auth/store";
+import { startOwnerCustomerAlert } from "@/lib/auth/owner-alert";
+import { isMainlandSignupBlocked } from "@/lib/auth/signup-gate";
+import { findUserById, needsSetup, registerCustomer } from "@/lib/auth/store";
 import { getOrCreateCustomerAccount } from "@/lib/customer/store";
 import { resolveReferrer } from "@/lib/referral";
 
@@ -33,11 +35,30 @@ export async function POST(request: Request) {
   const limited = rateLimitResponse(request, "signup", parsed.data.email);
   if (limited) return limited;
 
+  if (
+    isMainlandSignupBlocked({
+      country: request.headers.get("cf-ipcountry"),
+      enabled: process.env.SIGNUP_BLOCK_MAINLAND === "1",
+    })
+  ) {
+    return NextResponse.json({ error: "Signup is not available" }, { status: 403 });
+  }
+
   try {
     const referrer = await resolveReferrer(parsed.data.ref);
     const user = await registerCustomer(parsed.data);
-    await getOrCreateCustomerAccount(user.id, {
+    const account = await getOrCreateCustomerAccount(user.id, {
       referred_by_user_id: referrer?.id ?? null,
+    });
+    const stored = await findUserById(user.id);
+    startOwnerCustomerAlert({
+      event: "signed_up",
+      userId: user.id,
+      name: user.name,
+      email: user.email,
+      occurredAt: stored?.created_at ?? new Date().toISOString(),
+      plan: account.plan,
+      blocked: false,
     });
 
     let emailSent = false;
