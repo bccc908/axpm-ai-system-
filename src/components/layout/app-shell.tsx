@@ -19,6 +19,7 @@ import { PUBLIC_BRAND } from "@/lib/brand/public-brand";
 import type { UserRole } from "@/lib/auth/types";
 import { InstallAppBanner } from "@/components/layout/install-app-banner";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
+import { CustomerShell } from "@/components/customer/customer-shell";
 import { Sidebar } from "@/components/layout/sidebar";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useLocale } from "@/components/providers/locale-provider";
@@ -52,6 +53,10 @@ export function AppShell({
   const crmScreen = pathname.startsWith("/dashboard/crm") || pathname.startsWith("/dashboard/clients");
   const publicBrand = crmScreen || sessionRole === "customer" || sessionRole === null;
   const mobileNav = (sessionRole === "customer" ? customerNav : bottomNav).filter(({ href }) => canHref(href));
+  if (sessionRole === "customer") {
+    return <CustomerShell>{children}</CustomerShell>;
+  }
+
   const immersive = pathname.startsWith("/dashboard/ops-floor");
   const goldDesk = pathname.startsWith("/dashboard/gold-signals");
   const solanaDesk = pathname.startsWith("/dashboard/solana-bot");

@@ -61,6 +61,7 @@ const API_RULES: ApiRule[] = [
   { prefix: "/api/groktagon/autopilot", kind: "cron-or-roles", roles: OWNER_ADMIN },
 
   { prefix: "/api/auth/users", kind: "roles", roles: OWNER_ADMIN },
+  { prefix: "/api/customer/market-chat", kind: "roles", roles: ["customer"] },
   { prefix: "/api/ai", kind: "roles", roles: OWNER_ADMIN },
   { prefix: "/api/voice", kind: "roles", roles: OWNER_ADMIN },
   { prefix: "/api/local/status", kind: "roles", roles: OWNER_ADMIN },

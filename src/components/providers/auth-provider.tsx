@@ -11,7 +11,7 @@ import {
 } from "react";
 import { CUSTOMER_LOGIN_PATH, STAFF_LOGIN_PATH } from "@/lib/auth/login-space";
 import type { AuthModule, AuthUserPublic } from "@/lib/auth/types";
-import { NAV_MODULE } from "@/lib/auth/permissions";
+import { roleCanAccessPath } from "@/lib/auth/permissions";
 
 interface AuthState {
   loading: boolean;
@@ -48,12 +48,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const canHref = useCallback(
     (href: string) => {
-      const path = href.split("?")[0];
-      const authModule = NAV_MODULE[href] ?? NAV_MODULE[path];
-      if (!authModule) return true;
-      return can(authModule);
+      if (!user) return false;
+      const path = href.split("?")[0] || href;
+      return roleCanAccessPath(user.role, path);
     },
-    [can],
+    [user],
   );
 
   const logout = useCallback(async () => {
