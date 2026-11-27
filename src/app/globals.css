@@ -172,6 +172,39 @@ body {
   outline-offset: 2px;
 }
 
+/* Auth pages only. Site teal from kaydenchiew.com .btn.p, with a quieter glow. */
+.auth-primary {
+  background: linear-gradient(180deg, #8ef5e6, #45d6c2 55%, #2fb8a6);
+  color: #03201b;
+  font-weight: 600;
+  border: 1px solid transparent;
+  box-shadow: 0 8px 18px rgba(47, 184, 166, 0.22);
+  transition: box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.auth-primary:hover:not(:disabled) {
+  box-shadow: 0 10px 22px rgba(47, 184, 166, 0.3);
+  filter: brightness(1.03);
+}
+
+.auth-primary:focus-visible {
+  outline: 2px solid rgba(91, 231, 212, 0.55);
+  outline-offset: 2px;
+}
+
+.auth-link {
+  color: #5be7d4;
+}
+
+.auth-link:hover {
+  color: #8ef5e6;
+}
+
+.auth-pill-on {
+  background: #5be7d4;
+  color: #03201b;
+}
+
 .input-premium {
   background: var(--background);
   border: 1px solid var(--card-border);

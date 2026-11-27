@@ -38,7 +38,7 @@ function LoginLocaleToggle({ className }: { className?: string }) {
             onClick={() => setLocale(opt.value)}
             className={cn(
               "uppercase",
-              locale === opt.value ? "text-foreground" : "text-muted hover:text-foreground",
+              locale === opt.value ? "text-[#5BE7D4]" : "text-muted hover:text-[#8EF5E6]",
             )}
             aria-pressed={locale === opt.value}
             aria-label={t("lang.switch")}
@@ -109,7 +109,7 @@ function LoginForm() {
   if (loading) {
     return (
       <div className="premium-canvas flex min-h-dvh items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#5BE7D4]" />
       </div>
     );
   }
@@ -121,8 +121,8 @@ function LoginForm() {
           <BrandLogo variant="auth" />
           <LoginLocaleToggle />
         </div>
-        <div className="mt-6 h-0.5 w-10 bg-accent md:mt-0" aria-hidden />
-        <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-teal">
+        <div className="mt-6 h-0.5 w-10 bg-[#5BE7D4] md:mt-0" aria-hidden />
+        <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5BE7D4]">
           {t("auth.loginKicker")}
         </p>
         <p className="mt-2 max-w-[16rem] text-sm leading-6 text-foreground/90">{t("auth.secureNote")}</p>
@@ -190,7 +190,7 @@ function LoginForm() {
             <button
               type="submit"
               disabled={submitting}
-              className="btn-premium mt-2 flex w-full items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm disabled:opacity-50"
+              className="auth-primary mt-2 flex w-full items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm disabled:opacity-50"
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {setupRequired ? t("auth.setupBtn") : t("auth.loginBtn")}
@@ -200,7 +200,7 @@ function LoginForm() {
           {!setupRequired ? (
             <p className="mt-8 border-t border-card-border pt-5 text-xs leading-5 text-muted">
               {t("auth.customerNote")}
-              <a href="/signup" className="mt-1 block font-medium text-brand-teal hover:underline">
+              <a href="/signup" className="auth-link mt-1 block font-medium hover:underline">
                 {t("auth.customerLink")}
               </a>
             </p>
@@ -217,7 +217,7 @@ export default function LoginPage() {
       <Suspense
         fallback={
           <div className="premium-canvas flex min-h-dvh items-center justify-center bg-background">
-            <Loader2 className="h-8 w-8 animate-spin text-accent" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#5BE7D4]" />
           </div>
         }
       >
