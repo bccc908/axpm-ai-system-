@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
 import { Loader2 } from "lucide-react";
 import { BrandLogo } from "@/components/layout/brand-logo";
+import { useDocumentTitle } from "@/components/layout/document-title";
 import { useLocale } from "@/components/providers/locale-provider";
 import { localeFromQueryParam, type Locale } from "@/lib/i18n";
 
@@ -26,9 +27,7 @@ function SignupForm() {
     if (lang) setLocale(lang);
   }, [searchParams, setLocale]);
 
-  useEffect(() => {
-    document.title = `${t("account.signupTitle")} · KD`;
-  }, [locale, t]);
+  useDocumentTitle(`${t("docTitle.signup")} · KD`);
 
   useEffect(() => {
     if (!refCode) {

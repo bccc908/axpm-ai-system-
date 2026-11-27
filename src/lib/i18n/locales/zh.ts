@@ -90,6 +90,12 @@ export const zh: TranslationDict = {
       "Mac Chrome：地址栏点击安装图标 (⊕)，或 ⋮ 菜单 → 保存并分享 → 将页面安装为应用。",
     installGenericHint: "使用浏览器菜单安装，或将此页加入书签以便快速打开。",
   },
+  docTitle: {
+    signup: "注册账号",
+    loginCustomer: "登录",
+    loginStaff: "员工登录",
+    workflowRules: "工作流规则",
+  },
   nav: {
     sectionOps: "日常运营",
     sectionAi: "AI 与命理",

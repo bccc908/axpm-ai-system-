@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
 import { Loader2 } from "lucide-react";
 import { BrandLogo } from "@/components/layout/brand-logo";
+import { useDocumentTitle } from "@/components/layout/document-title";
 import { LocaleProvider, useLocale } from "@/components/providers/locale-provider";
 import type { Locale } from "@/lib/i18n";
 import type { AuthModule, UserRole } from "@/lib/auth/types";
@@ -77,10 +78,8 @@ function LoginForm() {
       .finally(() => setLoading(false));
   }, [next, router]);
 
-  useEffect(() => {
-    const heading = setupRequired ? t("auth.setupTitle") : t("auth.loginTitle");
-    document.title = `${heading} · KD`;
-  }, [locale, setupRequired, t]);
+  const loginDocTitle = setupRequired ? t("auth.setupTitle") : t("docTitle.loginStaff");
+  useDocumentTitle(`${loginDocTitle} · KD`);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

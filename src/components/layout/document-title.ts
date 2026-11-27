@@ -9,6 +9,19 @@ function emit() {
   listeners.forEach((listener) => listener());
 }
 
+/** Full document title. Holds the locale title if the app router reapplies the server metadata title. */
+export function useDocumentTitle(title: string) {
+  useEffect(() => {
+    const apply = () => {
+      if (document.title !== title) document.title = title;
+    };
+    apply();
+    const observer = new MutationObserver(apply);
+    observer.observe(document.head, { subtree: true, childList: true, characterData: true });
+    return () => observer.disconnect();
+  }, [title]);
+}
+
 /** Sets `{title} · KD` while mounted. Shell falls back when this is cleared. */
 export function usePageDocumentTitle(title: string) {
   useEffect(() => {

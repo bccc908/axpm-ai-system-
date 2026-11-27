@@ -88,6 +88,12 @@ export const en = {
       "Mac Chrome: click the install icon (⊕) in the address bar, or ⋮ menu → Save and share → Install page as app.",
     installGenericHint: "Use your browser menu to install or bookmark this page for quick access.",
   },
+  docTitle: {
+    signup: "Create account",
+    loginCustomer: "Sign in",
+    loginStaff: "Staff sign in",
+    workflowRules: "Workflow rules",
+  },
   nav: {
     sectionOps: "Operations",
     sectionAi: "AI & Fortune",
