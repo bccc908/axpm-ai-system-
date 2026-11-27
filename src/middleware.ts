@@ -3,13 +3,22 @@ import type { NextRequest } from "next/server";
 import { roleCanAccessPath } from "@/lib/auth/permissions";
 import { verifySessionToken, SESSION_COOKIE, publicRequestOrigin } from "@/lib/auth/session";
 
-const PUBLIC_PAGE_PREFIXES = ["/login", "/signup", "/register", "/widget"];
+const PUBLIC_PAGE_PREFIXES = [
+  "/login",
+  "/signup",
+  "/register",
+  "/widget",
+  "/customer/login",
+  "/forgot-password",
+  "/verify-email",
+];
 
 const PUBLIC_API_PREFIXES = [
   "/api/auth/login",
   "/api/auth/logout",
   "/api/auth/setup",
   "/api/auth/signup",
+  "/api/auth/google",
   "/api/auth/me",
   "/api/public/",
   "/api/v1/",
@@ -65,11 +74,15 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isPublicPage(pathname)) {
-    if (pathname === "/login") {
+    if (pathname === "/login" || pathname === "/customer/login") {
       const token = request.cookies.get(SESSION_COOKIE)?.value;
       const session = await verifySessionToken(token);
       if (session) {
-        return NextResponse.redirect(new URL("/dashboard", publicRequestOrigin(request)));
+        const dest =
+          pathname === "/customer/login" && session.role === "customer"
+            ? "/dashboard/account"
+            : "/dashboard";
+        return NextResponse.redirect(new URL(dest, publicRequestOrigin(request)));
       }
     }
     return NextResponse.next();
@@ -101,5 +114,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/api/:path*", "/login", "/signup"],
+  matcher: ["/dashboard/:path*", "/api/:path*", "/login", "/signup", "/customer/login"],
 };

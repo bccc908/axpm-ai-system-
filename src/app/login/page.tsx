@@ -1,14 +1,12 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
-import { Loader2 } from "lucide-react";
-import { BrandLogo } from "@/components/layout/brand-logo";
-import { LocaleProvider, useLocale } from "@/components/providers/locale-provider";
-import type { Locale } from "@/lib/i18n";
+import { AuthLoading, StaffLangToggle, useAuthDocumentTitle, useAuthLocaleQuery } from "@/components/auth/auth-chrome";
+import { useLocale } from "@/components/providers/locale-provider";
 import type { AuthModule, UserRole } from "@/lib/auth/types";
-import { cn } from "@/lib/utils";
 
 function safeRedirectPath(raw: string | null): Route {
   if (raw && raw.startsWith("/") && !raw.startsWith("//")) {
@@ -17,52 +15,21 @@ function safeRedirectPath(raw: string | null): Route {
   return "/dashboard";
 }
 
-function LoginLocaleToggle({ className }: { className?: string }) {
-  const { locale, setLocale, t } = useLocale();
-  const options: { value: Locale; label: string }[] = [
-    { value: "en", label: "EN" },
-    { value: "zh", label: "中文" },
-  ];
-  return (
-    <div className={cn("flex items-center gap-2 text-[11px] font-semibold tracking-[0.08em]", className)}>
-      {options.map((opt, index) => (
-        <span key={opt.value} className="flex items-center gap-2">
-          {index > 0 ? (
-            <span className="text-muted/40" aria-hidden>
-              /
-            </span>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => setLocale(opt.value)}
-            className={cn(
-              "uppercase",
-              locale === opt.value ? "text-foreground" : "text-muted hover:text-foreground",
-            )}
-            aria-pressed={locale === opt.value}
-            aria-label={t("lang.switch")}
-          >
-            {opt.label}
-          </button>
-        </span>
-      ))}
-    </div>
-  );
-}
-
 function LoginForm() {
   const { t } = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = safeRedirectPath(searchParams.get("next"));
 
-  const [loading, setLoading] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useAuthDocumentTitle("Staff sign in · KD", "员工登录 · KD");
+  useAuthLocaleQuery();
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -74,7 +41,7 @@ function LoginForm() {
         }
         setSetupRequired(Boolean(data.setupRequired));
       })
-      .finally(() => setLoading(false));
+      .catch(() => undefined);
   }, [next, router]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -102,67 +69,51 @@ function LoginForm() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="premium-canvas flex min-h-dvh items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
-      </div>
-    );
-  }
-
   return (
-    <main className="premium-canvas grid min-h-dvh grid-rows-[auto_1fr] bg-background md:grid-cols-[minmax(300px,5fr)_minmax(420px,6fr)] md:grid-rows-1">
-      <section className="flex flex-col justify-center border-b border-card-border px-6 py-8 sm:px-10 md:border-b-0 md:border-r md:px-12 md:py-16 lg:px-16">
-        <div className="flex items-start justify-between gap-4 md:block">
-          <BrandLogo height={40} priority className="md:hidden" />
-          <BrandLogo height={56} priority className="hidden md:block" />
-          <div className="pt-1 md:hidden">
-            <LoginLocaleToggle />
+    <main className="shell-login" data-testid="staff-login">
+      <section className="login-brand">
+        <div className="login-brand-top">
+          <p className="wordmark-login">KD</p>
+          <div className="login-lang-mobile">
+            <StaffLangToggle />
           </div>
         </div>
-        <div className="mt-6 h-0.5 w-10 bg-accent" aria-hidden />
-        <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-teal">
-          {t("auth.loginKicker")}
-        </p>
-        <p className="mt-2 max-w-[16rem] text-sm leading-6 text-foreground/90">{t("auth.secureNote")}</p>
+        <div className="login-rule" aria-hidden="true" />
+        <p className="login-kicker">{t("auth.loginKicker")}</p>
+        <p className="login-note">{t("auth.secureNote")}</p>
       </section>
 
-      <section className="relative flex items-start bg-surface px-6 pb-12 pt-8 sm:px-10 md:items-center md:px-14 md:py-10 lg:px-20">
-        <div className="absolute right-6 top-6 hidden md:block lg:right-10 lg:top-8">
-          <LoginLocaleToggle />
+      <section className="login-panel">
+        <div className="login-lang-desktop">
+          <StaffLangToggle />
         </div>
-        <div className="w-full max-w-[400px] md:mx-auto">
-          <h1 className="text-[26px] font-semibold tracking-tight text-foreground">
-            {setupRequired ? t("auth.setupTitle") : t("auth.loginTitle")}
-          </h1>
-          <p className="mt-2 text-sm leading-6 text-muted">
-            {setupRequired ? t("auth.setupDesc") : t("auth.loginDesc")}
-          </p>
+        <div className="login-inner">
+          <h1 className="login-title">{setupRequired ? t("auth.setupTitle") : t("auth.loginTitle")}</h1>
+          <p className="login-desc">{setupRequired ? t("auth.setupDesc") : t("auth.loginDesc")}</p>
 
-          <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
+          <form className="login-form" onSubmit={handleSubmit}>
             {setupRequired ? (
               <div>
-                <label htmlFor="login-name" className="mb-1.5 block text-xs font-medium text-muted">
+                <label htmlFor="login-name" className="field-label">
                   {t("auth.name")}
                 </label>
                 <input
                   id="login-name"
-                  className="input-premium w-full rounded-md px-3 py-2.5 text-sm"
+                  className="input-premium"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Kayden"
                   required
                 />
               </div>
             ) : null}
             <div>
-              <label htmlFor="login-email" className="mb-1.5 block text-xs font-medium text-muted">
+              <label htmlFor="login-email" className="field-label">
                 {t("auth.email")}
               </label>
               <input
                 id="login-email"
                 type="email"
-                className="input-premium w-full rounded-md px-3 py-2.5 text-sm"
+                className="input-premium"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -170,13 +121,13 @@ function LoginForm() {
               />
             </div>
             <div>
-              <label htmlFor="login-password" className="mb-1.5 block text-xs font-medium text-muted">
+              <label htmlFor="login-password" className="field-label">
                 {t("auth.password")}
               </label>
               <input
                 id="login-password"
                 type="password"
-                className="input-premium w-full rounded-md px-3 py-2.5 text-sm"
+                className="input-premium"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 minLength={setupRequired ? 8 : 6}
@@ -184,23 +135,23 @@ function LoginForm() {
                 autoComplete={setupRequired ? "new-password" : "current-password"}
               />
             </div>
-            {error ? <p className="text-sm text-danger">{error}</p> : null}
-            <button
-              type="submit"
-              disabled={submitting}
-              className="btn-premium mt-2 flex w-full items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm disabled:opacity-50"
-            >
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {!setupRequired ? (
+              <p className="login-forgot">
+                <Link href="/forgot-password?from=staff">{t("auth.forgotLink")}</Link>
+              </p>
+            ) : null}
+            {error ? <p className="auth-error">{error}</p> : null}
+            <button type="submit" className="btn-premium" disabled={submitting}>
               {setupRequired ? t("auth.setupBtn") : t("auth.loginBtn")}
             </button>
           </form>
 
           {!setupRequired ? (
-            <p className="mt-8 border-t border-card-border pt-5 text-xs leading-5 text-muted">
+            <p className="login-customer">
               {t("auth.customerNote")}
-              <a href="/signup" className="mt-1 block font-medium text-brand-teal hover:underline">
+              <Link href="/signup" className="link-teal">
                 {t("auth.customerLink")}
-              </a>
+              </Link>
             </p>
           ) : null}
         </div>
@@ -211,17 +162,9 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <LocaleProvider>
-      <Suspense
-        fallback={
-          <div className="premium-canvas flex min-h-dvh items-center justify-center bg-background">
-            <Loader2 className="h-8 w-8 animate-spin text-accent" />
-          </div>
-        }
-      >
-        <LoginForm />
-      </Suspense>
-    </LocaleProvider>
+    <Suspense fallback={<AuthLoading />}>
+      <LoginForm />
+    </Suspense>
   );
 }
 
