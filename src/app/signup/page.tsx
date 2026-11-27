@@ -4,7 +4,8 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { BrandLogo } from "@/components/layout/brand-logo";
 import { useLocale } from "@/components/providers/locale-provider";
 import { localeFromQueryParam, type Locale } from "@/lib/i18n";
 
@@ -24,6 +25,10 @@ function SignupForm() {
     const lang = localeFromQueryParam(searchParams.get("lang"));
     if (lang) setLocale(lang);
   }, [searchParams, setLocale]);
+
+  useEffect(() => {
+    document.title = `${t("account.signupTitle")} · KD`;
+  }, [locale, t]);
 
   useEffect(() => {
     if (!refCode) {
@@ -83,11 +88,8 @@ function SignupForm() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-background to-accent/10 p-6">
       <div className="w-full max-w-md rounded-2xl border border-card-border bg-card p-8 shadow-lg">
-        <div className="mb-6 flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2 text-accent">
-            <Sparkles className="h-5 w-5" />
-            <span className="text-sm font-semibold uppercase tracking-wider">{t("app.brand")}</span>
-          </div>
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <BrandLogo variant="auth" />
           <div className="flex shrink-0 gap-1.5">
             <LangButton code="zh" label={t("lang.zh")} />
             <LangButton code="en" label={t("lang.en")} />

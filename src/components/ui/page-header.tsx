@@ -1,3 +1,6 @@
+"use client";
+
+import { usePageDocumentTitle } from "@/components/layout/document-title";
 import { cn } from "@/lib/utils";
 
 export function PageHeader({
@@ -13,6 +16,7 @@ export function PageHeader({
   icon?: React.ReactNode;
   className?: string;
 }) {
+  usePageDocumentTitle(title);
   return (
     <header className={cn("mb-6 border-b border-card-border pb-5", className)}>
       {badge ? (

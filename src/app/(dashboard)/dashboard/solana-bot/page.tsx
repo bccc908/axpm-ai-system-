@@ -4,7 +4,7 @@ import { getServerSession } from "@/lib/auth/api-session";
 import { roleCanAccessModule } from "@/lib/auth/permissions";
 
 export const metadata = {
-  title: "KD // SOLANA BOT",
+  title: "Solana Bot",
   robots: { index: false, follow: false },
 };
 

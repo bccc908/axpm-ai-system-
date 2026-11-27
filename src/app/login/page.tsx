@@ -51,7 +51,7 @@ function LoginLocaleToggle({ className }: { className?: string }) {
 }
 
 function LoginForm() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = safeRedirectPath(searchParams.get("next"));
@@ -76,6 +76,11 @@ function LoginForm() {
       })
       .finally(() => setLoading(false));
   }, [next, router]);
+
+  useEffect(() => {
+    const heading = setupRequired ? t("auth.setupTitle") : t("auth.loginTitle");
+    document.title = `${heading} · KD`;
+  }, [locale, setupRequired, t]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -113,14 +118,11 @@ function LoginForm() {
   return (
     <main className="premium-canvas grid min-h-dvh grid-rows-[auto_1fr] bg-background md:grid-cols-[minmax(300px,5fr)_minmax(420px,6fr)] md:grid-rows-1">
       <section className="flex flex-col justify-center border-b border-card-border px-6 py-8 sm:px-10 md:border-b-0 md:border-r md:px-12 md:py-16 lg:px-16">
-        <div className="flex items-start justify-between gap-4 md:block">
-          <BrandLogo height={40} priority className="md:hidden" />
-          <BrandLogo height={56} priority className="hidden md:block" />
-          <div className="pt-1 md:hidden">
-            <LoginLocaleToggle />
-          </div>
+        <div className="flex items-center justify-between gap-4 md:hidden">
+          <BrandLogo variant="auth" />
+          <LoginLocaleToggle />
         </div>
-        <div className="mt-6 h-0.5 w-10 bg-accent" aria-hidden />
+        <div className="mt-6 h-0.5 w-10 bg-accent md:mt-0" aria-hidden />
         <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-teal">
           {t("auth.loginKicker")}
         </p>
@@ -128,10 +130,11 @@ function LoginForm() {
       </section>
 
       <section className="relative flex items-start bg-surface px-6 pb-12 pt-8 sm:px-10 md:items-center md:px-14 md:py-10 lg:px-20">
-        <div className="absolute right-6 top-6 hidden md:block lg:right-10 lg:top-8">
-          <LoginLocaleToggle />
-        </div>
         <div className="w-full max-w-[400px] md:mx-auto">
+          <div className="mb-8 hidden items-center justify-between md:flex">
+            <BrandLogo variant="auth" />
+            <LoginLocaleToggle />
+          </div>
           <h1 className="text-[26px] font-semibold tracking-tight text-foreground">
             {setupRequired ? t("auth.setupTitle") : t("auth.loginTitle")}
           </h1>
