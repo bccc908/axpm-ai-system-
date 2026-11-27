@@ -127,7 +127,7 @@ export const zh: TranslationDict = {
   },
   productSignups: {
     title: "客户注册",
-    subtitle: "在 Kayden Chiew 创建账号的客户。CRM 联系人和创始等候名单不在此名单中。",
+    subtitle: "在 KD 创建账号的客户。CRM 联系人和创始等候名单不在此名单中。",
     countLine:
       "产品注册客户：{all}，截至 {asOf}（UTC+8，Asia/Kuala_Lumpur）。近 24 小时：{day}。近 7 天：{week}。可登录：{active}。邮箱验证：尚未开通。不含 CRM 联系人。",
     empty: "还没有产品注册。",

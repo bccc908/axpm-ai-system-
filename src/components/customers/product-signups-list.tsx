@@ -29,7 +29,7 @@ export function ProductSignupsList({ list }: { list: ProductSignupList }) {
   return (
     <section className="space-y-6" data-testid="product-signups-list">
       <header className="space-y-2">
-        <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted">Kayden Chiew</p>
+        <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted">KD</p>
         <h1 className="text-2xl font-semibold text-foreground">{t("productSignups.title")}</h1>
         <p className="max-w-3xl text-sm text-muted">{t("productSignups.subtitle")}</p>
       </header>

@@ -8,13 +8,13 @@ import { canViewProductSignups } from "@/lib/customers/product-signups";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Clients · Kayden Chiew",
-  description: "Kayden Chiew client sign-ups",
-  applicationName: "Kayden Chiew",
+  title: "Clients · KD",
+  description: "KD client sign-ups",
+  applicationName: "KD",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Kayden Chiew",
+    title: "KD",
   },
   robots: { index: false, follow: false },
 };

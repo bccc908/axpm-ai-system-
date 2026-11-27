@@ -126,7 +126,7 @@ export const en = {
   productSignups: {
     title: "Clients",
     subtitle:
-      "People who created a Kayden Chiew account. CRM contacts and the founding waitlist are separate lists.",
+      "People who created a KD account. CRM contacts and the founding waitlist are separate lists.",
     countLine:
       "Product sign-ups: {all} as of {asOf} (UTC+8, Asia/Kuala_Lumpur). Last 24 hours: {day}. Last 7 days: {week}. Active sign-ins: {active}. Email verified: not built. CRM contacts are not included.",
     empty: "No product sign-ups yet.",

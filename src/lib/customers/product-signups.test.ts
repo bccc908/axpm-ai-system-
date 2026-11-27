@@ -126,9 +126,10 @@ describe("product sign-up list", () => {
     expect(isProductSignupsPath("/dashboard/crm")).toBe(false);
   });
 
-  it("keeps the forbidden page on the Kayden Chiew brand", () => {
+  it("keeps the forbidden page on the KD brand", () => {
     const html = productSignupsForbiddenHtml();
-    expect(html).toContain("Kayden Chiew");
+    expect(html).toContain("KD");
+    expect(html).not.toContain("Kayden Chiew");
     expect(html).toContain("无权查看客户注册名单。");
     expect(html).not.toMatch(/axpm/i);
     expect(withoutAxpmBrand("AXPM Ops Floor")).toBe("KD Ops Floor");
@@ -149,7 +150,12 @@ describe("product sign-up list", () => {
       en.nav.productSignups,
       zhNav,
     ];
-    expect(copy.join(" ")).toContain("Kayden Chiew");
+    expect(en.productSignups.subtitle).toBe(
+      "People who created a KD account. CRM contacts and the founding waitlist are separate lists.",
+    );
+    expect(zhSection.subtitle).toBe("在 KD 创建账号的客户。CRM 联系人和创始等候名单不在此名单中。");
+    expect(copy.join(" ")).toContain("KD");
+    expect(copy.join(" ")).not.toContain("Kayden Chiew");
     expect(zhSection.title).toMatch(/[\u4e00-\u9fff]/);
     expect(zhSection.verifiedNotBuilt).toBe("尚未开通");
     for (const text of copy) expect(text).not.toMatch(/axpm/i);

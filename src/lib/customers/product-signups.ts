@@ -85,11 +85,11 @@ export function productSignupsForbiddenHtml(): string {
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex, nofollow">
-<title>403 · Kayden Chiew</title>
+<title>403 · KD</title>
 </head>
 <body>
 <main>
-<p>Kayden Chiew</p>
+<p>KD</p>
 <h1>403</h1>
 <p>You do not have access to the client sign-up list.</p>
 <p>无权查看客户注册名单。</p>
