@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { roleCanAccessPath } from "@/lib/auth/permissions";
 import { verifySessionToken, SESSION_COOKIE, publicRequestOrigin } from "@/lib/auth/session";
+import {
+  canViewProductSignups,
+  isProductSignupsPath,
+  productSignupsForbiddenHtml,
+} from "@/lib/customers/product-signups";
 
 const PUBLIC_PAGE_PREFIXES = ["/login", "/signup", "/register", "/widget"];
 
@@ -91,6 +96,16 @@ export async function middleware(request: NextRequest) {
       loginUrl.searchParams.set("next", pathname);
     }
     return NextResponse.redirect(loginUrl);
+  }
+
+  if (isProductSignupsPath(pathname) && !canViewProductSignups(session.role)) {
+    return new NextResponse(productSignupsForbiddenHtml(), {
+      status: 403,
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store",
+      },
+    });
   }
 
   if (pathname.startsWith("/dashboard") && !roleCanAccessPath(session.role, pathname)) {

@@ -13,6 +13,7 @@ import {
   FolderOpen,
   Hexagon,
   Kanban,
+  Users,
   Building2,
   LayoutDashboard,
   LogOut,
@@ -28,7 +29,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { BrandLogo } from "@/components/layout/brand-logo";
+import { KaydenChiewMark } from "@/components/layout/kayden-chiew-mark";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
+import { isProductSignupsPath, withoutAxpmBrand } from "@/lib/customers/product-signups";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useLocale } from "@/components/providers/locale-provider";
 import { ROLE_LABELS } from "@/lib/auth/permissions";
@@ -73,6 +76,7 @@ const navSections: NavSection[] = [
   {
     labelKey: "nav.sectionClients",
     items: [
+      { href: "/dashboard/clients", labelKey: "nav.productSignups", icon: Users },
       { href: "/dashboard/crm", labelKey: "nav.customerHub", icon: Kanban },
     ],
   },
@@ -99,12 +103,21 @@ export function Sidebar({ compact = false }: { compact?: boolean }) {
   const { t, locale } = useLocale();
   const { user, canHref, logout } = useAuth();
 
+  const productSignups = isProductSignupsPath(pathname);
+  function label(key: string) {
+    const text = t(key);
+    return productSignups ? withoutAxpmBrand(text) : text;
+  }
+
   function isActive(href: string) {
     const [path, query] = href.split("?");
+    if (path === "/dashboard/clients") {
+      return pathname === "/dashboard/clients";
+    }
     if (path.startsWith("/dashboard/crm")) {
       return (
         pathname.startsWith("/dashboard/crm") ||
-        pathname.startsWith("/dashboard/clients") ||
+        pathname.startsWith("/dashboard/clients/") ||
         pathname.startsWith("/dashboard/conversations") ||
         pathname.startsWith("/dashboard/reminders") ||
         pathname.startsWith("/dashboard/email") ||
@@ -136,7 +149,9 @@ export function Sidebar({ compact = false }: { compact?: boolean }) {
       )}
     >
       <div className={cn("flex h-16 items-center gap-2.5 border-b border-card-border", compact ? "justify-center px-1" : "px-4")}>
-        {compact ? (
+        {productSignups ? (
+          <KaydenChiewMark compact={compact} height={28} />
+        ) : compact ? (
           <svg viewBox="0 0 22 22" className="h-[22px] w-[22px]" aria-hidden="true">
             <rect x="0.6" y="0.6" width="20.8" height="20.8" fill="none" stroke="#6eefe0" strokeWidth="0.9" />
             <path d="M11 3.2 L18.2 18.2 H14.8 L13.4 14.8 H8.6 L7.2 18.2 H3.8 Z M11 7.2 L9.3 12.2 H12.7 Z" fill="#6eefe0" />
@@ -144,7 +159,7 @@ export function Sidebar({ compact = false }: { compact?: boolean }) {
         ) : (
           <BrandLogo height={28} />
         )}
-        {compact ? null : (
+        {compact || productSignups ? null : (
           <p className="min-w-0 truncate text-[11px] font-medium uppercase leading-4 tracking-[0.04em] text-muted">
             {t("app.title").replace(t("app.brand"), "").replace(/^[\s·\-–—|]+/, "") || t("app.title")}
           </p>
@@ -162,7 +177,7 @@ export function Sidebar({ compact = false }: { compact?: boolean }) {
                 <div className="mx-2 mb-1 border-t border-card-border" />
               ) : (
                 <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted/70">
-                  {t(section.labelKey)}
+                  {label(section.labelKey)}
                 </p>
               )}
               <div className="space-y-0.5">
@@ -172,8 +187,8 @@ export function Sidebar({ compact = false }: { compact?: boolean }) {
                     <Link
                       key={href}
                       href={href as Route}
-                      title={t(labelKey)}
-                      aria-label={t(labelKey)}
+                      title={label(labelKey)}
+                      aria-label={label(labelKey)}
                       className={cn(
                         "group relative flex items-center gap-2.5 rounded-md py-[7px] text-[13px] font-medium transition-colors duration-150",
                         compact ? "justify-center px-0" : "px-3",
@@ -195,7 +210,7 @@ export function Sidebar({ compact = false }: { compact?: boolean }) {
                         )}
                         strokeWidth={active ? 2 : 1.75}
                       />
-                      {compact ? null : t(labelKey)}
+                      {compact ? null : label(labelKey)}
                     </Link>
                   );
                 })}

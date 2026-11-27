@@ -13,7 +13,9 @@ import {
   X,
 } from "lucide-react";
 import { BrandLogo } from "@/components/layout/brand-logo";
+import { KaydenChiewMark } from "@/components/layout/kayden-chiew-mark";
 import { InstallAppBanner } from "@/components/layout/install-app-banner";
+import { isProductSignupsPath } from "@/lib/customers/product-signups";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { Sidebar } from "@/components/layout/sidebar";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -34,6 +36,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { canHref } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const mobileNav = bottomNav.filter(({ href }) => canHref(href));
+  const productSignups = isProductSignupsPath(pathname);
   const immersive = pathname.startsWith("/dashboard/ops-floor");
   const goldDesk = pathname.startsWith("/dashboard/gold-signals");
   const solanaDesk = pathname.startsWith("/dashboard/solana-bot");
@@ -59,7 +62,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           />
           <div className="absolute left-0 top-0 flex h-full w-[min(280px,85vw)] flex-col border-r border-card-border bg-surface shadow-2xl">
             <div className="flex items-center justify-between border-b border-card-border px-4 py-3">
-              <BrandLogo height={22} />
+              {productSignups ? <KaydenChiewMark height={22} /> : <BrandLogo height={22} />}
               <button type="button" onClick={() => setMenuOpen(false)} className="p-2 text-muted">
                 <X className="h-5 w-5" />
               </button>
@@ -84,7 +87,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <BrandLogo height={22} />
+          {productSignups ? <KaydenChiewMark height={22} /> : <BrandLogo height={22} />}
           <LanguageSwitcher className="text-xs" />
         </header>
 
@@ -111,7 +114,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     : "mx-auto w-full max-w-7xl p-4 md:p-6 lg:p-8",
             )}
           >
-            {fillHeight ? null : <InstallAppBanner />}
+            {fillHeight || productSignups ? null : <InstallAppBanner />}
             {children}
           </div>
         </main>
