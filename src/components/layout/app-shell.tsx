@@ -13,9 +13,10 @@ import {
   X,
 } from "lucide-react";
 import { BrandLogo } from "@/components/layout/brand-logo";
+import { useShellDocumentTitle } from "@/components/layout/document-title";
 import { InstallAppBanner } from "@/components/layout/install-app-banner";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
-import { Sidebar } from "@/components/layout/sidebar";
+import { navSections, Sidebar } from "@/components/layout/sidebar";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useLocale } from "@/components/providers/locale-provider";
 import { cn } from "@/lib/utils";
@@ -31,7 +32,17 @@ const bottomNav = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { t } = useLocale();
-  const { canHref } = useAuth();
+  const { canHref, user } = useAuth();
+  const navTitle =
+    user?.role === "customer"
+      ? null
+      : (navSections
+          .flatMap((section) => section.items)
+          .find(({ href }) => {
+            const path = href.split("?")[0];
+            return pathname === path || (path !== "/dashboard" && pathname.startsWith(path));
+          })?.labelKey ?? null);
+  useShellDocumentTitle(navTitle ? t(navTitle) : null, t("app.title"));
   const [menuOpen, setMenuOpen] = useState(false);
   const mobileNav = bottomNav.filter(({ href }) => canHref(href));
   const immersive = pathname.startsWith("/dashboard/ops-floor");
@@ -59,7 +70,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           />
           <div className="absolute left-0 top-0 flex h-full w-[min(280px,85vw)] flex-col border-r border-card-border bg-surface shadow-2xl">
             <div className="flex items-center justify-between border-b border-card-border px-4 py-3">
-              <BrandLogo height={22} />
+              <BrandLogo variant={user?.role === "customer" ? "header" : "sidebar"} size={user?.role === "customer" ? 18 : 20} />
               <button type="button" onClick={() => setMenuOpen(false)} className="p-2 text-muted">
                 <X className="h-5 w-5" />
               </button>
@@ -84,7 +95,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <BrandLogo height={22} />
+          <BrandLogo variant="header" />
           <LanguageSwitcher className="text-xs" />
         </header>
 

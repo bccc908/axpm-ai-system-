@@ -1,43 +1,45 @@
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 
+const WORDMARK =
+  'var(--font-inter-tight), var(--font-inter), "Inter", system-ui, sans-serif';
+
 /**
- * Official AXPM wordmark (https://axpmprime.com/assets/img/logo.png).
- * Navy #00344d is ~1.4:1 on #111521, so the dark file keeps the same
- * drawing and recolors only that stroke to brand teal #089fac (5.7:1).
- * Orange stays the logo orange. Light backgrounds use the official navy.
- * Intrinsic size of both files: 2058×543.
+ * Typographic KD wordmark. Letters only — no symbol.
+ * auth: 16px #E7E9EE. sidebar: 20px #F2F4F8. header: 16px #F2F4F8.
  */
-const WORDMARK = {
-  dark: "/brand/axpm-logo-dark.png",
-  light: "/brand/axpm-logo.png",
-} as const;
-
-const INTRINSIC = { width: 2058, height: 543 };
-
 export function BrandLogo({
   className,
-  height = 28,
-  tone = "dark",
-  priority = false,
+  variant = "sidebar",
+  size,
+  tone: _tone = "dark",
+  priority: _priority = false,
+  height: _height,
 }: {
   className?: string;
-  height?: number;
-  /** `dark` for #111521 and other dark surfaces. `light` for light backgrounds. */
-  tone?: keyof typeof WORDMARK;
+  variant?: "auth" | "sidebar" | "header";
+  /** Overrides the variant size. Customer bar uses 18; mobile stays 16. */
+  size?: number;
+  tone?: "dark" | "light";
   priority?: boolean;
+  height?: number;
 }) {
-  const width = Math.round((height * INTRINSIC.width) / INTRINSIC.height);
+  void _tone;
+  void _priority;
+  void _height;
+  const preset = variant === "sidebar" ? 20 : 16;
+  const color = variant === "auth" ? "#E7E9EE" : "#F2F4F8";
   return (
-    <Image
-      src={WORDMARK[tone]}
-      alt="AXPM"
-      width={width}
-      height={height}
-      priority={priority}
-      unoptimized
-      className={cn("block h-auto w-auto max-w-full shrink-0", className)}
-      style={{ height, width: "auto" }}
-    />
+    <span
+      className={cn("inline-flex shrink-0 items-center leading-none", className)}
+      style={{
+        fontFamily: WORDMARK,
+        fontWeight: 600,
+        fontSize: size ?? preset,
+        letterSpacing: "0.06em",
+        color,
+      }}
+    >
+      KD
+    </span>
   );
 }

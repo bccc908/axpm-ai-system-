@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Zap } from "lucide-react";
+import { usePageDocumentTitle } from "@/components/layout/document-title";
 import { useLocale } from "@/components/providers/locale-provider";
 import { Card, CardHeader } from "@/components/ui/card";
 import type { CrmWorkflow } from "@/types/crm-workflows";
 
 export function CrmWorkflowsPanel() {
   const { t } = useLocale();
+  usePageDocumentTitle(t("docTitle.workflowRules"));
   const [workflows, setWorkflows] = useState<CrmWorkflow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

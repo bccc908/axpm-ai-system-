@@ -4,7 +4,9 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { BrandLogo } from "@/components/layout/brand-logo";
+import { useDocumentTitle } from "@/components/layout/document-title";
 import { useLocale } from "@/components/providers/locale-provider";
 import { localeFromQueryParam, type Locale } from "@/lib/i18n";
 
@@ -24,6 +26,8 @@ function SignupForm() {
     const lang = localeFromQueryParam(searchParams.get("lang"));
     if (lang) setLocale(lang);
   }, [searchParams, setLocale]);
+
+  useDocumentTitle(`${t("docTitle.signup")} · KD`);
 
   useEffect(() => {
     if (!refCode) {
@@ -71,8 +75,8 @@ function SignupForm() {
         onClick={() => setLocale(code)}
         className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
           locale === code
-            ? "bg-accent text-accent-foreground"
-            : "border border-card-border text-muted hover:text-foreground"
+            ? "auth-pill-on"
+            : "border border-card-border text-muted hover:text-[#8EF5E6]"
         }`}
       >
         {label}
@@ -81,13 +85,10 @@ function SignupForm() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-background to-accent/10 p-6">
+    <main className="flex min-h-screen items-center justify-center bg-background p-6">
       <div className="w-full max-w-md rounded-2xl border border-card-border bg-card p-8 shadow-lg">
-        <div className="mb-6 flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2 text-accent">
-            <Sparkles className="h-5 w-5" />
-            <span className="text-sm font-semibold uppercase tracking-wider">{t("app.brand")}</span>
-          </div>
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <BrandLogo variant="auth" />
           <div className="flex shrink-0 gap-1.5">
             <LangButton code="zh" label={t("lang.zh")} />
             <LangButton code="en" label={t("lang.en")} />
@@ -96,7 +97,7 @@ function SignupForm() {
         <h1 className="text-2xl font-bold text-foreground">{t("account.signupTitle")}</h1>
         <p className="mt-2 text-sm text-muted">{t("account.signupDesc")}</p>
         {invitedBy ? (
-          <p className="mt-3 rounded-lg border border-accent/25 bg-accent/5 px-3 py-2 text-xs text-foreground">
+          <p className="mt-3 rounded-lg border border-[#5BE7D4]/25 bg-[#5BE7D4]/5 px-3 py-2 text-xs text-foreground">
             {t("account.signupInvitedBy", { name: invitedBy })}
           </p>
         ) : null}
@@ -138,7 +139,7 @@ function SignupForm() {
           <button
             type="submit"
             disabled={submitting}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50"
+            className="auth-primary flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm disabled:opacity-50"
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {t("account.signupBtn")}
@@ -147,7 +148,7 @@ function SignupForm() {
 
         <p className="mt-6 text-center text-sm text-muted">
           {t("account.haveAccount")}{" "}
-          <Link href="/login" className="text-accent hover:underline">
+          <Link href="/login" className="auth-link hover:underline">
             {t("account.signInLink")}
           </Link>
         </p>
@@ -161,7 +162,7 @@ export default function SignupPage() {
     <Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center bg-background">
-          <Loader2 className="h-8 w-8 animate-spin text-accent" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#5BE7D4]" />
         </div>
       }
     >

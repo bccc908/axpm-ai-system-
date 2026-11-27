@@ -1,5 +1,6 @@
 "use client";
 
+import { usePageDocumentTitle } from "@/components/layout/document-title";
 import { useLocale } from "@/components/providers/locale-provider";
 
 export function PageHeader({
@@ -12,6 +13,7 @@ export function PageHeader({
   action?: React.ReactNode;
 }) {
   const { t } = useLocale();
+  usePageDocumentTitle(t(titleKey));
 
   return (
     <div className="flex items-center justify-between gap-4">

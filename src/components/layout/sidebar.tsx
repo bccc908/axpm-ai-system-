@@ -45,7 +45,7 @@ type NavSection = {
   items: NavItem[];
 };
 
-const navSections: NavSection[] = [
+export const navSections: NavSection[] = [
   {
     labelKey: "nav.sectionOps",
     items: [
@@ -97,7 +97,8 @@ export function Sidebar({ compact = false }: { compact?: boolean }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { t, locale } = useLocale();
-  const { user, canHref, logout } = useAuth();
+  const { user, loading: authLoading, canHref, logout } = useAuth();
+  const staffShell = !authLoading && user?.role !== "customer";
 
   function isActive(href: string) {
     const [path, query] = href.split("?");
@@ -135,20 +136,22 @@ export function Sidebar({ compact = false }: { compact?: boolean }) {
         compact ? "w-14" : "w-60",
       )}
     >
-      <div className={cn("flex h-16 items-center gap-2.5 border-b border-card-border", compact ? "justify-center px-1" : "px-4")}>
-        {compact ? (
-          <svg viewBox="0 0 22 22" className="h-[22px] w-[22px]" aria-hidden="true">
-            <rect x="0.6" y="0.6" width="20.8" height="20.8" fill="none" stroke="#6eefe0" strokeWidth="0.9" />
-            <path d="M11 3.2 L18.2 18.2 H14.8 L13.4 14.8 H8.6 L7.2 18.2 H3.8 Z M11 7.2 L9.3 12.2 H12.7 Z" fill="#6eefe0" />
-          </svg>
-        ) : (
-          <BrandLogo height={28} />
-        )}
-        {compact ? null : (
-          <p className="min-w-0 truncate text-[11px] font-medium uppercase leading-4 tracking-[0.04em] text-muted">
-            {t("app.title").replace(t("app.brand"), "").replace(/^[\s·\-–—|]+/, "") || t("app.title")}
+      <div className={cn("flex h-16 items-center gap-2 border-b border-card-border", compact ? "justify-center px-1" : "px-4")}>
+        <BrandLogo
+          variant={staffShell && !compact ? "sidebar" : "header"}
+          size={staffShell && !compact ? 20 : user?.role === "customer" && !compact ? 18 : 16}
+        />
+        {staffShell && !compact ? (
+          <p
+            className={cn(
+              "min-w-0 truncate font-medium leading-none",
+              locale === "zh" ? "text-[12px] text-[#707888]" : "text-[11px] text-[#8B95A5]",
+            )}
+            style={{ fontFamily: "var(--font-ui), sans-serif" }}
+          >
+            {t("app.title").replace(t("app.brand"), "").replace(/^[\s·\-–—|]+/, "")}
           </p>
-        )}
+        ) : null}
       </div>
 
       <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-3">

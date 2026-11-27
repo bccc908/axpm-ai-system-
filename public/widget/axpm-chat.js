@@ -32,7 +32,7 @@
     encodeURIComponent(apiBase) +
     "&page=" +
     pageUrl;
-  iframe.title = "AXPM Customer Service";
+  iframe.title = "KD";
   iframe.style.cssText = "width:100%;height:100%;border:0;background:#020617;";
   iframe.allow = "clipboard-write";
   panel.appendChild(iframe);

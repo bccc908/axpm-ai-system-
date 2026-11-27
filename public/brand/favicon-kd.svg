@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="KD">
+  <rect width="512" height="512" rx="112" fill="#171C2A"/>
+  <rect x="1.5" y="1.5" width="509" height="509" rx="110.5" fill="none" stroke="#30384A" stroke-width="3"/>
+  <text x="256" y="286" text-anchor="middle" fill="#F2F4F8"
+        font-family="Inter Tight, Inter, Helvetica Neue, Arial, sans-serif"
+        font-weight="600" font-size="210" letter-spacing="8">KD</text>
+</svg>

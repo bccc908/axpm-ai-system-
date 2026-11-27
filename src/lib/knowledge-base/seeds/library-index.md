@@ -1,6 +1,6 @@
-# AXPM 企业知识库 / Enterprise Knowledge Base
+# KD 企业知识库 / Enterprise Knowledge Base
 
-This is the official AXPM document library. Put only approved facts here: company policy, product rules, support answers, compliance, operations, and brand guidelines.
+This is the official KD document library. Put only approved facts here: company policy, product rules, support answers, compliance, operations, and brand guidelines.
 
 Bots and staff should look here first. If a fact is not in this library, do not invent it.
 
@@ -20,5 +20,5 @@ Bots and staff should look here first. If a fact is not in this library, do not 
 3. Mark the owner and last updated date at the top of each document.
 4. When a rule changes, update the document here. Do not leave a second conflicting version.
 
-Owner: Kayden Chiew, CEO, AXPM
+Owner: Kayden Chiew, CEO, KD
 Created: 22 Nov 2026 (Malaysia time)
