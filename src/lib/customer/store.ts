@@ -277,6 +277,12 @@ export function toPublicApiKey(key: CustomerApiKey): CustomerApiKeyPublic {
   };
 }
 
+/** Stored product accounts only. Does not create a missing account or reset daily usage. */
+export async function listCustomerAccounts(): Promise<CustomerAccount[]> {
+  const data = await ensureFile();
+  return data.accounts;
+}
+
 export async function listCustomerApiKeys(userId: string): Promise<CustomerApiKeyPublic[]> {
   const data = await ensureFile();
   return data.api_keys.filter((k) => k.user_id === userId).map(toPublicApiKey);
