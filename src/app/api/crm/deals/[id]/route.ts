@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { getServerSession } from "@/lib/auth/api-session";
 import { updateDeal } from "@/lib/crm/pro-store";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +28,12 @@ export async function PATCH(
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
-    const deal = await updateDeal(id, parsed.data);
+    const ctx = await getServerSession();
+    const deal = await updateDeal(
+      id,
+      parsed.data,
+      ctx ? { user_id: ctx.user.id, name: ctx.user.name } : null,
+    );
     if (!deal) return NextResponse.json({ error: "Deal not found" }, { status: 404 });
     return NextResponse.json({ deal });
   } catch (error) {

@@ -32,6 +32,7 @@ import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useLocale } from "@/components/providers/locale-provider";
 import { ROLE_LABELS } from "@/lib/auth/permissions";
+import { canViewWorkflowRules } from "@/lib/crm/workflow-access";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
@@ -74,6 +75,7 @@ const navSections: NavSection[] = [
     labelKey: "nav.sectionClients",
     items: [
       { href: "/dashboard/crm", labelKey: "nav.customerHub", icon: Kanban },
+      { href: "/dashboard/crm/workflow-rules", labelKey: "nav.workflowRules", icon: Zap },
     ],
   },
   {
@@ -101,7 +103,11 @@ export function Sidebar({ compact = false }: { compact?: boolean }) {
 
   function isActive(href: string) {
     const [path, query] = href.split("?");
+    if (path === "/dashboard/crm/workflow-rules") {
+      return pathname.startsWith("/dashboard/crm/workflow-rules");
+    }
     if (path.startsWith("/dashboard/crm")) {
+      if (pathname.startsWith("/dashboard/crm/workflow-rules")) return false;
       return (
         pathname.startsWith("/dashboard/crm") ||
         pathname.startsWith("/dashboard/clients") ||
@@ -153,7 +159,13 @@ export function Sidebar({ compact = false }: { compact?: boolean }) {
 
       <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-3">
         {navSections.map((section) => {
-          const items = section.items.filter(({ href }) => canHref(href));
+          const items = section.items.filter(({ href }) => {
+            const path = href.split("?")[0];
+            if (path === "/dashboard/crm/workflow-rules") {
+              return Boolean(user && canViewWorkflowRules(user.role));
+            }
+            return canHref(href);
+          });
           if (items.length === 0) return null;
 
           return (

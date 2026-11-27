@@ -50,6 +50,7 @@ export function LocaleProvider({
   useEffect(() => {
     localStorage.setItem(storageKey, locale);
     document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
+    document.cookie = `kc-locale=${locale}; Path=/; Max-Age=31536000; SameSite=Lax`;
   }, [locale, storageKey]);
 
   const setLocale = useCallback((next: Locale) => {

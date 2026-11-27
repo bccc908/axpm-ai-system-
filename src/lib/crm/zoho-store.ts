@@ -8,6 +8,7 @@ import type {
   CrmLead,
   CrmLeadRecordStatus,
 } from "@/types/crm-zoho";
+import type { WorkflowActor } from "@/types/crm-workflows";
 import { createClient, readCrmData, writeCrmData } from "@/lib/crm/store";
 import { createActivity, ensureClientDeal } from "@/lib/crm/pro-store";
 import { autoAssignWebLead } from "@/lib/crm/assignment";
@@ -103,7 +104,11 @@ export async function createLead(
   return lead;
 }
 
-export async function updateLead(id: string, patch: Partial<CrmLead>) {
+export async function updateLead(
+  id: string,
+  patch: Partial<CrmLead>,
+  actor?: WorkflowActor | null,
+) {
   const data = await readCrmData();
   const index = data.leads?.findIndex((l) => l.id === id) ?? -1;
   if (index === -1 || !data.leads) return null;
@@ -121,7 +126,7 @@ export async function updateLead(id: string, patch: Partial<CrmLead>) {
 
   if (patch.status && patch.status !== current.status) {
     const { runLeadStatusWorkflows } = await import("@/lib/crm/workflows");
-    await runLeadStatusWorkflows(lead, patch.status);
+    await runLeadStatusWorkflows(lead, patch.status, actor);
   }
 
   return lead;

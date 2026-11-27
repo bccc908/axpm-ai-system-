@@ -2,7 +2,9 @@ import fs from "fs/promises";
 import path from "path";
 import { currentMonthKey } from "@/lib/finance/helpers";
 
-const SETTINGS_FILE = path.join(process.cwd(), "data", "settings.json");
+function settingsFile() {
+  return path.join(process.cwd(), "data", "settings.json");
+}
 
 export type AppSettings = {
   digestHour?: number;
@@ -56,7 +58,7 @@ export type AppSettings = {
 
 export async function readAppSettings(): Promise<AppSettings> {
   try {
-    const raw = await fs.readFile(SETTINGS_FILE, "utf-8");
+    const raw = await fs.readFile(settingsFile(), "utf-8");
     return JSON.parse(raw) as AppSettings;
   } catch {
     return {};
@@ -66,8 +68,8 @@ export async function readAppSettings(): Promise<AppSettings> {
 export async function writeAppSettings(patch: Partial<AppSettings>): Promise<AppSettings> {
   const current = await readAppSettings();
   const next = { ...current, ...patch };
-  await fs.mkdir(path.dirname(SETTINGS_FILE), { recursive: true });
-  await fs.writeFile(SETTINGS_FILE, JSON.stringify(next, null, 2));
+  await fs.mkdir(path.dirname(settingsFile()), { recursive: true });
+  await fs.writeFile(settingsFile(), JSON.stringify(next, null, 2));
   return next;
 }
 
