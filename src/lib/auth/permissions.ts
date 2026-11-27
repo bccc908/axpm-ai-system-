@@ -101,6 +101,7 @@ export const NAV_MODULE: Record<string, AuthModule> = {
   "/dashboard/google-drive": "finance",
   "/dashboard/usdt": "finance",
   "/dashboard/crm": "crm",
+  "/dashboard/clients": "crm",
   "/dashboard/conversations": "conversations",
   "/dashboard/reminders": "reminders",
   "/dashboard/email": "email",

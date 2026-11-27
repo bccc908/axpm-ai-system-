@@ -15,7 +15,9 @@ import {
   X,
 } from "lucide-react";
 import { BrandLogo } from "@/components/layout/brand-logo";
+import { KaydenChiewMark } from "@/components/layout/kayden-chiew-mark";
 import { PUBLIC_BRAND } from "@/lib/brand/public-brand";
+import { isProductSignupsPath } from "@/lib/customers/product-signups";
 import type { UserRole } from "@/lib/auth/types";
 import { InstallAppBanner } from "@/components/layout/install-app-banner";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
@@ -49,6 +51,7 @@ export function AppShell({
   const { t } = useLocale();
   const { canHref } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const productSignups = isProductSignupsPath(pathname);
   const crmScreen = pathname.startsWith("/dashboard/crm") || pathname.startsWith("/dashboard/clients");
   const publicBrand = crmScreen || sessionRole === "customer" || sessionRole === null;
   const mobileNav = (sessionRole === "customer" ? customerNav : bottomNav).filter(({ href }) => canHref(href));
@@ -77,7 +80,9 @@ export function AppShell({
           />
           <div className="absolute left-0 top-0 flex h-full w-[min(280px,85vw)] flex-col border-r border-card-border bg-surface shadow-2xl">
             <div className="flex items-center justify-between border-b border-card-border px-4 py-3">
-              {publicBrand ? (
+              {productSignups ? (
+                <KaydenChiewMark height={22} />
+              ) : publicBrand ? (
                 <span className="text-sm font-semibold text-foreground">{PUBLIC_BRAND}</span>
               ) : (
                 <BrandLogo height={22} />
@@ -106,7 +111,9 @@ export function AppShell({
           >
             <Menu className="h-5 w-5" />
           </button>
-          {publicBrand ? (
+          {productSignups ? (
+            <KaydenChiewMark height={22} />
+          ) : publicBrand ? (
             <span className="text-sm font-semibold text-foreground">{PUBLIC_BRAND}</span>
           ) : (
             <BrandLogo height={22} />

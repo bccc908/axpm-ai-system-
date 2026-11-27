@@ -67,6 +67,7 @@ const API_RULES: ApiRule[] = [
   { prefix: "/api/account", kind: "module", module: "account" },
   { prefix: "/api/btc-signals", kind: "module", module: "market" },
   { prefix: "/api/clients", kind: "module", module: "crm" },
+  { prefix: "/api/staff", kind: "module", module: "crm" },
   { prefix: "/api/conversations", kind: "module", module: "conversations" },
   { prefix: "/api/crm", kind: "module", module: "crm" },
   { prefix: "/api/douyin", kind: "module", module: "social" },

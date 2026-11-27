@@ -13,6 +13,7 @@ import {
   FolderOpen,
   Hexagon,
   Kanban,
+  Users,
   Building2,
   LayoutDashboard,
   LogOut,
@@ -28,8 +29,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { BrandLogo } from "@/components/layout/brand-logo";
+import { KaydenChiewMark } from "@/components/layout/kayden-chiew-mark";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { PUBLIC_BRAND } from "@/lib/brand/public-brand";
+import { isProductSignupsPath, withoutAxpmBrand } from "@/lib/customers/product-signups";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useLocale } from "@/components/providers/locale-provider";
 import { ROLE_LABELS } from "@/lib/auth/permissions";
@@ -74,6 +77,7 @@ const navSections: NavSection[] = [
   {
     labelKey: "nav.sectionClients",
     items: [
+      { href: "/dashboard/clients", labelKey: "nav.productSignups", icon: Users },
       { href: "/dashboard/crm", labelKey: "nav.customerHub", icon: Kanban },
     ],
   },
@@ -99,13 +103,17 @@ export function Sidebar({ compact = false, publicBrand = false }: { compact?: bo
   const searchParams = useSearchParams();
   const { t, locale } = useLocale();
   const { user, canHref, logout } = useAuth();
+  const productSignups = isProductSignupsPath(pathname);
 
   function isActive(href: string) {
     const [path, query] = href.split("?");
+    if (path === "/dashboard/clients") {
+      return pathname === "/dashboard/clients";
+    }
     if (path.startsWith("/dashboard/crm")) {
       return (
         pathname.startsWith("/dashboard/crm") ||
-        pathname.startsWith("/dashboard/clients") ||
+        pathname.startsWith("/dashboard/clients/") ||
         pathname.startsWith("/dashboard/conversations") ||
         pathname.startsWith("/dashboard/reminders") ||
         pathname.startsWith("/dashboard/email") ||
@@ -137,7 +145,9 @@ export function Sidebar({ compact = false, publicBrand = false }: { compact?: bo
       )}
     >
       <div className={cn("flex h-16 items-center gap-2.5 border-b border-card-border", compact ? "justify-center px-1" : "px-4")}>
-        {publicBrand ? (
+        {productSignups ? (
+          <KaydenChiewMark compact={compact} height={28} />
+        ) : publicBrand ? (
           <span className={cn("font-semibold tracking-tight text-foreground", compact ? "text-[11px]" : "text-sm")} aria-label={PUBLIC_BRAND}>
             {compact ? "KC" : PUBLIC_BRAND}
           </span>
@@ -149,7 +159,7 @@ export function Sidebar({ compact = false, publicBrand = false }: { compact?: bo
         ) : (
           <BrandLogo height={28} />
         )}
-        {compact || publicBrand ? null : (
+        {compact || publicBrand || productSignups ? null : (
           <p className="min-w-0 truncate text-[11px] font-medium uppercase leading-4 tracking-[0.04em] text-muted">
             {t("app.title").replace(t("app.brand"), "").replace(/^[\s·\-–—|]+/, "") || t("app.title")}
           </p>
@@ -167,15 +177,18 @@ export function Sidebar({ compact = false, publicBrand = false }: { compact?: bo
                 <div className="mx-2 mb-1 border-t border-card-border" />
               ) : (
                 <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted/70">
-                  {t(section.labelKey)}
+                  {productSignups ? withoutAxpmBrand(t(section.labelKey)) : t(section.labelKey)}
                 </p>
               )}
               <div className="space-y-0.5">
                 {items.map(({ href, labelKey, icon: Icon }) => {
                   const active = isActive(href);
-                  const label = publicBrand
-                    ? t(labelKey).replace(/\bAXPM\b/gi, "").replace(/\s{2,}/g, " ").trim()
-                    : t(labelKey);
+                  const raw = t(labelKey);
+                  const label = productSignups
+                    ? withoutAxpmBrand(raw)
+                    : publicBrand
+                      ? raw.replace(/\bAXPM\b/gi, "").replace(/\s{2,}/g, " ").trim()
+                      : raw;
                   return (
                     <Link
                       key={href}
