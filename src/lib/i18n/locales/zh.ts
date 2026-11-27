@@ -43,7 +43,7 @@ export const zh: TranslationDict = {
     title: "我的套餐与 API",
     subtitle: "订阅、接入自己的 AI 密钥、问自己的命理。",
     signupTitle: "注册账号",
-    signupDesc: "注册后可订阅、保存出生资料、进行个人命理解读。",
+    signupDesc: "注册后可使用 KD 管理团队的客户对话。",
     signupBtn: "创建账号",
     signupFailed: "注册失败，邮箱可能已存在",
     haveAccount: "已有账号？",

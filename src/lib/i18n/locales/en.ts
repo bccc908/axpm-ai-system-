@@ -41,7 +41,7 @@ export const en = {
     title: "My plan & API",
     subtitle: "Subscribe, connect your AI key, and ask your own fortune.",
     signupTitle: "Create your account",
-    signupDesc: "Sign up to subscribe, save your birth profile, and ask personal fortune readings.",
+    signupDesc: "Sign up to manage your team's customer conversations in KD.",
     signupBtn: "Create account",
     signupFailed: "Signup failed — email may already exist",
     haveAccount: "Already have an account?",
