@@ -17,7 +17,9 @@ import type {
 } from "@/lib/customer/types";
 import { getFortuneTodayKey } from "@/lib/fortune/date";
 
-const DATA_FILE = path.join(process.cwd(), "data", "customer-accounts.json");
+function customerFile() {
+  return path.join(process.cwd(), "data", "customer-accounts.json");
+}
 
 function emptyIntegrations(): CustomerIntegrations {
   return {
@@ -46,16 +48,17 @@ function emptyAccount(userId: string, referredByUserId: string | null = null): C
 }
 
 async function ensureFile(): Promise<CustomerData> {
-  await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
+  const file = customerFile();
+  await fs.mkdir(path.dirname(file), { recursive: true });
   try {
-    await fs.access(DATA_FILE);
+    await fs.access(file);
   } catch {
     await fs.writeFile(
-      DATA_FILE,
+      file,
       JSON.stringify({ accounts: [], api_keys: [] } satisfies CustomerData, null, 2),
     );
   }
-  const raw = await fs.readFile(DATA_FILE, "utf-8");
+  const raw = await fs.readFile(file, "utf-8");
   const parsed = JSON.parse(raw) as Partial<CustomerData>;
   const accounts = (parsed.accounts ?? []).map((account) => ({
     ...account,
@@ -68,7 +71,9 @@ async function ensureFile(): Promise<CustomerData> {
 }
 
 async function write(data: CustomerData) {
-  await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
+  const file = customerFile();
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  await fs.writeFile(file, JSON.stringify(data, null, 2));
 }
 
 function resetDailyUsage(account: CustomerAccount): CustomerAccount {

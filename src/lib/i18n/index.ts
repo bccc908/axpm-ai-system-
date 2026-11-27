@@ -33,10 +33,18 @@ export function translate(
 export const LOCALE_STORAGE_KEY = "axpm-locale";
 /** Public registration page — defaults to 中文 */
 export const REGISTER_LOCALE_STORAGE_KEY = "axpm-register-locale";
-/** Customer signup — auto 中文 for China IP, separate from dashboard language */
+/** Customer auth pages — mainland China IP defaults to 中文, separate from dashboard language */
 export const SIGNUP_LOCALE_STORAGE_KEY = "axpm-signup-locale";
 
-export { detectLocaleFromHeaders, localeFromQueryParam } from "./locale-detect";
+export {
+  countryFromHeaders,
+  detectLocaleFromHeaders,
+  isMainlandChina,
+  localeFromCountry,
+  localeFromQueryParam,
+  resolveLocale,
+  storesLocaleChoice,
+} from "./locale-detect";
 
 export function formatDateLocalized(date: string | Date, locale: Locale) {
   const tag = locale === "zh" ? "zh-CN" : "en-US";

@@ -29,6 +29,8 @@ export interface AuthUser {
   password_hash: string;
   is_active: boolean;
   created_at: string;
+  /** Set when this person has signed in with Google. Password login is unchanged. */
+  google_sub?: string;
 }
 
 export interface AuthUserPublic {

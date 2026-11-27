@@ -11,6 +11,8 @@ import {
 import {
   getDictionary,
   LOCALE_STORAGE_KEY,
+  resolveLocale,
+  storesLocaleChoice,
   translate,
   type Locale,
 } from "@/lib/i18n";
@@ -18,7 +20,8 @@ import type { TranslationDict } from "@/lib/i18n/types";
 
 type LocaleContextValue = {
   locale: Locale;
-  setLocale: (locale: Locale) => void;
+  /** `query` shows a locale for this visit and does not overwrite the stored toggle. */
+  setLocale: (locale: Locale, source?: "toggle" | "query") => void;
   t: (key: string, vars?: Record<string, string | number>) => string;
   dict: TranslationDict;
 };
@@ -39,22 +42,20 @@ export function LocaleProvider({
   const [locale, setLocaleState] = useState<Locale>(defaultLocale);
 
   useEffect(() => {
-    const stored = localStorage.getItem(storageKey) as Locale | null;
-    if (stored === "en" || stored === "zh") {
-      setLocaleState(stored);
-    } else {
-      setLocaleState(defaultLocale);
-    }
+    const stored = localStorage.getItem(storageKey);
+    setLocaleState(resolveLocale(stored, defaultLocale));
   }, [defaultLocale, storageKey]);
 
   useEffect(() => {
-    localStorage.setItem(storageKey, locale);
     document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
-  }, [locale, storageKey]);
+  }, [locale]);
 
-  const setLocale = useCallback((next: Locale) => {
+  const setLocale = useCallback((next: Locale, source: "toggle" | "query" = "toggle") => {
     setLocaleState(next);
-  }, []);
+    if (storesLocaleChoice(source)) {
+      localStorage.setItem(storageKey, next);
+    }
+  }, [storageKey]);
 
   const dict = useMemo(() => getDictionary(locale), [locale]);
 
